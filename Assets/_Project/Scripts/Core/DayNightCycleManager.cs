@@ -104,7 +104,7 @@ namespace Boreatek.Core
 
             if (_directionalLight == null)
             {
-                Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+                Light[] lights = FindObjectsByType<Light>();
                 for (int i = 0; i < lights.Length; i++)
                 {
                     if (lights[i].type == LightType.Directional)

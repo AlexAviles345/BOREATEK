@@ -100,7 +100,7 @@ namespace Boreatek.AI
         {
             if (_targetPlayer == null)
             {
-                _targetPlayer = FindFirstObjectByType<PlayerController>();
+                _targetPlayer = FindAnyObjectByType<PlayerController>();
                 if (_targetPlayer != null)
                 {
                     _targetPlayerTemp = _targetPlayer.GetComponent<TemperatureSystem>();
