@@ -105,12 +105,21 @@ namespace Boreatek.UI
                 _inventoryShop = _player.GetComponent<InventoryAndShop>();
             }
 
-            if (_hudCanvas == null)
+            EnsureCanvasReady();
+            RebuildShopCardsList();
+        }
+
+        private void EnsureCanvasReady()
+        {
+            if (_roundedCardSprite == null)
+            {
+                GenerateProceduralUISprites();
+            }
+
+            if (_hudCanvas == null || !_hudCanvas.gameObject.activeInHierarchy || _tempBarFill == null)
             {
                 BuildResponsiveCanvasHierarchy();
             }
-
-            RebuildShopCardsList();
         }
 
         private void Update()
@@ -124,6 +133,8 @@ namespace Boreatek.UI
                 }
                 return;
             }
+
+            EnsureCanvasReady();
 
             UpdateVitalAndThermalTelemetry();
             UpdateClockWeatherAndEquipment();
@@ -235,6 +246,8 @@ namespace Boreatek.UI
             GameObject oldCanvas = GameObject.Find("Boreatek_HUD_Canvas");
             if (oldCanvas != null)
             {
+                oldCanvas.name = "Boreatek_HUD_Canvas_Disposing";
+                oldCanvas.SetActive(false);
                 if (Application.isPlaying) Destroy(oldCanvas);
                 else DestroyImmediate(oldCanvas);
             }

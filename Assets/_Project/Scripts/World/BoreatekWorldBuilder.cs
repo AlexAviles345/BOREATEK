@@ -111,16 +111,6 @@ namespace Boreatek.World
                 if (Application.isPlaying) Destroy(oldRespawn);
                 else DestroyImmediate(oldRespawn);
             }
-
-            GameObject oldCanvas = GameObject.Find("Boreatek_HUD_Canvas");
-            if (oldCanvas != null)
-            {
-                oldCanvas.name = "Boreatek_HUD_Canvas_Disposing";
-                oldCanvas.SetActive(false);
-
-                if (Application.isPlaying) Destroy(oldCanvas);
-                else DestroyImmediate(oldCanvas);
-            }
         }
 
         private void InitializeResourceAndNodeDefinitions()
