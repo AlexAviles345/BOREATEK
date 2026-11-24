@@ -70,23 +70,44 @@ namespace Boreatek.World
 
         private void CleanupExistingGeneratedObjects()
         {
-            GameObject oldWorld = GameObject.Find("Boreatek_StylizedWorld_3D");
-            if (oldWorld != null)
-            {
-                if (Application.isPlaying) Destroy(oldWorld);
-                else DestroyImmediate(oldWorld);
-            }
-
             GameObject oldPlayer = GameObject.Find("Player_ElfEngineer");
             if (oldPlayer != null)
             {
+                // Desemparentar cualquier cámara antes de destruir el jugador previo para nunca perder la Main Camera
+                Camera[] attachedCameras = oldPlayer.GetComponentsInChildren<Camera>(true);
+                for (int i = 0; i < attachedCameras.Length; i++)
+                {
+                    if (attachedCameras[i] != null)
+                    {
+                        attachedCameras[i].transform.SetParent(null, true);
+                        attachedCameras[i].gameObject.SetActive(true);
+                        attachedCameras[i].enabled = true;
+                    }
+                }
+
+                oldPlayer.name = "Player_ElfEngineer_Disposing";
+                oldPlayer.SetActive(false);
+
                 if (Application.isPlaying) Destroy(oldPlayer);
                 else DestroyImmediate(oldPlayer);
+            }
+
+            GameObject oldWorld = GameObject.Find("Boreatek_StylizedWorld_3D");
+            if (oldWorld != null)
+            {
+                oldWorld.name = "Boreatek_StylizedWorld_3D_Disposing";
+                oldWorld.SetActive(false);
+
+                if (Application.isPlaying) Destroy(oldWorld);
+                else DestroyImmediate(oldWorld);
             }
 
             GameObject oldRespawn = GameObject.Find("Village_SafeRespawnPoint");
             if (oldRespawn != null)
             {
+                oldRespawn.name = "Village_SafeRespawnPoint_Disposing";
+                oldRespawn.SetActive(false);
+
                 if (Application.isPlaying) Destroy(oldRespawn);
                 else DestroyImmediate(oldRespawn);
             }
@@ -758,10 +779,26 @@ namespace Boreatek.World
             Camera mainCam = Camera.main;
             if (mainCam == null)
             {
-                GameObject camObj = new GameObject("Main Camera");
-                camObj.tag = "MainCamera";
-                mainCam = camObj.AddComponent<Camera>();
+                Camera anyCam = FindAnyObjectByType<Camera>();
+                if (anyCam != null)
+                {
+                    mainCam = anyCam;
+                    mainCam.tag = "MainCamera";
+                }
+                else
+                {
+                    GameObject camObj = new GameObject("Main Camera");
+                    camObj.tag = "MainCamera";
+                    mainCam = camObj.AddComponent<Camera>();
+                    camObj.AddComponent<AudioListener>();
+                }
             }
+
+            mainCam.gameObject.SetActive(true);
+            mainCam.enabled = true;
+            mainCam.clearFlags = CameraClearFlags.Skybox;
+            mainCam.nearClipPlane = 0.2f;
+            mainCam.farClipPlane = 400f;
 
             Transform respawnPoint = new GameObject("Village_SafeRespawnPoint").transform;
             respawnPoint.position = new Vector3(0f, 1.2f, -5.5f);
@@ -779,11 +816,13 @@ namespace Boreatek.World
 
         private void EnsureHUDAndShopUI(PlayerController player)
         {
-            if (FindAnyObjectByType<BoreatekHUDAndShopUI>() == null)
+            BoreatekHUDAndShopUI ui = FindAnyObjectByType<BoreatekHUDAndShopUI>();
+            if (ui == null)
             {
-                BoreatekHUDAndShopUI ui = gameObject.AddComponent<BoreatekHUDAndShopUI>();
-                ui.BindPlayer(player);
+                ui = gameObject.AddComponent<BoreatekHUDAndShopUI>();
             }
+
+            ui.BindPlayer(player);
         }
 
         private GameObject CreateBox(
