@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aaa3bab9d5c6eb14abc8581020342f06, type: 3}
+  m_Name: SO_Res_CandyCrystal
+  m_EditorClassIdentifier: Assembly-CSharp::Boreatek.Data.ResourceDataSO
+  _resourceType: 3
+  _displayName: Cristal de Caramelo
+  _description: "Mineral energ\xE9tico rojo brillante que alimenta herramientas y aut\xF3matas."
+  _gingerbreadCoinValue: 28
+  _themeColor: {r: 0.9, g: 0.22, b: 0.27, a: 1}
+  _isInsuredAgainstHypothermia: 0
