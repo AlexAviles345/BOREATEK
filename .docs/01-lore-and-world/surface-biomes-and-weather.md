@@ -69,3 +69,15 @@
     * Incrementa la densidad de niebla en URP (`RenderSettings.fogDensity = 0.065`), reduciendo drásticamente el campo visual.
     * Aplica un **multiplicador de enfriamiento de `2.5x`** sobre la pérdida de temperatura corporal.
   * **Supervivencia:** Obliga al jugador a consumir un **Termo de Chocolate Caliente**, seguir las rutas de **Guirnaldas Luminosas** o resguardarse en los túneles subterráneos.
+
+---
+
+## 6. Frontera procedural de superficie
+
+En Play Mode, el terreno exterior se genera en sectores de 64 × 64 metros conforme avanza el jugador. La malla utiliza coordenadas globales para calcular alturas compartidas en los bordes. Al cargar una partida o reaparecer, el sector de destino y sus ocho vecinos tienen suelo y colisión antes de habilitar el movimiento. Los demás sectores cercanos se generan por tandas y se descargan al quedar fuera del radio de retención.
+
+La aldea, las ubicaciones originales de los recursos y las entradas a la mina conservan su distribución. Los tres estratos subterráneos siguen siendo finitos. Más allá de la región inicial se generan extensiones de tundra, bosques de caramelo y páramos de trineos con el mismo drenaje térmico de sus biomas equivalentes.
+
+La semilla y las coordenadas reproducen la superficie y los recursos sin guardar cada malla. La versión 2 del guardado registra solo los cambios de recursos por sector e identificador, junto con las instalaciones. Los recursos agotados conservan su tiempo de reaparición pendiente mientras el sector está descargado. Las balizas reaparecen al volver y los autómatas descargados siguen entregando recursos durante la partida activa. Los guardados de la versión 1 siguen siendo compatibles.
+
+La exploración no tiene un borde diseñado. Al alejarse mucho del origen, la precisión de las físicas depende de las coordenadas de coma flotante de Unity. Esta versión conserva el origen fijo.
