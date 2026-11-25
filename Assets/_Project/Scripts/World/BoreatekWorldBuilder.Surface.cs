@@ -1,3 +1,4 @@
+using Boreatek.Core;
 using UnityEngine;
 using Batch = Boreatek.World.BoreatekLandscapeGeometry.Batch;
 
@@ -205,7 +206,19 @@ namespace Boreatek.World
             _landscape.Place(root, "Forge_RingsCoilsAndHearth", assembly);
         }
 
-        private void DressCandyTree(Transform tree, Vector3 location)
+        internal HarvestableNode CreateFrontierResource(Transform parent, BoreatekLandscapeGeometry owner, Vector3 position,
+            BiomeType biome, float type, float yaw)
+        {
+            if (biome == BiomeType.GiantCandyForest) return SpawnGiantCandyCrystalTreeNode(parent, position, owner);
+            if (biome == BiomeType.SleighGraveyard && type > 0.56f) return SpawnFrozenChestNode(parent, position);
+            if (biome == BiomeType.SleighGraveyard || type > 0.85f)
+            {
+                return SpawnCrashedSleighScrapNode(parent, position, owner, Quaternion.Euler(-4f, yaw, 3f));
+            }
+            return SpawnCrystallizedPineNode(parent, position, owner);
+        }
+
+        private void DressCandyTree(Transform tree, Vector3 location, BoreatekLandscapeGeometry owner)
         {
             Material red = _landscape.Finish(new Color32(163, 38, 65, 255), 0.22f, 0.45f);
             Material ivory = _landscape.Finish(new Color32(255, 217, 187, 255), 0.12f, 0.30f);
@@ -236,10 +249,10 @@ namespace Boreatek.World
                     canopy.Frustum(facet, branchEnd, 0.32f * growth, 0f, 5, (branch == 0 ? pink : ruby));
                 }
             }
-            _landscape.Place(tree, "CandyTree_BranchesAndCrystals", canopy);
+            owner.Place(tree, "CandyTree_BranchesAndCrystals", canopy);
         }
 
-        private void DressSleigh(Transform sleigh)
+        private void DressSleigh(Transform sleigh, BoreatekLandscapeGeometry owner)
         {
             var wreck = new Batch();
             Material enamel = _landscape.Finish(new Color32(132, 43, 57, 255), smoothness: 0.35f);
@@ -260,7 +273,7 @@ namespace Boreatek.World
             }
             wreck.Box(new Vector3(-0.20f, 0.68f, -0.24f), new Vector3(0.71f, 0.42f, 0.88f), snow,
                 Quaternion.Euler(0f, 13f, -6f));
-            _landscape.Place(sleigh, "Sleigh_EnamelAndRunners", wreck);
+            owner.Place(sleigh, "Sleigh_EnamelAndRunners", wreck);
         }
 
         private void DressGraveyard(Transform parent)

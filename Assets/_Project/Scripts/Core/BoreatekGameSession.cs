@@ -159,6 +159,7 @@ namespace Boreatek.Core
             }
             DayNightCycleManager.Instance.RestoreSave(save.campaign);
             _temperature.RestoreSave(save.temperature);
+            _surface.RestoreFrontierNodes(save.frontierNodes);
             _surface.EnsureGroundAt(save.player.position);
             _player.RestoreSave(save.player);
             SetScreen(Screen.Playing);

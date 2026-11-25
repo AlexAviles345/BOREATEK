@@ -73,7 +73,6 @@ namespace Boreatek.World
                 var surfaceRoot = new GameObject("Streamed_ArcticSurface");
                 surfaceRoot.transform.SetParent(_worldRoot, false);
                 var surface = surfaceRoot.AddComponent<BoreatekSurfaceChunks>();
-                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowPalette());
                 var polarAtmosphere = _worldRoot.gameObject.AddComponent<BoreatekPolarAtmosphere>();
                 polarAtmosphere.Initialize(player.transform,
                     DayNightCycleManager.Instance ?? FindAnyObjectByType<DayNightCycleManager>());
@@ -82,6 +81,8 @@ namespace Boreatek.World
                     _session = gameObject.AddComponent<BoreatekGameSession>();
                 }
                 _session.Initialize(player, ui, _worldRoot, _worldSeed, surface);
+                player.GetComponent<TemperatureSystem>().SetSurfaceChunks(surface);
+                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowPalette());
             }
         }
 
@@ -533,7 +534,7 @@ namespace Boreatek.World
             lt.shadows = LightShadows.None;
         }
 
-        private void SpawnCrystallizedPineNode(Transform parent, Vector3 pos)
+        private HarvestableNode SpawnCrystallizedPineNode(Transform parent, Vector3 pos, BoreatekLandscapeGeometry owner = null)
         {
             GameObject pine = new GameObject("Node_CrystallizedPine");
             pine.transform.SetParent(parent, false);
@@ -542,7 +543,7 @@ namespace Boreatek.World
             var silhouette = new BoreatekLandscapeGeometry.Batch();
             float height = 4.5f + 1.25f * Mathf.PerlinNoise(pos.x * 0.38f, pos.z * 0.33f);
             AddFrostedPine(silhouette, Vector3.zero, height, marked: true);
-            _landscape.Place(pine.transform, "CrystallizedPine", silhouette);
+            (owner ?? _landscape).Place(pine.transform, "CrystallizedPine", silhouette);
 
             BoxCollider col = pine.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 2.2f, 0f);
@@ -550,15 +551,16 @@ namespace Boreatek.World
 
             HarvestableNode node = pine.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs["pine"]);
+            return node;
         }
 
-        private void SpawnGiantCandyCrystalTreeNode(Transform parent, Vector3 pos)
+        private HarvestableNode SpawnGiantCandyCrystalTreeNode(Transform parent, Vector3 pos, BoreatekLandscapeGeometry owner = null)
         {
             GameObject tree = new GameObject("Node_GiantCandyCrystalTree");
             tree.transform.SetParent(parent, false);
             tree.transform.position = pos;
 
-            DressCandyTree(tree.transform, pos);
+            DressCandyTree(tree.transform, pos, owner ?? _landscape);
 
             BoxCollider col = tree.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 2.4f, 0f);
@@ -566,16 +568,19 @@ namespace Boreatek.World
 
             HarvestableNode node = tree.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs["candy_tree"]);
+            return node;
         }
 
-        private void SpawnCrashedSleighScrapNode(Transform parent, Vector3 pos)
+        private HarvestableNode SpawnCrashedSleighScrapNode(Transform parent, Vector3 pos,
+            BoreatekLandscapeGeometry owner = null, Quaternion? orientation = null)
         {
             GameObject sleigh = new GameObject("Node_CrashedCargoSleigh");
             sleigh.transform.SetParent(parent, false);
             sleigh.transform.position = pos;
-            sleigh.transform.rotation = Quaternion.Euler(Random.Range(-12f, 12f), Random.Range(0f, 360f), Random.Range(-8f, 8f));
+            sleigh.transform.rotation = orientation ??
+                Quaternion.Euler(Random.Range(-12f, 12f), Random.Range(0f, 360f), Random.Range(-8f, 8f));
 
-            DressSleigh(sleigh.transform);
+            DressSleigh(sleigh.transform, owner ?? _landscape);
 
             BoxCollider col = sleigh.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 0.7f, 0f);
@@ -583,9 +588,10 @@ namespace Boreatek.World
 
             HarvestableNode node = sleigh.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs["scrap_sleigh"]);
+            return node;
         }
 
-        private void SpawnFrozenChestNode(Transform parent, Vector3 pos)
+        private HarvestableNode SpawnFrozenChestNode(Transform parent, Vector3 pos)
         {
             GameObject chestRoot = new GameObject("Node_FrozenChest");
             chestRoot.transform.SetParent(parent, false);
@@ -605,6 +611,7 @@ namespace Boreatek.World
 
             HarvestableNode node = chestRoot.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs["frozen_chest"], iceShell);
+            return node;
         }
 
         private void SpawnMineralVeinNode(
@@ -874,28 +881,7 @@ namespace Boreatek.World
                 return;
             }
 
-            Material mat = new Material(_urpLitShader != null ? _urpLitShader : rend.sharedMaterial.shader);
-            mat.color = baseColor;
-            if (mat.HasProperty("_BaseColor"))
-            {
-                mat.SetColor("_BaseColor", baseColor);
-            }
-
-            if (mat.HasProperty("_Smoothness"))
-            {
-                mat.SetFloat("_Smoothness", 1f - smoothness);
-            }
-
-            if (emissionIntensity > 0.01f)
-            {
-                mat.EnableKeyword("_EMISSION");
-                if (mat.HasProperty("_EmissionColor"))
-                {
-                    mat.SetColor("_EmissionColor", baseColor * emissionIntensity);
-                }
-            }
-
-            rend.sharedMaterial = mat;
+            rend.sharedMaterial = _landscape.Finish(baseColor, emissionIntensity, 1f - smoothness);
         }
     }
 }

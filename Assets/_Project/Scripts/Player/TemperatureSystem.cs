@@ -46,6 +46,10 @@ namespace Boreatek.Player
         private float _currentBiomeBaseCoolingRate;
         private float _hotChocolateBuffRemainingSeconds;
         private float _hypothermiaCountdown;
+        private BoreatekSurfaceChunks _surfaceChunks;
+        private string _currentZoneLabel = "Aldea Industrial de Santa";
+
+        internal void SetSurfaceChunks(BoreatekSurfaceChunks chunks) => _surfaceChunks = chunks;
 
         public float MaxTemperature => _maxTemperature;
         public float CurrentTemperature => _currentTemperature;
@@ -143,6 +147,16 @@ namespace Boreatek.Player
                 baseCooling = 0f;
                 zoneLabel = "Aldea Industrial de Santa (Zona Segura)";
             }
+            else if (_surfaceChunks != null && BoreatekSurfaceChunks.IsFrontier(pos.x, pos.z))
+            {
+                detectedBiome = _surfaceChunks.FrontierBiome(pos.x, pos.z);
+                (baseCooling, zoneLabel) = detectedBiome switch
+                {
+                    BiomeType.GiantCandyForest => (1.5f, "Bosque de Caramelos de la Frontera"),
+                    BiomeType.SleighGraveyard => (2.5f, "Páramo de Trineos de la Frontera"),
+                    _ => (1.0f, "Tundra de la Frontera")
+                };
+            }
             else if (pos.x > 32f)
             {
                 detectedBiome = BiomeType.GiantCandyForest;
@@ -163,12 +177,13 @@ namespace Boreatek.Player
             }
 
             _currentBiomeBaseCoolingRate = baseCooling;
-            if (detectedBiome != _currentBiome)
+            if (detectedBiome != _currentBiome || _currentZoneLabel != zoneLabel)
             {
                 _currentBiome = detectedBiome;
-                ActiveHeatSourceName = zoneLabel;
+                _currentZoneLabel = zoneLabel;
                 OnBiomeOrThermalZoneChanged?.Invoke(_currentBiome, zoneLabel);
             }
+            if (_activeHeatSources.Count == 0) ActiveHeatSourceName = _currentZoneLabel;
         }
 
         private void UpdateThermalBalance(float dt)

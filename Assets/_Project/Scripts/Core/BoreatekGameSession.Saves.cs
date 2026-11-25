@@ -13,7 +13,7 @@ namespace Boreatek.Core
     public sealed partial class BoreatekGameSession
     {
         internal const int MaxSaveNameLength = 40;
-        private const int SaveVersion = 1;
+        private const int SaveVersion = 2;
         private const string LegacySaveKey = "Boreatek.Campaign";
         private const string LegacySaveId = "legacy";
 
@@ -121,7 +121,7 @@ namespace Boreatek.Core
                 return false;
             }
 
-            return save != null && save.version == SaveVersion && save.worldSeed == _worldSeed &&
+            return save != null && (save.version == 1 || save.version == SaveVersion) && save.worldSeed == _worldSeed &&
                 save.nodes?.Length == _nodes.Length && save.enemies?.Length == _enemies.Length &&
                 save.inventory.resources != null && save.inventory.heatSources != null &&
                 save.extractors != null && Array.TrueForAll(save.extractors,
@@ -152,6 +152,7 @@ namespace Boreatek.Core
                 campaign = DayNightCycleManager.Instance.CaptureSave(),
                 nodes = Array.ConvertAll(_nodes, node => node.CaptureSave()),
                 enemies = Array.ConvertAll(_enemies, enemy => enemy.CaptureSave()),
+                frontierNodes = _surface.CaptureFrontierNodes(),
                 extractors = extractors.ToArray()
             };
 
@@ -193,6 +194,7 @@ namespace Boreatek.Core
             public DayNightCycleManager.SaveState campaign;
             public HarvestableNode.SaveState[] nodes;
             public DefectiveToyAI.SaveState[] enemies;
+            public BoreatekSurfaceChunks.FrontierNodeSave[] frontierNodes;
             public ExtractorSave[] extractors;
         }
 

@@ -1,10 +1,11 @@
 using System.Collections.Generic;
+using Boreatek.Core;
 using UnityEngine;
 using Batch = Boreatek.World.BoreatekLandscapeGeometry.Batch;
 
 namespace Boreatek.World
 {
-    public sealed class BoreatekSurfaceChunks : MonoBehaviour
+    public sealed partial class BoreatekSurfaceChunks : MonoBehaviour
     {
         internal const int ChunkSize = 64;
         private const int VertexStep = 4;
@@ -20,6 +21,7 @@ namespace Boreatek.World
         private BoreatekWorldBuilder _builder;
         private Material[] _snow;
         private Material _rock;
+        private Material _candyAccent;
         private int _seed;
         private Vector2 _noiseOffset;
         private Vector2Int _center;
@@ -34,6 +36,7 @@ namespace Boreatek.World
             _seed = seed;
             _snow = snow;
             _rock = materials.Finish(new Color32(81, 112, 133, 255));
+            _candyAccent = materials.Finish(new Color32(219, 77, 103, 255), 0.36f);
             _noiseOffset = new Vector2((CellSeed(seed, 17, 50) & 4095) * 0.27f, (CellSeed(seed, 88, 13) & 4095) * 0.27f);
             EnsureGroundAt(traveler.position);
         }
@@ -77,6 +80,8 @@ namespace Boreatek.World
             foreach (Vector2Int retired in _retired)
             {
                 Transform chunk = _chunks[retired];
+                RememberNodes(retired);
+                _frontierNodes.Remove(retired);
                 _chunks.Remove(retired);
                 chunk.gameObject.SetActive(false);
                 Destroy(chunk.gameObject);
@@ -122,6 +127,7 @@ namespace Boreatek.World
             owner.Place(root.transform, "ArcticSnowfield", snowfield, collision: true);
             DressFrontier(owner, root.transform, sector, origin);
             _chunks.Add(sector, root.transform);
+            BuildFrontierResources(sector, owner, root.transform, origin);
         }
 
         private void DressFrontier(BoreatekLandscapeGeometry owner, Transform root, Vector2Int sector, Vector3 origin)
@@ -137,7 +143,13 @@ namespace Boreatek.World
                 float wx = x + origin.x, wz = z + origin.z;
                 if (!IsFrontier(wx, wz)) continue;
                 var foot = new Vector3(x, GroundHeight(wx, wz) - 0.11f, z);
-                if (i % 3 == 0)
+                BiomeType biome = FrontierBiome(wx, wz);
+                if (biome == BiomeType.GiantCandyForest && i % 3 != 0)
+                {
+                    features.Frustum(foot, foot + new Vector3(-0.31f, 1f + scale * 1.35f, 0.44f),
+                        0.42f + scale * 0.34f, 0f, 5, _candyAccent);
+                }
+                else if (biome == BiomeType.SleighGraveyard || i % 3 == 0)
                 {
                     features.Frustum(foot, foot + new Vector3(0.3f, 0.45f + scale * 0.7f, 0.25f), 0.83f + scale, 0.25f, 6, _rock);
                 }
