@@ -13,6 +13,7 @@ namespace Boreatek.UI
         private Image _sessionBackdrop;
         private Text _sessionMessage;
         private Text _gameplayMessage;
+        private RawImage _titleArtwork;
         private RectTransform _gameplayMenuCard;
         private RectTransform _mainMenu, _pauseMenu, _deathMenu;
         private Button _playButton, _resumeButton, _respawnButton;
@@ -59,6 +60,17 @@ namespace Boreatek.UI
 
         private void BuildTitleScreen(RectTransform root, BoreatekGameSession session)
         {
+            _titleArtwork = CreateUIObject("TitleArtwork", root).AddComponent<RawImage>();
+            _titleArtwork.texture = Resources.Load<Texture2D>("Boreatek/TitleBackdrop");
+            _titleArtwork.raycastTarget = false;
+            StretchFull(_titleArtwork.rectTransform);
+            if (_titleArtwork.texture != null)
+            {
+                var aspect = _titleArtwork.gameObject.AddComponent<AspectRatioFitter>();
+                aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+                aspect.aspectRatio = (float)_titleArtwork.texture.width / _titleArtwork.texture.height;
+            }
+
             _mainMenu = (RectTransform)CreateUIObject("MainMenu", root).transform;
             _mainMenu.anchorMin = _mainMenu.anchorMax = new Vector2(0.085f, 0.53f);
             _mainMenu.pivot = new Vector2(0f, 0.5f);
@@ -78,6 +90,7 @@ namespace Boreatek.UI
             _hudCanvas.enabled = !menuOpen;
             _hudCanvas.GetComponent<GraphicRaycaster>().enabled = !menuOpen;
             _sessionCanvas.SetActive(menuOpen);
+            _titleArtwork.enabled = titleOpen && _titleArtwork.texture != null;
             _mainMenu.gameObject.SetActive(screen == SessionScreen.MainMenu);
             _saveMenu.gameObject.SetActive(screen == SessionScreen.SaveSelection);
             _createSaveMenu.gameObject.SetActive(screen == SessionScreen.CreateSave);
