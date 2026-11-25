@@ -154,29 +154,6 @@ namespace Boreatek.World
             _landscape.Place(village, "ForgeApproach_TracksAndLanterns", plaza);
         }
 
-        private void DressTower(Transform tower)
-        {
-            var kit = new Batch();
-            Material casing = _landscape.Finish(Steel, smoothness: 0.34f);
-            Material pipe = _landscape.Finish(Brass, smoothness: 0.42f);
-            Material heatedGlass = _landscape.Finish(Furnace, 1.8f);
-            kit.Frustum(Vector3.up * 14.4f, Vector3.up * 14.7f, 2.71f, 2.68f, 16, casing);
-            kit.Frustum(Vector3.up * 15.96f, Vector3.up * 16.14f, 2.71f, 2.68f, 16, casing);
-            for (int i = 0; i < 12; i++)
-            {
-                float angle = 30f * i;
-                Quaternion rotation = Quaternion.Euler(0f, angle, 0f);
-                Vector3 radial = rotation * Vector3.forward;
-                kit.Box(radial * 2.66f + Vector3.up * 15.24f, new Vector3(0.15f, 1.35f, 0.19f), casing, rotation);
-                if (i % 3 != 0) continue;
-                kit.Frustum(radial * 1.82f + Vector3.up * 1.2f, radial * 1.82f + Vector3.up * 13.6f, 0.13f, 0.13f, 7, pipe);
-                kit.Box(radial * 1.83f + Vector3.up * 5.4f, new Vector3(0.27f, 0.61f, 0.09f), heatedGlass, rotation);
-                kit.Box(radial * 1.82f + Vector3.up * 1.07f, new Vector3(1.7f, 2.1f, 0.68f), casing, rotation);
-            }
-            kit.Frustum(Vector3.up * 16.85f, Vector3.up * 18.1f, 0.13f, 0.10f, 6, casing);
-            _landscape.Place(tower, "Tower_CopperServicesAndCrown", kit);
-        }
-
         private void BuildForgeMachinery(Transform root)
         {
             var assembly = new Batch();
@@ -203,6 +180,7 @@ namespace Boreatek.World
             }
             assembly.Frustum(new Vector3(0f, 1.24f, -1.55f), new Vector3(0f, 1.73f, -1.55f), 2.45f, 2.13f, 18, casing);
             assembly.Frustum(new Vector3(0f, 1.73f, -1.55f), new Vector3(0f, 1.87f, -1.55f), 1.85f, 1.71f, 18, amber);
+            AddKilnFace(assembly, new Vector3(0f, 2.07f, -3.15f), 0.95f, new FoundryMaterials(_landscape));
             _landscape.Place(root, "Forge_RingsCoilsAndHearth", assembly);
         }
 

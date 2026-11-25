@@ -234,8 +234,7 @@ namespace Boreatek.World
                 new Color(0.24f, 0.27f, 0.32f));
 
             // Torres Gemelas Industriales con anillos superiores luminosos ámbar/rojo
-            BuildIndustrialTower(village, "TwinTower_West", new Vector3(-8.5f, 0f, 8.5f));
-            BuildIndustrialTower(village, "TwinTower_East", new Vector3(8.5f, 0f, 8.5f));
+            BuildFoundryCampus(village);
 
             // La Gran Forja Central Circular entre las dos torres
             Transform forgeRoot = new GameObject("Central_Circular_Forge").transform;
@@ -286,21 +285,6 @@ namespace Boreatek.World
             CentralHopper shopTerminal = shopRoot.AddComponent<CentralHopper>();
             shopTerminal.ConfigureRuntime(isShopTerminal: true);
             DressVillagePlaza(village);
-        }
-
-        private void BuildIndustrialTower(Transform parent, string name, Vector3 position)
-        {
-            Transform tower = new GameObject(name).transform;
-            tower.SetParent(parent, false);
-            tower.localPosition = position;
-
-            CreateCylinder(tower, "Tower_Shaft", new Vector3(0f, 7.5f, 0f), new Vector3(3.6f, 7.5f, 3.6f),
-                new Color(0.25f, 0.28f, 0.33f));
-            CreateCylinder(tower, "Tower_CrownRing", new Vector3(0f, 15.2f, 0f), new Vector3(5.2f, 0.9f, 5.2f),
-                new Color(0.90f, 0.31f, 0.08f), emissionIntensity: 1.35f);
-            CreateCylinder(tower, "Tower_RoofCone", new Vector3(0f, 16.6f, 0f), new Vector3(3.8f, 0.6f, 3.8f),
-                new Color(0.20f, 0.22f, 0.26f));
-            DressTower(tower);
         }
 
         /// <summary>

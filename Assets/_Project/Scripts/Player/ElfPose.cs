@@ -40,6 +40,10 @@ namespace Boreatek.Player
         private Gesture _gesture;
         private const float HitDuration = 0.34f;
         private const float GestureDuration = 0.42f;
+        internal Transform Waist => _waist;
+        internal Transform Neck => _neck;
+        internal Arm LeftArm => _leftArm;
+        internal Arm RightArm => _rightArm;
 
         internal ElfPose(Transform waist, Transform neck, Arm leftArm, Arm rightArm, Leg leftLeg, Leg rightLeg)
         {

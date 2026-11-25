@@ -8,13 +8,13 @@ namespace Boreatek.World
     {
         private readonly struct ElfVisuals
         {
-            internal readonly Transform Root, Pickaxe, LowerGauge, UpperGauge;
+            internal readonly Transform Root, Pickaxe, LowerGauge, UpperGauge, RightGrip;
             internal readonly Renderer Head, LampLens, Crystal;
             internal readonly Light Headlamp;
             internal readonly ElfPose Pose;
 
             internal ElfVisuals(Transform root, Transform pickaxe, Transform lowerGauge, Transform upperGauge,
-                Renderer head, Renderer lampLens, Renderer crystal, Light headlamp, ElfPose pose)
+                Renderer head, Renderer lampLens, Renderer crystal, Light headlamp, ElfPose pose, Transform rightGrip)
             {
                 Root = root;
                 Pickaxe = pickaxe;
@@ -25,10 +25,11 @@ namespace Boreatek.World
                 Crystal = crystal;
                 Headlamp = headlamp;
                 Pose = pose;
+                RightGrip = rightGrip;
             }
         }
 
-        private ElfVisuals BuildElfModel(Transform player)
+        private ElfVisuals BuildElfModel(Transform player, Color32? workUniform = null)
         {
             Transform rig = CharacterPart(player, "ElfEngineer_ChibiModel3D", Vector3.zero);
             Material cloth = CharacterFinish(83, 94, 58);
@@ -36,20 +37,35 @@ namespace Boreatek.World
             Material leather = CharacterFinish(104, 59, 42, 0.24f);
             Material fur = CharacterFinish(190, 177, 148);
             Material brass = CharacterFinish(185, 132, 66, 0.49f, 0.46f);
+            if (workUniform.HasValue)
+            {
+                cloth = _landscape.Finish(workUniform.Value, smoothness: 0.19f);
+                olive = _landscape.Finish(Color.Lerp(workUniform.Value, new Color(0.58f, 0.44f, 0.31f), 0.28f));
+            }
             Vector3 waist = Vector3.up * 0.37f;
             Transform torso = CharacterPart(rig, "Waist", waist);
             Transform body = CharacterPart(torso, "Torso", -waist);
             BuildElfCoat(body, cloth, olive, leather, fur, brass);
             Vector3 neck = new Vector3(0f, 0.817f, -0.025f);
             Transform headJoint = CharacterPart(body, "Neck", neck);
-            Renderer head = BuildElfHead(CharacterPart(headJoint, "Head", -neck), fur, brass, out Light lamp, out Renderer lens);
-            BuildElfBackpack(body, brass, leather, out Transform lowerGauge, out Transform upperGauge);
+            Renderer head = BuildElfHead(CharacterPart(headJoint, "Head", -neck), fur, brass, !workUniform.HasValue,
+                out Light lamp, out Renderer lens);
             ElfPose.Arm left = BuildElfArm(body, -1, cloth, olive, fur, out _);
             ElfPose.Arm right = BuildElfArm(body, 1, cloth, olive, fur, out Transform toolHand);
-            Transform pickaxe = BuildElfPickaxe(toolHand, leather, brass, out Renderer crystal);
             var pose = new ElfPose(torso, headJoint, left, right,
                 BuildElfLeg(rig, -1, cloth, fur), BuildElfLeg(rig, 1, cloth, fur));
-            return new ElfVisuals(rig, pickaxe, lowerGauge, upperGauge, head, lens, crystal, lamp, pose);
+            if (workUniform.HasValue)
+            {
+                var apron = new Batch();
+                apron.Box(new Vector3(0f, 0.514f, 0.266f), new Vector3(0.292f, 0.35f, 0.035f), leather);
+                apron.Box(new Vector3(0f, 0.42f, 0.29f), new Vector3(0.134f, 0.084f, 0.025f), brass);
+                _landscape.Place(body, "Leather_Work_Apron", apron);
+                return new ElfVisuals(rig, null, null, null, head, null, null, null, pose, toolHand);
+            }
+
+            BuildElfBackpack(body, brass, leather, out Transform lowerGauge, out Transform upperGauge);
+            Transform pickaxe = BuildElfPickaxe(toolHand, leather, brass, out Renderer crystal);
+            return new ElfVisuals(rig, pickaxe, lowerGauge, upperGauge, head, lens, crystal, lamp, pose, toolHand);
         }
 
         private void BuildElfCoat(Transform rig, Material cloth, Material olive, Material leather, Material fur, Material brass)
@@ -137,7 +153,8 @@ namespace Boreatek.World
             return new ElfPose.Arm(upper, lower);
         }
 
-        private Renderer BuildElfHead(Transform rig, Material fur, Material brass, out Light lamp, out Renderer lens)
+        private Renderer BuildElfHead(Transform rig, Material fur, Material brass, bool powered,
+            out Light lamp, out Renderer lens)
         {
             var head = new Batch();
             Material skin = CharacterFinish(230, 172, 141, 0.32f);
@@ -192,6 +209,9 @@ namespace Boreatek.World
             head.Frustum(lampFace - Vector3.forward * 0.083f, lampFace, 0.083f, 0.079f, 18, brass);
             head.Frustum(lampFace, lampFace + Vector3.forward * 0.01f, 0.061f, 0.058f, 18, lensBase);
             Renderer headRenderer = _landscape.Place(rig, "Elf_HeadAndMiningHelmet", head).GetComponent<Renderer>();
+            lamp = null;
+            lens = null;
+            if (!powered) return headRenderer;
 
             var lampGlow = new Batch();
             Material warmGlow = CharacterFinish(255, 204, 122, 0.50f, 0f, 1.65f);
