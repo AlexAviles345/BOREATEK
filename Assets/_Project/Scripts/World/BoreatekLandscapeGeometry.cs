@@ -40,6 +40,23 @@ namespace Boreatek.World
             return asset;
         }
 
+        internal static void PaintStructure(Renderer renderer, BoreatekLandscapeGeometry shared, Color color, float emission = 0f)
+        {
+            if (shared != null)
+            {
+                renderer.sharedMaterial = shared.Finish(color, emission);
+                return;
+            }
+
+            Material material = renderer.material;
+            material.color = color;
+            if (emission > 0f && material.HasProperty("_EmissionColor"))
+            {
+                material.EnableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", color * emission);
+            }
+        }
+
         internal GameObject Place(Transform parent, string name, Batch batch, bool collision = false)
         {
             var obj = new GameObject(name);

@@ -38,6 +38,7 @@ namespace Boreatek.Economy
 
         private readonly Dictionary<ResourceType, int> _backpackContents = new Dictionary<ResourceType, int>();
         private readonly List<HeatPlacement> _heatPlacements = new List<HeatPlacement>();
+        private BoreatekSurfaceChunks _surfaceChunks;
         private readonly Dictionary<ResourceType, ResourceDataSO> _resourceCatalog = new Dictionary<ResourceType, ResourceDataSO>();
         private readonly List<ShopItemSO> _shopCatalog = new List<ShopItemSO>();
 
@@ -64,6 +65,8 @@ namespace Boreatek.Economy
         public IReadOnlyList<ShopItemSO> ShopCatalog => _shopCatalog;
 
         public event Action OnInventoryOrCoinsChanged;
+
+        internal void SetSurfaceChunks(BoreatekSurfaceChunks surface) => _surfaceChunks = surface;
 
         private void Awake()
         {
@@ -464,7 +467,10 @@ namespace Boreatek.Economy
             }
 
             _mechanicalElfExtractorsStock--;
-            MechanicalElfExtractor.CreateAutomatedExtractorOnNode(targetNode, this);
+            if (_surfaceChunks == null || !_surfaceChunks.TryPlaceFrontierExtractor(targetNode))
+            {
+                MechanicalElfExtractor.CreateAutomatedExtractorOnNode(targetNode, this);
+            }
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus($"🤖 ¡Duende Mecánico Extractor y Cinta Transportadora instalados en {targetNode.NodeConfig.NodeDisplayName}!");
         }
@@ -476,13 +482,24 @@ namespace Boreatek.Economy
                 pos = hit.point;
             }
 
+            var placement = new HeatPlacement { position = pos, isBeacon = isBeacon };
+            _heatPlacements.Add(placement);
+            if (_surfaceChunks == null || !_surfaceChunks.RegisterFrontierHeat(placement))
+            {
+                SpawnHeatSource(placement);
+            }
+        }
+
+        internal void SpawnHeatSource(HeatPlacement placement, Transform sector = null, BoreatekLandscapeGeometry sharedMaterials = null)
+        {
+            bool isBeacon = placement.isBeacon;
             string label = isBeacon ? "Baliza Térmica Portátil" : "Guirnalda Luminosa Navideña";
             float heatRegen = isBeacon ? 13f : 5.5f;
             float radius = isBeacon ? 10.5f : 6.5f;
             Color lightColor = isBeacon ? new Color(1f, 0.45f, 0.10f) : new Color(1f, 0.72f, 0.25f);
-            _heatPlacements.Add(new HeatPlacement { position = pos, isBeacon = isBeacon });
             GameObject root = new GameObject($"Deployed_{label}");
-            root.transform.position = pos;
+            if (sector != null) root.transform.SetParent(sector, false);
+            root.transform.position = placement.position;
 
             // Poste low-poly de latón/cobre
             GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -490,8 +507,7 @@ namespace Boreatek.Economy
             post.transform.localPosition = new Vector3(0f, isBeacon ? 0.65f : 0.45f, 0f);
             post.transform.localScale = isBeacon ? new Vector3(0.35f, 0.65f, 0.35f) : new Vector3(0.14f, 0.45f, 0.14f);
             Destroy(post.GetComponent<Collider>());
-            Renderer postRenderer = post.GetComponent<Renderer>();
-            postRenderer.material.color = new Color(0.69f, 0.49f, 0.31f);
+            BoreatekLandscapeGeometry.PaintStructure(post.GetComponent<Renderer>(), sharedMaterials, new Color(0.69f, 0.49f, 0.31f));
 
             // Foco / Núcleo térmico emisivo
             GameObject bulb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -499,13 +515,7 @@ namespace Boreatek.Economy
             bulb.transform.localPosition = new Vector3(0f, isBeacon ? 1.4f : 1.0f, 0f);
             bulb.transform.localScale = isBeacon ? Vector3.one * 0.48f : Vector3.one * 0.28f;
             Destroy(bulb.GetComponent<Collider>());
-            Renderer bulbRenderer = bulb.GetComponent<Renderer>();
-            bulbRenderer.material.color = lightColor;
-            if (bulbRenderer.material.HasProperty("_EmissionColor"))
-            {
-                bulbRenderer.material.EnableKeyword("_EMISSION");
-                bulbRenderer.material.SetColor("_EmissionColor", lightColor * 2.5f);
-            }
+            BoreatekLandscapeGeometry.PaintStructure(bulb.GetComponent<Renderer>(), sharedMaterials, lightColor, 2.5f);
 
             // Luz puntual URP sin sombras para alto rendimiento
             GameObject lightObj = new GameObject("ThermalPointLight");

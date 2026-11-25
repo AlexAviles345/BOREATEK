@@ -19,6 +19,7 @@ namespace Boreatek.World
         private readonly List<Vector2Int> _retired = new List<Vector2Int>();
         private Transform _traveler;
         private BoreatekWorldBuilder _builder;
+        private BoreatekLandscapeGeometry _sharedMaterials;
         private Material[] _snow;
         private Material _rock;
         private Material _candyAccent;
@@ -33,6 +34,7 @@ namespace Boreatek.World
         {
             _traveler = traveler;
             _builder = builder;
+            _sharedMaterials = materials;
             _seed = seed;
             _snow = snow;
             _rock = materials.Finish(new Color32(81, 112, 133, 255));
@@ -81,6 +83,7 @@ namespace Boreatek.World
             {
                 Transform chunk = _chunks[retired];
                 RememberNodes(retired);
+                SetExtractorsRemote(retired);
                 _frontierNodes.Remove(retired);
                 _chunks.Remove(retired);
                 chunk.gameObject.SetActive(false);
@@ -90,7 +93,9 @@ namespace Boreatek.World
 
         private void Update()
         {
-            if (_traveler == null || Time.timeScale <= 0f || _traveler.position.y < -1.8f) return;
+            if (_traveler == null || Time.timeScale <= 0f) return;
+            UpdateRemoteExtractors();
+            if (_traveler.position.y < -1.8f) return;
 
             EnsureGroundAt(_traveler.position);
             for (int i = 0; i < ChunksPerFrame && _queueIndex < _pending.Count; i++)
@@ -128,6 +133,7 @@ namespace Boreatek.World
             DressFrontier(owner, root.transform, sector, origin);
             _chunks.Add(sector, root.transform);
             BuildFrontierResources(sector, owner, root.transform, origin);
+            SpawnSectorInstallations(sector, root.transform);
         }
 
         private void DressFrontier(BoreatekLandscapeGeometry owner, Transform root, Vector2Int sector, Vector3 origin)

@@ -14,7 +14,8 @@ namespace Boreatek.Automation
     public class MechanicalElfExtractor : MonoBehaviour
     {
         [Header("Automation Settings")]
-        [SerializeField] private float _extractionIntervalSeconds = 8.0f;
+        internal const float DefaultExtractionInterval = 8f;
+        [SerializeField] private float _extractionIntervalSeconds = DefaultExtractionInterval;
         [SerializeField] private HarvestableNode _attachedNode;
         [SerializeField] private InventoryAndShop _targetVillageEconomy;
         [SerializeField] private Transform _extractorArmVisual;
@@ -87,12 +88,15 @@ namespace Boreatek.Automation
         /// </summary>
         public static MechanicalElfExtractor CreateAutomatedExtractorOnNode(
             HarvestableNode node,
-            InventoryAndShop economy)
+            InventoryAndShop economy,
+            Transform sector = null,
+            BoreatekLandscapeGeometry sharedMaterials = null)
         {
             Vector3 nodePos = node.transform.position;
             Vector3 villageHopperPos = new Vector3(0f, 0.4f, 4f);
 
             GameObject root = new GameObject($"AutomatedExtractor_{node.NodeConfig.NodeDisplayName}");
+            if (sector != null) root.transform.SetParent(sector, false);
             root.transform.position = nodePos + new Vector3(1.2f, 0f, 0f);
 
             // Chasis de latón del Duende Mecánico
@@ -101,7 +105,7 @@ namespace Boreatek.Automation
             body.transform.localPosition = new Vector3(0f, 0.55f, 0f);
             body.transform.localScale = new Vector3(0.65f, 0.55f, 0.65f);
             Destroy(body.GetComponent<Collider>());
-            body.GetComponent<Renderer>().material.color = new Color(0.75f, 0.55f, 0.28f);
+            BoreatekLandscapeGeometry.PaintStructure(body.GetComponent<Renderer>(), sharedMaterials, new Color(0.75f, 0.55f, 0.28f));
 
             // Casco verde oliva del autómata
             GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -109,7 +113,7 @@ namespace Boreatek.Automation
             head.transform.localPosition = new Vector3(0f, 1.25f, 0f);
             head.transform.localScale = Vector3.one * 0.52f;
             Destroy(head.GetComponent<Collider>());
-            head.GetComponent<Renderer>().material.color = new Color(0.29f, 0.36f, 0.31f);
+            BoreatekLandscapeGeometry.PaintStructure(head.GetComponent<Renderer>(), sharedMaterials, new Color(0.29f, 0.36f, 0.31f));
 
             // Brazo picador con cristal rojo
             GameObject arm = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -117,7 +121,7 @@ namespace Boreatek.Automation
             arm.transform.localPosition = new Vector3(-0.45f, 0.85f, 0f);
             arm.transform.localScale = new Vector3(0.7f, 0.16f, 0.16f);
             Destroy(arm.GetComponent<Collider>());
-            arm.GetComponent<Renderer>().material.color = new Color(0.90f, 0.22f, 0.27f);
+            BoreatekLandscapeGeometry.PaintStructure(arm.GetComponent<Renderer>(), sharedMaterials, new Color(0.90f, 0.22f, 0.27f));
 
             // Cinta Transportadora direccionada hacia la Tolva Central
             Vector3 startConveyor = root.transform.position;
@@ -131,7 +135,7 @@ namespace Boreatek.Automation
             belt.transform.rotation = Quaternion.LookRotation(dirToHopper.normalized);
             belt.transform.localScale = new Vector3(0.6f, 0.12f, beltLength);
             Destroy(belt.GetComponent<Collider>());
-            belt.GetComponent<Renderer>().material.color = new Color(0.22f, 0.24f, 0.27f);
+            BoreatekLandscapeGeometry.PaintStructure(belt.GetComponent<Renderer>(), sharedMaterials, new Color(0.22f, 0.24f, 0.27f));
 
             // Paquete de mineral deslizándose por la cinta
             GameObject packet = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -140,7 +144,7 @@ namespace Boreatek.Automation
             Destroy(packet.GetComponent<Collider>());
             if (node.NodeConfig.OutputResource != null)
             {
-                packet.GetComponent<Renderer>().material.color = node.NodeConfig.OutputResource.ThemeColor;
+                BoreatekLandscapeGeometry.PaintStructure(packet.GetComponent<Renderer>(), sharedMaterials, node.NodeConfig.OutputResource.ThemeColor);
             }
 
             MechanicalElfExtractor extractor = root.AddComponent<MechanicalElfExtractor>();

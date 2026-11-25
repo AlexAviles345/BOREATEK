@@ -46,6 +46,8 @@ namespace Boreatek.Core
             _inventory = player.GetComponent<InventoryAndShop>();
             _ui = ui;
             _surface = surface;
+            _surface.BindEconomy(_inventory);
+            _inventory.SetSurfaceChunks(_surface);
             _worldSeed = worldSeed;
             // The seeded world builder creates nodes and enemies in a deterministic hierarchy order.
             _nodes = worldRoot.GetComponentsInChildren<HarvestableNode>(true);
@@ -160,6 +162,7 @@ namespace Boreatek.Core
             DayNightCycleManager.Instance.RestoreSave(save.campaign);
             _temperature.RestoreSave(save.temperature);
             _surface.RestoreFrontierNodes(save.frontierNodes);
+            _surface.RestoreFrontierExtractors(save.frontierExtractors);
             _surface.EnsureGroundAt(save.player.position);
             _player.RestoreSave(save.player);
             SetScreen(Screen.Playing);

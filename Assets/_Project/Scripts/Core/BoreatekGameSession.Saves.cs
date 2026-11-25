@@ -130,6 +130,7 @@ namespace Boreatek.Core
 
         private bool WriteSave(string id, string name)
         {
+            var frontierExtractors = _surface.CaptureFrontierExtractors();
             var extractors = new List<ExtractorSave>();
             foreach (var extractor in FindObjectsByType<MechanicalElfExtractor>())
             {
@@ -153,6 +154,7 @@ namespace Boreatek.Core
                 nodes = Array.ConvertAll(_nodes, node => node.CaptureSave()),
                 enemies = Array.ConvertAll(_enemies, enemy => enemy.CaptureSave()),
                 frontierNodes = _surface.CaptureFrontierNodes(),
+                frontierExtractors = frontierExtractors,
                 extractors = extractors.ToArray()
             };
 
@@ -195,6 +197,7 @@ namespace Boreatek.Core
             public HarvestableNode.SaveState[] nodes;
             public DefectiveToyAI.SaveState[] enemies;
             public BoreatekSurfaceChunks.FrontierNodeSave[] frontierNodes;
+            public BoreatekSurfaceChunks.FrontierExtractorSave[] frontierExtractors;
             public ExtractorSave[] extractors;
         }
 
