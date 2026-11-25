@@ -5,6 +5,7 @@ namespace Boreatek.UI
 {
     internal enum BoreatekGlyph { Aim, Thermos, Cookie, Candy, Garland, Beacon, Firecracker, Automaton }
 
+    [RequireComponent(typeof(CanvasRenderer))]
     public sealed class BoreatekUiGlyph : MaskableGraphic
     {
         // A pair of integers is a vertex on a 16 by 16 design grid.
