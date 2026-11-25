@@ -19,7 +19,7 @@ namespace Boreatek.World
     ///   La Geoda de Hielo Azul Nivel 2 y El Abismo del Núcleo Luminoso Nivel 3.
     /// - Protagonista Duende Ingeniero 3D estilizado y patrullas de Soldados de Juguete Defectuosos y Gólems.
     /// </summary>
-    public class BoreatekWorldBuilder : MonoBehaviour
+    public partial class BoreatekWorldBuilder : MonoBehaviour
     {
         [Header("Procedural Generation Settings")]
         [Tooltip("Semilla procedural para la distribución de pinos, árboles de caramelo, vetas y cofres congelados.")]
@@ -200,6 +200,8 @@ namespace Boreatek.World
 
             Transform worldRoot = new GameObject("Boreatek_StylizedWorld_3D").transform;
             _worldRoot = worldRoot;
+            _landscape = worldRoot.gameObject.AddComponent<BoreatekLandscapeGeometry>();
+            _landscape.Initialize(_urpLitShader);
 
             BuildArcticSurfaceTerrain(worldRoot);
             BuildSantaIndustrialVillageHub(worldRoot);
@@ -207,19 +209,6 @@ namespace Boreatek.World
             BuildProceduralGiantCandyForest(worldRoot);
             BuildProceduralSleighGraveyard(worldRoot);
             BuildUndergroundExcavationNetwork(worldRoot);
-        }
-
-        private void BuildArcticSurfaceTerrain(Transform parent)
-        {
-            // Suelo ártico con apertura central norte para el túnel subterráneo (Z = 16 a 24)
-            CreateBox(parent, "SnowTerrain_South", new Vector3(0f, -0.5f, -55f), new Vector3(240f, 1f, 138f),
-                new Color(0.82f, 0.92f, 0.99f), roughness: 0.25f);
-            CreateBox(parent, "SnowTerrain_North", new Vector3(0f, -0.5f, 75f), new Vector3(240f, 1f, 100f),
-                new Color(0.82f, 0.92f, 0.99f), roughness: 0.25f);
-            CreateBox(parent, "SnowTerrain_West", new Vector3(-62f, -0.5f, 19.5f), new Vector3(116f, 1f, 11f),
-                new Color(0.82f, 0.92f, 0.99f), roughness: 0.25f);
-            CreateBox(parent, "SnowTerrain_East", new Vector3(62f, -0.5f, 19.5f), new Vector3(116f, 1f, 11f),
-                new Color(0.82f, 0.92f, 0.99f), roughness: 0.25f);
         }
 
         /// <summary>
@@ -252,8 +241,9 @@ namespace Boreatek.World
             outerWheel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
             GameObject innerCore = CreateCylinder(forgeRoot, "Forge_EmissiveCore", new Vector3(0f, 4.8f, 0f),
-                new Vector3(6.2f, 0.72f, 6.2f), new Color(1.0f, 0.52f, 0.10f), emissionIntensity: 2.8f);
+                new Vector3(6.2f, 0.72f, 6.2f), new Color(0.19f, 0.12f, 0.12f));
             innerCore.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            BuildForgeMachinery(forgeRoot);
 
             // Luz cálida principal y Burbuja Térmica de la Aldea Industrial
             GameObject forgeLightObj = new GameObject("Forge_WarmLightAndSafeZone");
@@ -286,6 +276,7 @@ namespace Boreatek.World
                 new Vector3(0.8f, 0.45f, 0.1f), new Color(0.30f, 0.85f, 0.65f), emissionIntensity: 2.2f);
             CentralHopper shopTerminal = shopRoot.AddComponent<CentralHopper>();
             shopTerminal.ConfigureRuntime(isShopTerminal: true);
+            DressVillagePlaza(village);
         }
 
         private void BuildIndustrialTower(Transform parent, string name, Vector3 position)
@@ -297,9 +288,10 @@ namespace Boreatek.World
             CreateCylinder(tower, "Tower_Shaft", new Vector3(0f, 7.5f, 0f), new Vector3(3.6f, 7.5f, 3.6f),
                 new Color(0.25f, 0.28f, 0.33f));
             CreateCylinder(tower, "Tower_CrownRing", new Vector3(0f, 15.2f, 0f), new Vector3(5.2f, 0.9f, 5.2f),
-                new Color(1.0f, 0.45f, 0.12f), emissionIntensity: 2.6f);
+                new Color(0.90f, 0.31f, 0.08f), emissionIntensity: 1.35f);
             CreateCylinder(tower, "Tower_RoofCone", new Vector3(0f, 16.6f, 0f), new Vector3(3.8f, 0.6f, 3.8f),
                 new Color(0.20f, 0.22f, 0.26f));
+            DressTower(tower);
         }
 
         /// <summary>
@@ -369,6 +361,7 @@ namespace Boreatek.World
                     SpawnDefectiveLeadSoldierEnemy(graveyard, pos + new Vector3(-3.5f, 0f, 2.5f));
                 }
             }
+            DressGraveyard(graveyard);
         }
 
         /// <summary>
@@ -539,15 +532,10 @@ namespace Boreatek.World
             pine.transform.SetParent(parent, false);
             pine.transform.position = pos;
 
-            // Tronco y 3 capas low-poly escarchadas
-            CreateCylinder(pine.transform, "Trunk", new Vector3(0f, 0.9f, 0f), new Vector3(0.55f, 0.9f, 0.55f),
-                new Color(0.35f, 0.25f, 0.20f));
-            CreateBox(pine.transform, "Foliage_Lower", new Vector3(0f, 2.1f, 0f), new Vector3(2.2f, 1.2f, 2.2f),
-                new Color(0.62f, 0.84f, 0.96f));
-            CreateBox(pine.transform, "Foliage_Mid", new Vector3(0f, 3.2f, 0f), new Vector3(1.6f, 1.1f, 1.6f),
-                new Color(0.74f, 0.91f, 1.0f));
-            CreateBox(pine.transform, "Foliage_Top", new Vector3(0f, 4.2f, 0f), new Vector3(0.95f, 1.0f, 0.95f),
-                new Color(0.88f, 0.96f, 1.0f));
+            var silhouette = new BoreatekLandscapeGeometry.Batch();
+            float height = 4.5f + 1.25f * Mathf.PerlinNoise(pos.x * 0.38f, pos.z * 0.33f);
+            AddFrostedPine(silhouette, Vector3.zero, height, marked: true);
+            _landscape.Place(pine.transform, "CrystallizedPine", silhouette);
 
             BoxCollider col = pine.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 2.2f, 0f);
@@ -563,13 +551,7 @@ namespace Boreatek.World
             tree.transform.SetParent(parent, false);
             tree.transform.position = pos;
 
-            // Tronco rojo carmesí brillante y ramificaciones blancas/rojas (bosque_surrealista_y_brillante.jpg)
-            CreateCylinder(tree.transform, "CandyTrunk_Red", new Vector3(0f, 1.3f, 0f), new Vector3(1.1f, 1.3f, 1.1f),
-                new Color(0.86f, 0.14f, 0.22f), emissionIntensity: 1.4f);
-            CreateCylinder(tree.transform, "CandyUpper_Ivory", new Vector3(0f, 3.1f, 0f), new Vector3(0.85f, 0.9f, 0.85f),
-                new Color(0.98f, 0.94f, 0.90f));
-            CreateBox(tree.transform, "CandyCanopy_GlowingRed", new Vector3(0f, 4.5f, 0f), new Vector3(3.2f, 1.4f, 3.2f),
-                new Color(0.94f, 0.18f, 0.26f), emissionIntensity: 2.0f);
+            DressCandyTree(tree.transform, pos);
 
             BoxCollider col = tree.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 2.4f, 0f);
@@ -586,10 +568,7 @@ namespace Boreatek.World
             sleigh.transform.position = pos;
             sleigh.transform.rotation = Quaternion.Euler(Random.Range(-12f, 12f), Random.Range(0f, 360f), Random.Range(-8f, 8f));
 
-            CreateBox(sleigh.transform, "Sleigh_HullRed", new Vector3(0f, 0.65f, 0f), new Vector3(1.8f, 1.1f, 2.8f),
-                new Color(0.58f, 0.14f, 0.18f));
-            CreateBox(sleigh.transform, "Sleigh_BrassTrim", new Vector3(0f, 1.25f, -0.5f), new Vector3(1.9f, 0.35f, 1.4f),
-                new Color(0.75f, 0.56f, 0.28f));
+            DressSleigh(sleigh.transform);
 
             BoxCollider col = sleigh.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 0.7f, 0f);
