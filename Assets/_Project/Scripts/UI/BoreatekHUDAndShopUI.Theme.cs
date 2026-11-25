@@ -111,6 +111,57 @@ namespace Boreatek.UI
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         }
 
+        private ScrollRect CreateVerticalCatalog(RectTransform parent, string name, string contentName,
+            Vector2 position, Vector2 size)
+        {
+            var topLeft = new Vector2(0f, 1f);
+            RectTransform viewport = CreatePanelCard(name, parent, topLeft, topLeft, topLeft,
+                position, size, new Color32(9, 19, 29, 255));
+            viewport.gameObject.AddComponent<RectMask2D>();
+            RectTransform content = (RectTransform)CreateUIObject(contentName, viewport).transform;
+            content.anchorMin = content.anchorMax = content.pivot = topLeft;
+            content.sizeDelta = size;
+
+            RectTransform rail = CreatePanelCard(name + "_ScrollRail", parent, topLeft, topLeft, topLeft,
+                position + new Vector2(size.x + 6f, 0f), new Vector2(16f, size.y), ColBlueSteel);
+            RectTransform area = (RectTransform)CreateUIObject("SlidingArea", rail).transform;
+            StretchFull(area, 3f);
+            RectTransform handle = (RectTransform)CreateUIObject("Handle", area).transform;
+            StretchFull(handle);
+            Image grip = handle.gameObject.AddComponent<Image>();
+            grip.color = ColIceCyan;
+            Scrollbar scrollbar = rail.gameObject.AddComponent<Scrollbar>();
+            scrollbar.targetGraphic = grip;
+            scrollbar.handleRect = handle;
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+
+            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.viewport = viewport;
+            scroll.content = content;
+            scroll.horizontal = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 48f;
+            scroll.verticalScrollbar = scrollbar;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            return scroll;
+        }
+
+        private static void RevealCatalogItem(ScrollRect scroll, RectTransform item)
+        {
+            Rect view = scroll.viewport.rect;
+            Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(scroll.viewport, item);
+            float distance = bounds.min.y < view.yMin ? view.yMin - bounds.min.y : Mathf.Min(0f, view.yMax - bounds.max.y);
+            if (Mathf.Approximately(distance, 0f))
+            {
+                return;
+            }
+
+            scroll.StopMovement();
+            Vector2 position = scroll.content.anchoredPosition;
+            position.y = Mathf.Clamp(position.y + distance, 0f, Mathf.Max(0f, scroll.content.rect.height - view.height));
+            scroll.content.anchoredPosition = position;
+        }
+
         private RawImage CreateTitleShade(RectTransform root)
         {
             const int width = 64;

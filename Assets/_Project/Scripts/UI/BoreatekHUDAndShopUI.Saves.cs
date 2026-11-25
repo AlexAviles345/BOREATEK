@@ -75,39 +75,14 @@ namespace Boreatek.UI
 
         private void BuildSaveList(RectTransform panel)
         {
-            var topLeft = new Vector2(0f, 1f);
-            RectTransform viewport = CreatePanelCard("SaveViewport", panel, topLeft, topLeft, topLeft,
-                new Vector2(34f, -112f), new Vector2(640f, 360f), new Color(0.03f, 0.06f, 0.09f, 1f));
-            viewport.gameObject.AddComponent<RectMask2D>();
-            _saveListContent = (RectTransform)CreateUIObject("SaveRows", viewport).transform;
-            _saveListContent.anchorMin = _saveListContent.anchorMax = _saveListContent.pivot = topLeft;
-            _saveListContent.sizeDelta = new Vector2(640f, 360f);
-            _emptySaveList = CreateLabel(viewport, "EmptyState", "Aún no hay partidas guardadas.",
+            _saveListScroll = CreateVerticalCatalog(panel, "SaveViewport", "SaveRows",
+                new Vector2(34f, -112f), new Vector2(640f, 360f));
+            _saveListContent = _saveListScroll.content;
+            _emptySaveList = CreateLabel(_saveListScroll.viewport, "EmptyState", "Aún no hay partidas guardadas.",
                 new Vector2(20f, -144f), new Vector2(600f, 66f), 24, FontStyle.Normal,
                 ColTextMuted, TextAnchor.MiddleCenter).gameObject;
-
-            RectTransform rail = CreatePanelCard("ScrollBar", panel, topLeft, topLeft, topLeft,
-                new Vector2(680f, -112f), new Vector2(16f, 360f), ColCardInner);
-            RectTransform area = (RectTransform)CreateUIObject("SlidingArea", rail).transform;
-            StretchFull(area, 2f);
-            RectTransform handle = (RectTransform)CreateUIObject("Handle", area).transform;
-            StretchFull(handle);
-            Image grip = handle.gameObject.AddComponent<Image>();
-            grip.color = ColIceCyan;
-            Scrollbar scrollbar = rail.gameObject.AddComponent<Scrollbar>();
-            scrollbar.targetGraphic = grip;
-            scrollbar.handleRect = handle;
-            scrollbar.direction = Scrollbar.Direction.BottomToTop;
-
-            _saveListScroll = viewport.gameObject.AddComponent<ScrollRect>();
-            _saveListScroll.viewport = viewport;
-            _saveListScroll.content = _saveListContent;
-            _saveListScroll.horizontal = false;
-            _saveListScroll.movementType = ScrollRect.MovementType.Clamped;
-            _saveListScroll.scrollSensitivity = 42f;
-            _saveListScroll.verticalScrollbar = scrollbar;
-            _saveListScroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
         }
+
 
         internal void RebuildSaveList(IReadOnlyList<SaveEntry> entries, Action<string> loadSave)
         {
@@ -137,6 +112,7 @@ namespace Boreatek.UI
                     new Vector2(10f, -10f - i * rowSpacing), new Vector2(620f, rowHeight), ColBlueSteel);
                 var rowButton = AttachMetalButton(row, ColBlueSteel, ColIceCyan);
                 rowButton.onClick.AddListener(() => SelectSave(entry.id, rowButton));
+                rowButton.Focused += () => RevealCatalogItem(_saveListScroll, row);
 
                 Text name = CreateLabel(row, "SaveTitle", entry.name, new Vector2(18f, -9f), new Vector2(580f, 30f),
                     24, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);

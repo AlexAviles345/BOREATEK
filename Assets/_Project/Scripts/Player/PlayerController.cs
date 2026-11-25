@@ -207,7 +207,7 @@ namespace Boreatek.Player
         {
             Vector2 moveInput = Vector2.zero;
             Keyboard kb = Keyboard.current;
-            if (kb != null)
+            if (kb != null && !_isShopMenuOpen)
             {
                 if (kb.wKey.isPressed || kb.upArrowKey.isPressed) moveInput.y += 1f;
                 if (kb.sKey.isPressed || kb.downArrowKey.isPressed) moveInput.y -= 1f;
@@ -216,7 +216,7 @@ namespace Boreatek.Player
                 moveInput = Vector2.ClampMagnitude(moveInput, 1f);
             }
 
-            if (Gamepad.current != null)
+            if (Gamepad.current != null && !_isShopMenuOpen)
             {
                 Vector2 stick = Gamepad.current.leftStick.ReadValue();
                 if (stick.sqrMagnitude > moveInput.sqrMagnitude)

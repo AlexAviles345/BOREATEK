@@ -67,9 +67,14 @@ namespace Boreatek.Economy
 
         private void Awake()
         {
-            _playerController = GetComponent<PlayerController>();
             _temperatureSystem = GetComponent<TemperatureSystem>();
             BuildDefaultShopCatalogIfEmpty();
+        }
+
+        private void Start()
+        {
+            // El generador agrega el controlador del jugador después del inventario.
+            _playerController = GetComponent<PlayerController>();
         }
 
         private void OnEnable()
@@ -216,6 +221,27 @@ namespace Boreatek.Economy
         /// <summary>
         /// Compra un artículo o mejora en la Tienda del Taller usando Monedas de Jengibre.
         /// </summary>
+        internal enum PurchaseAvailability { Available, InsufficientFunds, AlreadyOwned }
+
+        internal PurchaseAvailability GetPurchaseAvailability(ShopItemSO item)
+        {
+            bool owned = item.ActionType switch
+            {
+                ShopActionType.UpgradePickaxe => _playerController != null && _playerController.CurrentPickaxeTier >= item.AmountOrTargetTier,
+                ShopActionType.UpgradeBrassBackpack => _backpackTier >= item.AmountOrTargetTier,
+                ShopActionType.UpgradeThermalCoat => _temperatureSystem != null && _temperatureSystem.ThermalCoatTier >= item.AmountOrTargetTier,
+                ShopActionType.GiftRadar => _hasGiftRadarUnlocked,
+                _ => false
+            };
+            if (owned)
+            {
+                return PurchaseAvailability.AlreadyOwned;
+            }
+            return _gingerbreadCoins >= item.CostInGingerbreadCoins
+                ? PurchaseAvailability.Available
+                : PurchaseAvailability.InsufficientFunds;
+        }
+
         public bool TryPurchaseShopItem(ShopItemSO item)
         {
             if (item == null)
@@ -223,29 +249,25 @@ namespace Boreatek.Economy
                 return false;
             }
 
-            if (_gingerbreadCoins < item.CostInGingerbreadCoins)
+            var availability = GetPurchaseAvailability(item);
+            if (availability == PurchaseAvailability.InsufficientFunds)
             {
                 _playerController?.PublishStatus($"❌ Monedas de Jengibre insuficientes para {item.DisplayName} (Requiere {item.CostInGingerbreadCoins}).");
+                return false;
+            }
+            if (availability == PurchaseAvailability.AlreadyOwned)
+            {
+                _playerController?.PublishStatus("Ya tienes esta mejora o una superior.");
                 return false;
             }
 
             switch (item.ActionType)
             {
                 case ShopActionType.UpgradePickaxe:
-                    if (_playerController != null && _playerController.CurrentPickaxeTier >= item.AmountOrTargetTier)
-                    {
-                        _playerController.PublishStatus("✔️ Ya posees este nivel o superior del Pico Industrial con Cristal Energético.");
-                        return false;
-                    }
                     _playerController?.UpgradePickaxeTier(item.AmountOrTargetTier);
                     break;
 
                 case ShopActionType.UpgradeBrassBackpack:
-                    if (_backpackTier >= item.AmountOrTargetTier)
-                    {
-                        _playerController?.PublishStatus("✔️ Ya posees este nivel o superior del Tanque-Mochila Presurizado de Latón.");
-                        return false;
-                    }
                     _backpackTier = item.AmountOrTargetTier;
                     _maxBackpackSlots = Mathf.RoundToInt(item.EffectMagnitude);
                     if (_backpackTier >= 3)
@@ -256,11 +278,6 @@ namespace Boreatek.Economy
                     break;
 
                 case ShopActionType.UpgradeThermalCoat:
-                    if (_temperatureSystem != null && _temperatureSystem.ThermalCoatTier >= item.AmountOrTargetTier)
-                    {
-                        _playerController?.PublishStatus("✔️ Ya posees este nivel o superior del Abrigo Térmico Acolchado.");
-                        return false;
-                    }
                     _temperatureSystem?.UpgradeThermalCoat(item.AmountOrTargetTier, item.EffectMagnitude);
                     _playerController?.PublishStatus($"🧥 ¡Abrigo Térmico + Botas de Nieve mejorados a Nivel {item.AmountOrTargetTier} (-{Mathf.RoundToInt(item.EffectMagnitude * 100f)}% frío)!");
                     break;
@@ -290,11 +307,6 @@ namespace Boreatek.Economy
                     break;
 
                 case ShopActionType.GiftRadar:
-                    if (_hasGiftRadarUnlocked)
-                    {
-                        _playerController?.PublishStatus("✔️ El Radar de Regalos ya está instalado en tu casco.");
-                        return false;
-                    }
                     _hasGiftRadarUnlocked = true;
                     break;
 

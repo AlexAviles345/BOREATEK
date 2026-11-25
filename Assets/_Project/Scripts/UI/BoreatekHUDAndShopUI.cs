@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Boreatek.Core;
-using Boreatek.Data;
 using Boreatek.Economy;
 using Boreatek.Player;
 using Boreatek.World;
@@ -71,13 +70,6 @@ namespace Boreatek.UI
         private readonly List<Color> _hotbarAccents = new List<Color>();
         private readonly int[] _shownHotbarStock = new int[7];
 
-        // Referencias del Modal de la Tienda del Taller
-        private GameObject _shopModalRoot;
-        private Text _shopCoinsHeaderText;
-        private Text _shopHopperButtonText;
-        private ShopCategory? _selectedShopCategoryFilter;
-        private Transform _shopCardsContainer;
-
         // Paleta cromática oficial Boreatek UI
         private static readonly Color ColPanelDark = new Color(0.05f, 0.10f, 0.16f, 0.90f);
         private static readonly Color ColCardInner = new Color(0.09f, 0.16f, 0.24f, 0.94f);
@@ -85,7 +77,6 @@ namespace Boreatek.UI
         private static readonly Color ColWarmAmber = new Color(1.00f, 0.62f, 0.11f, 1.0f);
         private static readonly Color ColIceCyan = new Color(0.35f, 0.75f, 0.96f, 1.0f);
         private static readonly Color ColCandyRed = new Color(0.90f, 0.22f, 0.27f, 1.0f);
-        private static readonly Color ColEmeraldSafe = new Color(0.22f, 0.78f, 0.52f, 1.0f);
         private static readonly Color ColTextLight = new Color(0.93f, 0.96f, 1.00f, 1.0f);
         private static readonly Color ColTextMuted = new Color(0.66f, 0.76f, 0.86f, 1.0f);
 
@@ -108,7 +99,6 @@ namespace Boreatek.UI
             }
 
             EnsureCanvasReady();
-            RebuildShopCardsList();
         }
 
         private void EnsureCanvasReady()
@@ -458,130 +448,6 @@ namespace Boreatek.UI
             return texture;
         }
 
-        /// <summary>
-        /// Ventana Modal de la Tienda del Taller y Tolva Central ([Tab]).
-        /// </summary>
-        private void BuildWorkshopShopModal(RectTransform parent)
-        {
-            RectTransform modalOverlay = CreatePanelCard("WorkshopShop_Modal", parent,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(1140f, 700f), new Color(0.04f, 0.08f, 0.13f, 0.97f));
-            _shopModalRoot = modalOverlay.gameObject;
-
-            // Barra de título del taller
-            CreateLabel(modalOverlay, "ShopTitle", "🛒 TALLER Y TIENDA DE LA ALDEA INDUSTRIAL DE SANTA",
-                new Vector2(28f, -20f), new Vector2(680f, 34f), 22, FontStyle.Bold, ColBrassGold, TextAnchor.MiddleLeft);
-
-            _shopCoinsHeaderText = CreateLabel(modalOverlay, "ShopCoinsBalance", "🪙 Saldo: 60 Monedas de Jengibre",
-                new Vector2(710f, -20f), new Vector2(280f, 34f), 18, FontStyle.Bold, ColWarmAmber, TextAnchor.MiddleRight);
-
-            // Botón Cerrar
-            CreateStylizedButton(modalOverlay, "BtnCloseShop", "CERRAR [Tab]",
-                new Vector2(1005f, -20f), new Vector2(110f, 34f), ColCandyRed, () => _player?.ToggleShopMenu());
-
-            // Botón destacado de Descarga en Tolva Central + Pestañas de Categoría
-            CreateStylizedButton(modalOverlay, "BtnDepositHopper",
-                "📥 DEPOSITAR TANQUE-MOCHILA EN TOLVA CENTRAL",
-                new Vector2(28f, -66f), new Vector2(460f, 40f), ColEmeraldSafe,
-                () =>
-                {
-                    _inventoryShop?.DepositAllResourcesIntoCentralHopper();
-                    RebuildShopCardsList();
-                }, out _shopHopperButtonText);
-
-            // Filtros por categoría
-            CreateStylizedButton(modalOverlay, "TabAll", "Todos",
-                new Vector2(510f, -66f), new Vector2(105f, 40f), ColBrassGold, () => SetShopFilter(null));
-            CreateStylizedButton(modalOverlay, "TabConsumables", "Comida",
-                new Vector2(623f, -66f), new Vector2(115f, 40f), ColCardInner, () => SetShopFilter(ShopCategory.Consumable));
-            CreateStylizedButton(modalOverlay, "TabTactical", "Tácticos",
-                new Vector2(746f, -66f), new Vector2(115f, 40f), ColCardInner, () => SetShopFilter(ShopCategory.TacticalTool));
-            CreateStylizedButton(modalOverlay, "TabUpgrades", "Mejoras",
-                new Vector2(869f, -66f), new Vector2(115f, 40f), ColCardInner, () => SetShopFilter(ShopCategory.PermanentUpgrade));
-            CreateStylizedButton(modalOverlay, "TabAuto", "Autómatas",
-                new Vector2(992f, -66f), new Vector2(120f, 40f), ColCardInner, () => SetShopFilter(ShopCategory.Automation));
-
-            // Área contenedora de tarjetas de la tienda (Grid de 2 columnas)
-            RectTransform gridArea = CreatePanelCard("ShopCardsGridArea", modalOverlay,
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(28f, -120f), new Vector2(1084f, 552f), new Color(0.03f, 0.06f, 0.09f, 0.85f));
-
-            _shopCardsContainer = gridArea;
-            _shopModalRoot.SetActive(false);
-        }
-
-        private void SetShopFilter(ShopCategory? category)
-        {
-            _selectedShopCategoryFilter = category;
-            RebuildShopCardsList();
-        }
-
-        private void RebuildShopCardsList()
-        {
-            if (_shopCardsContainer == null || _inventoryShop == null)
-            {
-                return;
-            }
-
-            for (int i = _shopCardsContainer.childCount - 1; i >= 0; i--)
-            {
-                GameObject child = _shopCardsContainer.GetChild(i).gameObject;
-                if (Application.isPlaying) Destroy(child);
-                else DestroyImmediate(child);
-            }
-
-            IReadOnlyList<ShopItemSO> items = _inventoryShop.ShopCatalog;
-            int visibleIdx = 0;
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                ShopItemSO item = items[i];
-                if (_selectedShopCategoryFilter.HasValue && item.Category != _selectedShopCategoryFilter.Value)
-                {
-                    continue;
-                }
-
-                int col = visibleIdx % 2;
-                int row = visibleIdx / 2;
-                if (row >= 7)
-                {
-                    break;
-                }
-
-                float cardW = 524f;
-                float cardH = 72f;
-                float x = 12f + col * (cardW + 12f);
-                float y = -10f - row * (cardH + 6f);
-
-                RectTransform itemCard = CreatePanelCard($"ShopCard_{item.ItemId}", _shopCardsContainer as RectTransform,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                    new Vector2(x, y), new Vector2(cardW, cardH), ColCardInner);
-
-                string catLabel = GetCategorySpanishName(item.Category);
-                CreateLabel(itemCard, "ItemTitle", $"[{catLabel}] {item.DisplayName}",
-                    new Vector2(14f, -8f), new Vector2(360f, 24f), 15, FontStyle.Bold, ColWarmAmber, TextAnchor.MiddleLeft);
-
-                CreateLabel(itemCard, "ItemDesc", item.Description,
-                    new Vector2(14f, -32f), new Vector2(360f, 34f), 12, FontStyle.Normal, ColTextLight, TextAnchor.UpperLeft);
-
-                ShopItemSO capturedItem = item;
-                bool canAfford = _inventoryShop.GingerbreadCoins >= item.CostInGingerbreadCoins;
-                Color btnColor = canAfford ? ColBrassGold : new Color(0.25f, 0.28f, 0.32f, 0.9f);
-
-                CreateStylizedButton(itemCard, "BtnBuy", $"COMPRAR\n{item.CostInGingerbreadCoins} 🪙",
-                    new Vector2(384f, -10f), new Vector2(128f, 52f), btnColor,
-                    () =>
-                    {
-                        if (_inventoryShop.TryPurchaseShopItem(capturedItem))
-                        {
-                            RebuildShopCardsList();
-                        }
-                    });
-
-                visibleIdx++;
-            }
-        }
-
         private void UpdateVitalAndThermalTelemetry()
         {
             if (_tempSystem != null)
@@ -770,33 +636,6 @@ namespace Boreatek.UI
             _frostVignetteOverlay.color = c;
         }
 
-        private void UpdateShopModalVisibility()
-        {
-            if (_shopModalRoot == null)
-            {
-                return;
-            }
-
-            bool shouldShow = _player.IsShopMenuOpen;
-            if (_shopModalRoot.activeSelf != shouldShow)
-            {
-                _shopModalRoot.SetActive(shouldShow);
-                if (shouldShow)
-                {
-                    RebuildShopCardsList();
-                }
-            }
-
-            if (shouldShow && _inventoryShop != null)
-            {
-                _shopCoinsHeaderText.text = $"🪙 Saldo: {_inventoryShop.GingerbreadCoins} Monedas de Jengibre";
-                if (_shopHopperButtonText != null)
-                {
-                    _shopHopperButtonText.text = $"📥 DEPOSITAR TANQUE-MOCHILA EN TOLVA CENTRAL ({_inventoryShop.CurrentBackpackCount}/{_inventoryShop.MaxBackpackSlots})";
-                }
-            }
-        }
-
         private static string GetSpanishWeatherDescription(WeatherState state, float mult)
         {
             switch (state)
@@ -811,18 +650,6 @@ namespace Boreatek.UI
                     return $"Gran Nochebuena  ·  Frío ×{mult:0.0}";
                 default:
                     return "Clima Polar";
-            }
-        }
-
-        private static string GetCategorySpanishName(ShopCategory category)
-        {
-            switch (category)
-            {
-                case ShopCategory.Consumable: return "Comida";
-                case ShopCategory.TacticalTool: return "Táctico";
-                case ShopCategory.PermanentUpgrade: return "Mejora";
-                case ShopCategory.Automation: return "Autómata";
-                default: return "Taller";
             }
         }
 
@@ -945,7 +772,7 @@ namespace Boreatek.UI
             return txt;
         }
 
-        private Button CreateStylizedButton(
+        private BoreatekUiButton CreateStylizedButton(
             RectTransform parent,
             string name,
             string label,
@@ -957,7 +784,7 @@ namespace Boreatek.UI
             return CreateStylizedButton(parent, name, label, anchoredPos, size, bgColor, onClick, out _);
         }
 
-        private Button CreateStylizedButton(
+        private BoreatekUiButton CreateStylizedButton(
             RectTransform parent,
             string name,
             string label,
@@ -973,7 +800,10 @@ namespace Boreatek.UI
 
             bool lightSurface = bgColor.r * 0.2126f + bgColor.g * 0.7152f + bgColor.b * 0.0722f > 0.55f;
             var btn = AttachMetalButton(btnRect, bgColor, lightSurface ? ColBrassRim : ColIceCyan, lightSurface);
-            btn.onClick.AddListener(onClick);
+            if (onClick != null)
+            {
+                btn.onClick.AddListener(onClick);
+            }
 
             buttonLabel = CreateLabel(btnRect, "BtnTxt", label,
                 Vector2.zero, size, 15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);

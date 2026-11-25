@@ -1,4 +1,6 @@
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Boreatek.UI
@@ -16,6 +18,14 @@ namespace Boreatek.UI
         private Color _accent;
         private bool _lightSurface;
         private bool _latched;
+
+        internal event Action Focused;
+
+        public override void OnSelect(BaseEventData eventData)
+        {
+            base.OnSelect(eventData);
+            Focused?.Invoke();
+        }
 
         internal void Configure(Image face, Image rim, Image marker, Color surface, Color accent, bool lightSurface)
         {
