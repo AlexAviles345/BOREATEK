@@ -250,18 +250,26 @@ namespace Boreatek.World
             tank.Frustum(tubing2, tubing3, 0.019f, 0.019f, 7, leather);
             tank.Frustum(tubing3, foot + Vector3.up * 0.018f, 0.019f, 0.02f, 7, buckle);
             _landscape.Place(rig, "Elf_PressurizedBrassTank", tank);
-            lower = BuildElfGauge(rig, "Elf_LowerGauge", new Vector3(0.070f, 0.513f, -0.474f), brass);
-            upper = BuildElfGauge(rig, "Elf_UpperGauge", new Vector3(0.070f, 0.679f, -0.474f), brass);
+            Shader paint = Resources.Load<Shader>("Boreatek/GaugePaint") ??
+                Shader.Find("Universal Render Pipeline/Unlit") ?? _urpLitShader;
+            Material bezel = GaugePaint(paint, new Color32(185, 132, 66, 255));
+            Material paper = GaugePaint(paint, new Color32(233, 219, 188, 255));
+            Material marking = GaugePaint(paint, new Color32(56, 44, 43, 255));
+            Material enamel = GaugePaint(paint, new Color32(176, 46, 49, 255));
+            lower = BuildElfGauge(rig, "Elf_LowerGauge", new Vector3(0.070f, 0.513f, -0.474f), bezel, paper, marking, enamel);
+            upper = BuildElfGauge(rig, "Elf_UpperGauge", new Vector3(0.070f, 0.679f, -0.474f), bezel, paper, marking, enamel);
         }
 
-        private Transform BuildElfGauge(Transform rig, string name, Vector3 position, Material brass)
+        private Material GaugePaint(Shader shader, Color color) =>
+            _landscape.Own(new Material(shader) { name = "M_Elf_Gauge_Paint", color = color * 0.72f });
+
+        private Transform BuildElfGauge(Transform rig, string name, Vector3 position, Material bezel, Material paper,
+            Material marking, Material enamel)
         {
             Transform gauge = CharacterPart(rig, name, position);
             gauge.localRotation = Quaternion.Euler(0f, -22f, 0f);
             var dial = new Batch();
-            Material paper = CharacterFinish(233, 219, 188);
-            Material marking = CharacterFinish(56, 44, 43);
-            dial.Frustum(Vector3.zero, Vector3.back * 0.034f, 0.061f, 0.059f, 16, brass);
+            dial.Frustum(Vector3.zero, Vector3.back * 0.034f, 0.061f, 0.059f, 16, bezel);
             dial.Frustum(Vector3.back * 0.034f, Vector3.back * 0.037f, 0.048f, 0.048f, 16, paper);
             for (int tick = 0; tick < 5; tick++)
             {
@@ -272,7 +280,6 @@ namespace Boreatek.World
             _landscape.Place(gauge, "DialAndTicks", dial);
             Transform needle = CharacterPart(gauge, "NeedlePivot", Vector3.back * 0.041f);
             var pointer = new Batch();
-            Material enamel = CharacterFinish(176, 46, 49);
             pointer.Box(new Vector3(0f, 0.014f, 0f), new Vector3(0.006f, 0.041f, 0.005f), enamel);
             _landscape.Place(needle, "TemperatureNeedle", pointer);
             return needle;
