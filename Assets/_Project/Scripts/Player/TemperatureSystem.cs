@@ -64,7 +64,10 @@ namespace Boreatek.Player
         public event Action<float, float> OnTemperatureChanged;
         public event Action<float, float> OnHealthChanged;
         public event Action<BiomeType, string> OnBiomeOrThermalZoneChanged;
-        public event Action OnHypothermiaRescueTriggered;
+        internal event Action<bool> OnVillageRescueTriggered;
+        internal event Action<bool> OnDied;
+        private bool _isDead;
+        private bool _diedOfCold;
 
         private void Start()
         {
@@ -78,7 +81,7 @@ namespace Boreatek.Player
         private void Update()
         {
             float dt = Time.deltaTime;
-            if (dt <= 0f)
+            if (_isDead || dt <= 0f)
             {
                 return;
             }
@@ -211,7 +214,7 @@ namespace Boreatek.Player
                 _hypothermiaCountdown -= dt;
                 if (_hypothermiaCountdown <= 0f)
                 {
-                    TriggerEmergencyHypothermiaRescue();
+                    Die(fromCold: true);
                 }
             }
             else
@@ -254,7 +257,7 @@ namespace Boreatek.Player
         /// </summary>
         public void ApplyCombatDamage(float damage)
         {
-            if (damage <= 0f || Time.timeScale <= 0f)
+            if (_isDead || damage <= 0f || Time.timeScale <= 0f)
             {
                 return;
             }
@@ -264,7 +267,7 @@ namespace Boreatek.Player
 
             if (_currentHealth <= 0f)
             {
-                TriggerEmergencyHypothermiaRescue();
+                Die(fromCold: false);
             }
         }
 
@@ -286,20 +289,41 @@ namespace Boreatek.Player
             }
         }
 
-        private void TriggerEmergencyHypothermiaRescue()
+        private void Die(bool fromCold)
         {
+            _isDead = true;
+            _diedOfCold = fromCold;
+            if (OnDied == null)
+            {
+                RespawnAtVillage();
+                return;
+            }
+
+            OnDied.Invoke(fromCold);
+        }
+
+        internal void RespawnAtVillage()
+        {
+            if (!_isDead)
+            {
+                return;
+            }
+
+            _isDead = false;
             _currentTemperature = _maxTemperature;
             _currentHealth = _maxHealth;
             _hypothermiaCountdown = _hypothermiaGraceSeconds;
+            _hotChocolateBuffRemainingSeconds = 0f;
             _activeHeatSources.Clear();
 
             if (TryGetComponent(out CharacterController cc))
             {
+                bool wasEnabled = cc.enabled;
                 cc.enabled = false;
                 transform.position = _villageRespawnPoint != null
                     ? _villageRespawnPoint.position
                     : new Vector3(0f, 1.2f, -6f);
-                cc.enabled = true;
+                cc.enabled = wasEnabled;
             }
             else
             {
@@ -310,7 +334,7 @@ namespace Boreatek.Player
 
             OnTemperatureChanged?.Invoke(_currentTemperature, _maxTemperature);
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
-            OnHypothermiaRescueTriggered?.Invoke();
+            OnVillageRescueTriggered?.Invoke(_diedOfCold);
         }
 
         private void CleanNullHeatSources()

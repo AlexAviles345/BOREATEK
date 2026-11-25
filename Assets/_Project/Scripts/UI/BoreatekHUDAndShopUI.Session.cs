@@ -13,8 +13,8 @@ namespace Boreatek.UI
         private Image _sessionBackdrop;
         private Text _sessionMessage;
         private RectTransform _gameplayMenuCard;
-        private RectTransform _mainMenu, _pauseMenu;
-        private Button _playButton, _resumeButton;
+        private RectTransform _mainMenu, _pauseMenu, _deathMenu;
+        private Button _playButton, _resumeButton, _respawnButton;
 
         internal void BuildSessionMenu(BoreatekGameSession session)
         {
@@ -45,6 +45,10 @@ namespace Boreatek.UI
             _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 182f, ColBrassGold, session.Resume);
             CreateSessionButton(_pauseMenu, "MainMenu", "Volver al menú principal", 248f, ColCardInner, session.ReturnToMainMenu);
 
+            _deathMenu = CreateSessionPanel(_gameplayMenuCard, "DeathMenu", "Has muerto", ColCandyRed);
+            _respawnButton = CreateSessionButton(_deathMenu, "Respawn", "Reaparecer en la aldea", 182f, ColBrassGold, session.Respawn);
+            CreateSessionButton(_deathMenu, "MainMenu", "Volver al menú principal", 248f, ColCardInner, session.ReturnToMainMenu);
+
             _sessionMessage = CreateLabel(_gameplayMenuCard, "SessionMessage", "",
                 new Vector2(28f, -362f), new Vector2(504f, 32f), 18,
                 FontStyle.Normal, ColTextMuted, TextAnchor.MiddleCenter);
@@ -71,10 +75,12 @@ namespace Boreatek.UI
             _hudCanvas.GetComponent<GraphicRaycaster>().enabled = !menuOpen;
             _sessionCanvas.SetActive(menuOpen);
             _mainMenu.gameObject.SetActive(screen == SessionScreen.MainMenu);
-            _gameplayMenuCard.gameObject.SetActive(screen == SessionScreen.Paused);
+            _gameplayMenuCard.gameObject.SetActive(screen == SessionScreen.Paused || screen == SessionScreen.Dead);
             _pauseMenu.gameObject.SetActive(screen == SessionScreen.Paused);
+            _deathMenu.gameObject.SetActive(screen == SessionScreen.Dead);
             _sessionBackdrop.color = screen switch
             {
+                SessionScreen.Dead => new Color(0.13f, 0.025f, 0.04f, 0.83f),
                 _ when titleOpen => new Color(0.025f, 0.05f, 0.08f, 1f),
                 _ => new Color(0.025f, 0.05f, 0.08f, 0.76f)
             };
@@ -84,6 +90,7 @@ namespace Boreatek.UI
             {
                 SessionScreen.MainMenu => _playButton,
                 SessionScreen.Paused => _resumeButton,
+                SessionScreen.Dead => _respawnButton,
                 _ => null
             };
             if (EventSystem.current != null)

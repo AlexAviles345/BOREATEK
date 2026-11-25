@@ -9,9 +9,10 @@ namespace Boreatek.Core
     [DefaultExecutionOrder(-100)]
     public sealed class BoreatekGameSession : MonoBehaviour
     {
-        internal enum Screen { MainMenu, Playing, Paused }
+        internal enum Screen { MainMenu, Playing, Paused, Dead }
 
         private PlayerController _player;
+        private TemperatureSystem _temperature;
         private BoreatekHUDAndShopUI _ui;
         private Screen _screen;
         private float _gameplayTimeScale;
@@ -20,13 +21,19 @@ namespace Boreatek.Core
 
         internal void Initialize(PlayerController player, BoreatekHUDAndShopUI ui)
         {
+            if (_temperature != null)
+            {
+                _temperature.OnDied -= ShowDeath;
+            }
             if (!_initialized)
             {
                 _gameplayTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
             }
 
             _player = player;
+            _temperature = player.GetComponent<TemperatureSystem>();
             _ui = ui;
+            _temperature.OnDied += ShowDeath;
             _initialized = true;
             _ui.BuildSessionMenu(this);
             SetScreen(Screen.MainMenu);
@@ -67,7 +74,7 @@ namespace Boreatek.Core
 
         internal void ReturnToMainMenu()
         {
-            if (_leavingScene || _screen != Screen.Paused)
+            if (_leavingScene || (_screen != Screen.Paused && _screen != Screen.Dead))
             {
                 return;
             }
@@ -83,6 +90,23 @@ namespace Boreatek.Core
             SceneManager.LoadScene(sceneIndex);
         }
 
+        private void ShowDeath(bool fromCold)
+        {
+            _player.SetCharacterPresent(false);
+            SetScreen(Screen.Dead, fromCold ? "La hipotermia acabó con tu expedición." :
+                "Has caído en combate.");
+        }
+
+        internal void Respawn()
+        {
+            if (_screen == Screen.Dead)
+            {
+                _temperature.RespawnAtVillage();
+                _player.SetCharacterPresent(true);
+                SetScreen(Screen.Playing);
+            }
+        }
+
         private void SetScreen(Screen screen, string message = "")
         {
             _screen = screen;
@@ -94,6 +118,10 @@ namespace Boreatek.Core
 
         private void OnDestroy()
         {
+            if (_temperature != null)
+            {
+                _temperature.OnDied -= ShowDeath;
+            }
             if (_initialized)
             {
                 Time.timeScale = _gameplayTimeScale;

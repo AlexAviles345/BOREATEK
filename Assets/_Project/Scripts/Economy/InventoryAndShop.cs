@@ -75,7 +75,7 @@ namespace Boreatek.Economy
         {
             if (_temperatureSystem != null)
             {
-                _temperatureSystem.OnHypothermiaRescueTriggered += HandleHypothermiaResourceLoss;
+                _temperatureSystem.OnVillageRescueTriggered += HandleRescueResourceLoss;
             }
         }
 
@@ -83,7 +83,7 @@ namespace Boreatek.Economy
         {
             if (_temperatureSystem != null)
             {
-                _temperatureSystem.OnHypothermiaRescueTriggered -= HandleHypothermiaResourceLoss;
+                _temperatureSystem.OnVillageRescueTriggered -= HandleRescueResourceLoss;
             }
         }
 
@@ -529,7 +529,7 @@ namespace Boreatek.Economy
             heatNode.ConfigureRuntime(label, heatRegen, radius, canMeltChests);
         }
 
-        private void HandleHypothermiaResourceLoss()
+        private void HandleRescueResourceLoss(bool fromCold)
         {
             List<ResourceType> keys = new List<ResourceType>(_backpackContents.Keys);
             int totalLost = 0;
@@ -552,7 +552,8 @@ namespace Boreatek.Economy
 
             RecalculateBackpackCount();
             OnInventoryOrCoinsChanged?.Invoke();
-            _playerController?.PublishStatus($"🥶 ¡HIPOTERMIA! Brigada de rescate te devolvió a la Aldea Industrial (-{totalLost} recursos no asegurados).");
+            string cause = fromCold ? "HIPOTERMIA" : "DERROTA EN COMBATE";
+            _playerController?.PublishStatus($"¡{cause}! Has vuelto a la Aldea Industrial (-{totalLost} recursos no asegurados).");
         }
 
         private void RecalculateBackpackCount()

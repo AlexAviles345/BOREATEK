@@ -818,7 +818,8 @@ namespace Boreatek.World
                 mainCam,
                 headlamp,
                 pickaxeRoot,
-                crystalTip.GetComponent<Renderer>());
+                crystalTip.GetComponent<Renderer>(),
+                visualRoot);
 
             return playerCtrl;
         }

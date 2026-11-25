@@ -62,6 +62,7 @@ namespace Boreatek.Player
         private bool _isCursorLocked = true;
         private bool _isShopMenuOpen;
         private bool _gameplayEnabled = true;
+        private Transform _characterVisual;
         private IInteractable _currentFocusedInteractable;
         private Quaternion _initialPickaxeLocalRot = Quaternion.identity;
 
@@ -416,13 +417,15 @@ namespace Boreatek.Player
             Camera cam,
             Light headlamp,
             Transform pickaxeRoot,
-            Renderer pickaxeCrystalRenderer)
+            Renderer pickaxeCrystalRenderer,
+            Transform characterVisual)
         {
             _cameraPivot = cameraPivot;
             _playerCamera = cam;
             _helmetHeadlamp = headlamp;
             _pickaxeVisualRoot = pickaxeRoot;
             _pickaxeCrystalTipRenderer = pickaxeCrystalRenderer;
+            _characterVisual = characterVisual;
 
             if (_pickaxeVisualRoot != null)
             {
@@ -473,6 +476,16 @@ namespace Boreatek.Player
             _isShopMenuOpen = false;
             _currentFocusedInteractable = null;
             SetCursorLock(active);
+        }
+
+        internal void SetCharacterPresent(bool present)
+        {
+            _verticalVelocity = Vector3.zero;
+            _characterController.enabled = present;
+            if (_characterVisual != null)
+            {
+                _characterVisual.gameObject.SetActive(present);
+            }
         }
 
         public void PublishStatus(string message)
