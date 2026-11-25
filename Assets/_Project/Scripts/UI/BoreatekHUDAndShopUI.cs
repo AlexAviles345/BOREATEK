@@ -20,7 +20,7 @@ namespace Boreatek.UI
     /// - Viñeta perimetral de escarcha cuando la temperatura cae de 35 °T.
     /// - Ventana Modal de la Tienda del Taller ([Tab]) con tarjetas, filtros y descarga en Tolva Central.
     /// </summary>
-    public class BoreatekHUDAndShopUI : MonoBehaviour
+    public partial class BoreatekHUDAndShopUI : MonoBehaviour
     {
         private PlayerController _player;
         private TemperatureSystem _tempSystem;
@@ -85,15 +85,8 @@ namespace Boreatek.UI
 
         private void Awake()
         {
-            _uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (_uiFont == null)
-            {
-                _uiFont = Font.CreateDynamicFontFromOSFont("Segoe UI", 16);
-            }
-
-            GenerateProceduralUISprites();
             EnsureEventSystem();
-            BuildResponsiveCanvasHierarchy();
+            EnsureCanvasReady();
         }
 
         public void BindPlayer(PlayerController player)
@@ -111,6 +104,15 @@ namespace Boreatek.UI
 
         private void EnsureCanvasReady()
         {
+            if (_uiFont == null)
+            {
+                _uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (_uiFont == null)
+                {
+                    _uiFont = Font.CreateDynamicFontFromOSFont("Segoe UI", 16);
+                }
+            }
+
             if (_roundedCardSprite == null)
             {
                 GenerateProceduralUISprites();
@@ -135,6 +137,10 @@ namespace Boreatek.UI
             }
 
             EnsureCanvasReady();
+            if (!_hudCanvas.enabled)
+            {
+                return;
+            }
 
             UpdateVitalAndThermalTelemetry();
             UpdateClockWeatherAndEquipment();

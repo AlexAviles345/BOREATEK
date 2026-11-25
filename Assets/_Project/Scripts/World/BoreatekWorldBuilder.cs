@@ -32,6 +32,7 @@ namespace Boreatek.World
         private Shader _urpLitShader;
         private readonly Dictionary<ResourceType, ResourceDataSO> _resources = new Dictionary<ResourceType, ResourceDataSO>();
         private readonly Dictionary<string, HarvestableNodeConfigSO> _nodeConfigs = new Dictionary<string, HarvestableNodeConfigSO>();
+        private BoreatekGameSession _session;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrapOnSceneLoad()
@@ -65,7 +66,15 @@ namespace Boreatek.World
             EnsureDayNightCycleManager();
             BuildEntireBoreatekWorld();
             PlayerController player = EnsureStylizedElfEngineerPlayer();
-            EnsureHUDAndShopUI(player);
+            BoreatekHUDAndShopUI ui = EnsureHUDAndShopUI(player);
+            if (Application.isPlaying)
+            {
+                if (_session == null)
+                {
+                    _session = gameObject.AddComponent<BoreatekGameSession>();
+                }
+                _session.Initialize(player, ui);
+            }
         }
 
         private void CleanupExistingGeneratedObjects()
@@ -814,7 +823,7 @@ namespace Boreatek.World
             return playerCtrl;
         }
 
-        private void EnsureHUDAndShopUI(PlayerController player)
+        private BoreatekHUDAndShopUI EnsureHUDAndShopUI(PlayerController player)
         {
             BoreatekHUDAndShopUI ui = FindAnyObjectByType<BoreatekHUDAndShopUI>();
             if (ui == null)
@@ -823,6 +832,7 @@ namespace Boreatek.World
             }
 
             ui.BindPlayer(player);
+            return ui;
         }
 
         private GameObject CreateBox(

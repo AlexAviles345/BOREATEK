@@ -78,6 +78,11 @@ namespace Boreatek.Player
         private void Update()
         {
             float dt = Time.deltaTime;
+            if (dt <= 0f)
+            {
+                return;
+            }
+
             CleanNullHeatSources();
             UpdateHotChocolateTimer(dt);
             EvaluateBiomeByPosition();
@@ -249,7 +254,7 @@ namespace Boreatek.Player
         /// </summary>
         public void ApplyCombatDamage(float damage)
         {
-            if (damage <= 0f)
+            if (damage <= 0f || Time.timeScale <= 0f)
             {
                 return;
             }

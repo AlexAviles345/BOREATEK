@@ -63,6 +63,10 @@ namespace Boreatek.AI
         private void Update()
         {
             float dt = Time.deltaTime;
+            if (dt <= 0f)
+            {
+                return;
+            }
 
             if (_currentState == AIState.Disabled)
             {

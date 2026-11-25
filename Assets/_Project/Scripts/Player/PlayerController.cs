@@ -61,6 +61,7 @@ namespace Boreatek.Player
         private float _gingerbreadSpeedMultiplier = 1f;
         private bool _isCursorLocked = true;
         private bool _isShopMenuOpen;
+        private bool _gameplayEnabled = true;
         private IInteractable _currentFocusedInteractable;
         private Quaternion _initialPickaxeLocalRot = Quaternion.identity;
 
@@ -95,12 +96,17 @@ namespace Boreatek.Player
 
         private void Start()
         {
-            SetCursorLock(true);
+            SetCursorLock(_gameplayEnabled);
             UpdateCameraPositionImmediate();
         }
 
         private void Update()
         {
+            if (!_gameplayEnabled)
+            {
+                return;
+            }
+
             float dt = Time.deltaTime;
             UpdateTimers(dt);
             HandleUtilityShortcuts();
@@ -465,8 +471,21 @@ namespace Boreatek.Player
 
         public void ToggleShopMenu()
         {
+            if (!_gameplayEnabled)
+            {
+                return;
+            }
+
             _isShopMenuOpen = !_isShopMenuOpen;
             SetCursorLock(!_isShopMenuOpen);
+        }
+
+        internal void SetGameplayEnabled(bool active)
+        {
+            _gameplayEnabled = active;
+            _isShopMenuOpen = false;
+            _currentFocusedInteractable = null;
+            SetCursorLock(active);
         }
 
         public void PublishStatus(string message)
