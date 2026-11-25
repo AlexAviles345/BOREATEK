@@ -383,7 +383,7 @@ namespace Boreatek.World
             // 2. Sala de Cuevas de Nivel 1 (Centro en 0, -10, 58)
             Vector3 cave1Center = new Vector3(0f, -10f, 58f);
             BuildCavernChamber(underground, "Cavern_Level1_CobaltIceCaves", cave1Center, new Vector3(26f, 8f, 26f),
-                new Color(0.11f, 0.29f, 0.40f), new Color(0.18f, 0.45f, 0.65f));
+                new Color(0.11f, 0.29f, 0.40f), new Color(0.18f, 0.45f, 0.65f), stratum: 1);
 
             for (int i = 0; i < 6; i++)
             {
@@ -402,7 +402,7 @@ namespace Boreatek.World
             // 4. Sala de La Geoda de Hielo Azul - Nivel 2 (Centro en 0, -20, 114)
             Vector3 geode2Center = new Vector3(0f, -20f, 114f);
             BuildCavernChamber(underground, "Cavern_Level2_BlueIceGeode", geode2Center, new Vector3(28f, 9f, 26f),
-                new Color(0.22f, 0.52f, 0.72f), new Color(0.37f, 0.66f, 0.83f));
+                new Color(0.17f, 0.39f, 0.55f), new Color(0.37f, 0.66f, 0.83f), stratum: 2);
 
             for (int i = 0; i < 7; i++)
             {
@@ -420,13 +420,7 @@ namespace Boreatek.World
             // 6. Sala de El Abismo del Núcleo Luminoso - Nivel 3 (Centro en 0, -32, 172)
             Vector3 abyss3Center = new Vector3(0f, -32f, 172f);
             BuildCavernChamber(underground, "Cavern_Level3_LuminousCoreAbyss", abyss3Center, new Vector3(30f, 11f, 30f),
-                new Color(0.12f, 0.11f, 0.13f), new Color(1.0f, 0.33f, 0.0f));
-
-            // Fisura central de Magma Festivo incandescente
-            CreateBox(underground, "Abyss_FestiveMagmaFissure", abyss3Center + new Vector3(0f, 4.5f, 14.2f),
-                new Vector3(2.2f, 10f, 0.6f), new Color(1.0f, 0.38f, 0.02f), emissionIntensity: 3.5f);
-            CreateCylinder(underground, "Abyss_MagmaPool", abyss3Center + new Vector3(0f, 0.08f, 6f),
-                new Vector3(6.5f, 0.08f, 6.5f), new Color(1.0f, 0.42f, 0.05f), emissionIntensity: 3.2f);
+                new Color(0.12f, 0.11f, 0.13f), new Color(1.0f, 0.33f, 0.0f), stratum: 3);
 
             // Los 4 Núcleos Luminosos de Nivel 3
             Vector3[] coreOffsets =
@@ -475,6 +469,7 @@ namespace Boreatek.World
             GameObject ceiling = CreateBox(tunnel, "Tunnel_Ceiling", mid + Vector3.up * 5.2f,
                 new Vector3(8.2f, 0.6f, length), wallColor * 0.75f);
             ceiling.transform.rotation = rot;
+            DressTunnel(tunnel, start, rot, length, wallColor);
 
             // Guirnalda luminosa térmica a mitad del túnel para guiar al jugador
             GameObject stringLight = new GameObject("Tunnel_FestiveStringLight");
@@ -499,7 +494,8 @@ namespace Boreatek.World
             Vector3 center,
             Vector3 size,
             Color rockColor,
-            Color crystalLightColor)
+            Color crystalLightColor,
+            int stratum)
         {
             Transform chamber = new GameObject(name).transform;
             chamber.SetParent(parent, false);
@@ -514,6 +510,8 @@ namespace Boreatek.World
                 new Vector3(1f, size.y, size.z), rockColor * 0.9f);
             CreateBox(chamber, "Chamber_WallEast", new Vector3(size.x * 0.5f, size.y * 0.5f, 0f),
                 new Vector3(1f, size.y, size.z), rockColor * 0.9f);
+            CloseChamberEnds(chamber, size, rockColor, hasNorthExit: stratum < 3);
+            DressCavern(chamber, size, stratum, rockColor, crystalLightColor);
 
             // Luz ambiental de la cámara subterránea
             GameObject lightObj = new GameObject("Chamber_AmbientCrystalLight");
@@ -522,8 +520,9 @@ namespace Boreatek.World
             Light lt = lightObj.AddComponent<Light>();
             lt.type = LightType.Point;
             lt.color = crystalLightColor;
-            lt.intensity = 4.2f;
-            lt.range = size.x * 1.15f;
+            lt.intensity = 5f;
+            lt.range = size.x * 0.72f;
+            lt.shadows = LightShadows.None;
         }
 
         private void SpawnCrystallizedPineNode(Transform parent, Vector3 pos)
@@ -611,16 +610,7 @@ namespace Boreatek.World
             vein.transform.SetParent(parent, false);
             vein.transform.position = pos;
 
-            CreateBox(vein.transform, "RockBase", new Vector3(0f, 0.45f, 0f), new Vector3(1.6f, 0.9f, 1.6f),
-                new Color(0.22f, 0.25f, 0.30f));
-
-            GameObject shard1 = CreateBox(vein.transform, "CrystalShard_A", new Vector3(0f, 1.15f, 0f),
-                new Vector3(0.75f, 1.4f, 0.75f), crystalColor, emissionIntensity);
-            shard1.transform.localRotation = Quaternion.Euler(14f, 25f, -10f);
-
-            GameObject shard2 = CreateBox(vein.transform, "CrystalShard_B", new Vector3(0.35f, 0.95f, -0.25f),
-                new Vector3(0.55f, 1.1f, 0.55f), crystalColor, emissionIntensity);
-            shard2.transform.localRotation = Quaternion.Euler(-18f, -40f, 15f);
+            DressMineralVein(vein.transform, crystalColor, emissionIntensity);
 
             BoxCollider col = vein.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 0.9f, 0f);
