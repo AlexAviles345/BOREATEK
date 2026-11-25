@@ -109,7 +109,7 @@ namespace Boreatek.Player
             Vector3? point = phase >= PickaxeStroke.ImpactPhase
                 ? _impactPoint
                 : _aimHit.collider != null ? _aimHit.point : (Vector3?)null;
-            Transform view = _playerCamera != null ? _playerCamera.transform : transform;
+            Transform view = AimFrame;
             Vector3 aim = view.forward;
             if (stroke.Weight > 0f && point.HasValue)
             {
@@ -119,7 +119,7 @@ namespace Boreatek.Player
             _elfPose?.Update(dt, stroke, transform.InverseTransformDirection(aim));
             if (_pickaxeVisualRoot == null) return;
 
-            if (!_useThirdPersonView && _pickaxeGripParent != null)
+            if (InFirstPerson && _pickaxeGripParent != null)
             {
                 Vector3 rest = new Vector3(0.31f, -0.39f, 0.65f);
                 Vector3 raised = new Vector3(0.41f, -0.15f, 0.58f);
@@ -143,7 +143,7 @@ namespace Boreatek.Player
             Quaternion swung = facing;
             if (stroke.Raise > 0f)
             {
-                Quaternion side = _useThirdPersonView ? transform.rotation : view.rotation;
+                Quaternion side = InFirstPerson ? view.rotation : transform.rotation;
                 Quaternion raised = side * Quaternion.Euler(-27f, -33f, -48f);
                 swung = Quaternion.Slerp(facing, raised, stroke.Raise / stroke.Weight);
             }
@@ -159,10 +159,10 @@ namespace Boreatek.Player
         private void RefreshPickaxeView()
         {
             if (_pickaxeGripParent == null || _cameraPivot == null) return;
-            _pickaxeVisualRoot.SetParent(_useThirdPersonView ? _pickaxeGripParent : _cameraPivot, false);
-            _pickaxeVisualRoot.localScale = _pickaxeGripScale * (_useThirdPersonView ? 1f : 0.68f);
-            _pickaxeVisualRoot.localPosition = _useThirdPersonView
-                ? _pickaxeGripPosition : _firstPersonCameraOffset + new Vector3(0.31f, -0.39f, 0.65f);
+            _pickaxeVisualRoot.SetParent(InFirstPerson ? _cameraPivot : _pickaxeGripParent, false);
+            _pickaxeVisualRoot.localScale = _pickaxeGripScale * (InFirstPerson ? 0.68f : 1f);
+            _pickaxeVisualRoot.localPosition = InFirstPerson
+                ? _firstPersonCameraOffset + new Vector3(0.31f, -0.39f, 0.65f) : _pickaxeGripPosition;
             _pickaxeVisualRoot.localRotation = _initialPickaxeLocalRot;
         }
 

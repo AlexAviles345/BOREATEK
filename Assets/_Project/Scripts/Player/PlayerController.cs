@@ -121,6 +121,7 @@ namespace Boreatek.Player
             }
 
             HandleMovement(dt);
+            UpdateCameraObstruction();
             UpdateInteractionFocus();
             AdvancePickaxeSwing(dt);
 
@@ -172,14 +173,9 @@ namespace Boreatek.Player
                     : "Faro Frontal LED del casco APAGADO (menor detección enemiga).");
             }
 
-            // V: Alternar vista Tercera Persona Estilizada / Primera Persona
-            if (kb.vKey.wasPressedThisFrame)
+            if (kb.f5Key.wasPressedThisFrame || kb.vKey.wasPressedThisFrame)
             {
-                _useThirdPersonView = !_useThirdPersonView;
-                UpdateCameraPositionImmediate();
-                PublishStatus(_useThirdPersonView
-                    ? "Cámara: Tercera Persona (Duende Ingeniero visible)."
-                    : "Cámara: Primera Persona (Minería de precisión).");
+                CyclePerspective();
             }
         }
 
@@ -287,10 +283,9 @@ namespace Boreatek.Player
                 return;
             }
 
-            float rayDist = _useThirdPersonView ? _miningReachDistance + 3.5f : _miningReachDistance;
-            Ray ray = new Ray(_playerCamera.transform.position, _playerCamera.transform.forward);
-
-            if (TryGetAimHit(ray, rayDist, out RaycastHit hit))
+            Transform frame = AimFrame;
+            Ray ray = new Ray(frame.position, frame.forward);
+            if (TryGetAimHit(ray, CameraAimReach(frame), out RaycastHit hit))
             {
                 _aimHit = hit;
                 _currentFocusedInteractable = hit.collider.GetComponentInParent<IInteractable>();
@@ -334,7 +329,7 @@ namespace Boreatek.Player
                 else
                 {
                     if (_currentFocusedInteractable.CanInteract(gameObject))
-                        PlayInteraction(ElfPose.Gesture.Reach, _playerCamera.transform.forward);
+                        PlayInteraction(ElfPose.Gesture.Reach, AimFrame.forward);
                     _currentFocusedInteractable.Interact(gameObject);
                 }
             }
@@ -504,6 +499,7 @@ namespace Boreatek.Player
             public Vector3 verticalVelocity;
             public float yaw, pitch, cookieSeconds, swingCooldown;
             public int pickaxeTier, pickaxeDamage;
+            public int cameraPerspective;
             public bool thirdPerson, headlamp;
         }
 
@@ -517,7 +513,8 @@ namespace Boreatek.Player
             swingCooldown = _swingCooldownTimer,
             pickaxeTier = _currentPickaxeTier,
             pickaxeDamage = _pickaxeDamage,
-            thirdPerson = _useThirdPersonView,
+            thirdPerson = !InFirstPerson,
+            cameraPerspective = (int)CurrentPerspective,
             headlamp = IsHeadlampEnabled
         };
 
@@ -531,7 +528,7 @@ namespace Boreatek.Player
             transform.SetPositionAndRotation(state.position, Quaternion.Euler(0f, _playerYaw, 0f));
             _characterController.enabled = true;
             _verticalVelocity = state.verticalVelocity;
-            _useThirdPersonView = state.thirdPerson;
+            RestorePerspective(state);
             if (_cameraPivot != null)
             {
                 _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, 0f, 0f);
@@ -559,21 +556,6 @@ namespace Boreatek.Player
             Cursor.visible = !locked;
         }
 
-        private void UpdateCameraPositionImmediate()
-        {
-            if (_thirdPersonHead != null) _thirdPersonHead.enabled = _useThirdPersonView;
-            RefreshHeadlampLens();
-            RefreshPickaxeView();
-            if (_playerCamera != null && _cameraPivot != null)
-            {
-                _playerCamera.transform.SetParent(_cameraPivot, false);
-                _playerCamera.transform.localPosition = _useThirdPersonView
-                    ? _thirdPersonCameraOffset
-                    : _firstPersonCameraOffset;
-                _playerCamera.transform.localRotation = Quaternion.identity;
-            }
-        }
-
         private void SetHeadlampEnabled(bool enabled)
         {
             if (_helmetHeadlamp != null) _helmetHeadlamp.enabled = enabled;
@@ -582,7 +564,8 @@ namespace Boreatek.Player
 
         private void RefreshHeadlampLens()
         {
-            if (_headlampLens != null) _headlampLens.enabled = _useThirdPersonView && IsHeadlampEnabled;
+            if (_headlampLens != null) _headlampLens.enabled = !InFirstPerson && IsHeadlampEnabled &&
+                (_thirdPersonHead == null || _thirdPersonHead.enabled);
         }
     }
 }

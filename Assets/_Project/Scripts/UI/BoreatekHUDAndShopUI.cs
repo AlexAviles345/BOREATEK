@@ -55,6 +55,7 @@ namespace Boreatek.UI
 
         // Referencias de Retícula, Interacción, Banner de Estado y Escarcha
         private GameObject _interactionCardRoot;
+        private BoreatekUiGlyph _crosshair;
         private Text _interactionPromptText;
         private Text _statusToastText;
         private RawImage _frostVignetteOverlay;
@@ -338,7 +339,7 @@ namespace Boreatek.UI
         private void BuildCenterCrosshairAndInteractionCard(RectTransform parent)
         {
             var center = new Vector2(0.5f, 0.5f);
-            AddHudGlyph(parent, "CenterCrosshair", BoreatekGlyph.Aim, center, Vector2.zero, 22f, ColTextLight);
+            _crosshair = AddHudGlyph(parent, "CenterCrosshair", BoreatekGlyph.Aim, center, Vector2.zero, 22f, ColTextLight);
 
             RectTransform prompt = CreatePanelCard("InteractionPromptCard", parent, center, center, center,
                 new Vector2(0f, -50f), new Vector2(590f, 50f), ColDeepSteel);
@@ -403,8 +404,8 @@ namespace Boreatek.UI
             }
 
             Text controls = CreateLabel(parent, "ControlsTxt",
-                "[WASD] Mover   ·   [Shift] Correr   ·   [Clic izq.] Picar   ·   [E] Interactuar   ·   [Esc] Pausa",
-                Vector2.zero, new Vector2(820f, 23f), 14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+                "[WASD] Mover   ·   [Shift] Correr   ·   [Clic izq.] Picar   ·   [E] Interactuar   ·   [F5] Cámara   ·   [Esc] Pausa",
+                Vector2.zero, new Vector2(960f, 23f), 14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
             RectTransform footer = controls.rectTransform;
             footer.anchorMin = footer.anchorMax = footer.pivot = bottom;
             footer.anchoredPosition = new Vector2(0f, 9f);
@@ -594,6 +595,7 @@ namespace Boreatek.UI
 
         private void UpdateCrosshairInteractionPrompt()
         {
+            if (_crosshair != null) _crosshair.enabled = !_player.IsShopMenuOpen && _player.HasAimReticle;
             if (_interactionCardRoot == null)
             {
                 return;
