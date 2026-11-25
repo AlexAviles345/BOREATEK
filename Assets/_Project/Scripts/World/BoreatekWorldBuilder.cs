@@ -70,6 +70,9 @@ namespace Boreatek.World
             BoreatekHUDAndShopUI ui = EnsureHUDAndShopUI(player);
             if (Application.isPlaying)
             {
+                var polarAtmosphere = _worldRoot.gameObject.AddComponent<BoreatekPolarAtmosphere>();
+                polarAtmosphere.Initialize(player.transform,
+                    DayNightCycleManager.Instance ?? FindAnyObjectByType<DayNightCycleManager>());
                 if (_session == null)
                 {
                     _session = gameObject.AddComponent<BoreatekGameSession>();

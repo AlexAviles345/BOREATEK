@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Boreatek.Core
 {
@@ -59,6 +60,16 @@ namespace Boreatek.Core
         public bool IsNightPhase => _isNightPhase;
         public bool IsBlindBlizzardActive => _isBlindBlizzardActive;
         public bool IsChristmasEveClimax => _isChristmasEveClimax;
+        public float NightSkyWeight
+        {
+            get
+            {
+                if (_isChristmasEveClimax) return 0.92f;
+                float evening = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.42f, 0.58f, NormalizedCycleTime));
+                float dawn = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.85f, 1f, NormalizedCycleTime));
+                return evening * (1f - dawn);
+            }
+        }
         public WeatherState CurrentWeather => _currentWeather;
         public float TotalCampaignHoursElapsed => ((_currentCycleNumber - 1) * _cycleDurationSeconds + _elapsedCycleSeconds) / 3600f;
 
@@ -147,6 +158,8 @@ namespace Boreatek.Core
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = _clearFogDensity;
             RenderSettings.fogColor = _clearDayFogColor;
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            UpdateLightingAndFog(1f);
         }
 
         private void Update()
@@ -224,23 +237,23 @@ namespace Boreatek.Core
         private void UpdateLightingAndFog(float unscaledDt)
         {
             float cycleProgress = NormalizedCycleTime;
+            float night = NightSkyWeight;
 
             if (_directionalLight != null)
             {
-                // Rotación continua en 360 grados durante los 20 minutos
-                float sunPitch = (cycleProgress * 360f) - 90f;
-                Quaternion targetRotation = Quaternion.Euler(sunPitch, -30f, 0f);
+                float afternoon = Mathf.Sin(Mathf.Clamp01(cycleProgress * 2f) * Mathf.PI);
+                float sunPitch = Mathf.Lerp(20f + afternoon * 27f, 14f, night);
+                Quaternion targetRotation = Quaternion.Euler(sunPitch, Mathf.Lerp(-42f, 54f, cycleProgress), 0f);
                 _directionalLight.transform.rotation = Quaternion.Slerp(
                     _directionalLight.transform.rotation,
                     targetRotation,
                     unscaledDt * 4f);
 
-                float dayFactor = Mathf.Clamp01(Mathf.Sin(cycleProgress * Mathf.PI * 2f) * 0.5f + 0.5f);
                 Color targetLightColor = _isChristmasEveClimax
                     ? Color.Lerp(_nightLightColor, _christmasEveAuroraColor, 0.55f)
-                    : Color.Lerp(_nightLightColor, _dayLightColor, dayFactor);
+                    : Color.Lerp(_dayLightColor, _nightLightColor, night);
 
-                float targetIntensity = _isNightPhase ? _nightLightIntensity : _dayLightIntensity;
+                float targetIntensity = Mathf.Lerp(_dayLightIntensity, _nightLightIntensity, night);
                 if (_isBlindBlizzardActive)
                 {
                     targetIntensity *= 0.6f;
@@ -250,23 +263,22 @@ namespace Boreatek.Core
                 _directionalLight.intensity = Mathf.Lerp(_directionalLight.intensity, targetIntensity, unscaledDt * 2f);
             }
 
-            float targetFogDensity = _clearFogDensity;
-            Color targetFogColor = _clearDayFogColor;
+            float targetFogDensity = Mathf.Lerp(_clearFogDensity, _nightFogDensity, night);
+            Color targetFogColor = Color.Lerp(_clearDayFogColor, _polarNightFogColor, night);
 
             if (_isChristmasEveClimax || _isBlindBlizzardActive)
             {
                 targetFogDensity = _blindBlizzardFogDensity;
                 targetFogColor = _blizzardFogColor;
             }
-            else if (_isNightPhase)
-            {
-                targetFogDensity = _nightFogDensity;
-                targetFogColor = _polarNightFogColor;
-            }
-
             RenderSettings.fogDensity = Mathf.Lerp(RenderSettings.fogDensity, targetFogDensity, unscaledDt * 1.5f);
             RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor, targetFogColor, unscaledDt * 1.5f);
-            RenderSettings.ambientLight = Color.Lerp(RenderSettings.ambientLight, targetFogColor, unscaledDt * 1.5f);
+            Color sky = Color.Lerp(new Color(0.52f, 0.67f, 0.78f), new Color(0.12f, 0.23f, 0.34f), night);
+            if (_isBlindBlizzardActive) sky = Color.Lerp(sky, _blizzardFogColor, 0.48f);
+            float ambientBlend = unscaledDt * 2f;
+            RenderSettings.ambientSkyColor = Color.Lerp(RenderSettings.ambientSkyColor, sky, ambientBlend);
+            RenderSettings.ambientEquatorColor = Color.Lerp(RenderSettings.ambientEquatorColor, sky * 0.68f, ambientBlend);
+            RenderSettings.ambientGroundColor = Color.Lerp(RenderSettings.ambientGroundColor, sky * 0.42f, ambientBlend);
         }
 
         /// <summary>
