@@ -9,16 +9,13 @@ namespace Boreatek.UI
 {
     public partial class BoreatekHUDAndShopUI
     {
-        private static readonly Color SaveRowColor = new Color(0.09f, 0.18f, 0.28f, 1f);
-        private static readonly Color SelectedSaveRowColor = new Color(0.18f, 0.37f, 0.49f, 1f);
-
         private RectTransform _saveMenu, _createSaveMenu, _saveListContent;
         private Text _saveListMessage, _createSaveMessage;
         private ScrollRect _saveListScroll;
         private Button _loadSelectedButton, _createSaveButton;
         private InputField _saveNameField;
         private GameObject _emptySaveList;
-        private Image _selectedSaveRow;
+        private BoreatekUiButton _selectedSaveRow;
         private string _selectedSaveId;
         private Action<string> _loadSelectedSave;
 
@@ -26,11 +23,12 @@ namespace Boreatek.UI
         {
             var anchor = new Vector2(0.085f, 0.5f);
             var pivot = new Vector2(0f, 0.5f);
-            var panelColor = new Color(0.035f, 0.075f, 0.12f, 0.97f);
             _saveMenu = CreatePanelCard("SaveSelection", root, anchor, anchor, pivot, Vector2.zero,
-                new Vector2(730f, 610f), panelColor);
+                new Vector2(730f, 610f), ColDeepSteel);
+            ApplyMetalPanel(_saveMenu, ColDeepSteel, ColSteelRim);
             CreateLabel(_saveMenu, "Title", "Partidas guardadas", new Vector2(34f, -24f), new Vector2(660f, 70f),
                 49, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
+            CreateAccentLine(_saveMenu, "HeaderRule", new Vector2(34f, -99f), new Vector2(662f, 2f), ColBrassRim);
             BuildSaveList(_saveMenu);
 
             _saveListMessage = CreateLabel(_saveMenu, "SaveListMessage", "", new Vector2(34f, -487f),
@@ -38,19 +36,22 @@ namespace Boreatek.UI
             _loadSelectedButton = CreateMenuButton(_saveMenu, "LoadSelected", "Jugar partida", 34f, 530f, 228f,
                 ColBrassGold, () => _loadSelectedSave?.Invoke(_selectedSaveId));
             _createSaveButton = CreateMenuButton(_saveMenu, "CreateNew", "Crear partida", 276f, 530f, 224f,
-                ColCardInner, session.OpenCreateSave);
-            CreateMenuButton(_saveMenu, "Back", "Volver", 514f, 530f, 182f, ColCardInner, session.BackToTitle);
+                ColBlueSteel, session.OpenCreateSave);
+            CreateMenuButton(_saveMenu, "Back", "Volver", 514f, 530f, 182f, ColDeepSteel, session.BackToTitle);
 
             _createSaveMenu = CreatePanelCard("CreateSave", root, anchor, anchor, pivot, Vector2.zero,
-                new Vector2(630f, 374f), panelColor);
+                new Vector2(630f, 374f), ColDeepSteel);
+            ApplyMetalPanel(_createSaveMenu, ColDeepSteel, ColSteelRim);
             CreateLabel(_createSaveMenu, "Title", "Nueva partida", new Vector2(34f, -25f), new Vector2(560f, 65f),
                 49, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
+            CreateAccentLine(_createSaveMenu, "HeaderRule", new Vector2(34f, -98f), new Vector2(562f, 2f), ColBrassRim);
             CreateLabel(_createSaveMenu, "NameLabel", "Nombre de la partida", new Vector2(34f, -114f),
                 new Vector2(560f, 34f), 23, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
 
             var topLeft = new Vector2(0f, 1f);
             RectTransform input = CreatePanelCard("SaveName", _createSaveMenu, topLeft, topLeft, topLeft,
                 new Vector2(34f, -156f), new Vector2(562f, 60f), ColCardInner);
+            ApplyMetalPanel(input, ColBlueSteel, ColIceCyan);
             Text nameText = CreateLabel(input, "InputText", "", new Vector2(16f, -8f), new Vector2(530f, 44f),
                 25, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
             nameText.supportRichText = false;
@@ -60,12 +61,15 @@ namespace Boreatek.UI
             _saveNameField.textComponent = nameText;
             _saveNameField.characterLimit = BoreatekGameSession.MaxSaveNameLength;
             _saveNameField.lineType = InputField.LineType.SingleLine;
+            _saveNameField.customCaretColor = true;
+            _saveNameField.caretColor = ColIceCyan;
+            _saveNameField.selectionColor = new Color(0.27f, 0.54f, 0.74f, 0.60f);
 
             _createSaveMessage = CreateLabel(_createSaveMenu, "CreateSaveMessage", "", new Vector2(34f, -228f),
                 new Vector2(562f, 42f), 18, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
             CreateMenuButton(_createSaveMenu, "StartNew", "Crear y jugar", 34f, 287f, 276f, ColBrassGold,
                 () => session.StartNewGame(_saveNameField.text));
-            CreateMenuButton(_createSaveMenu, "Cancel", "Volver", 324f, 287f, 272f, ColCardInner,
+            CreateMenuButton(_createSaveMenu, "Cancel", "Volver", 324f, 287f, 272f, ColDeepSteel,
                 session.OpenSaveSelection);
         }
 
@@ -130,11 +134,9 @@ namespace Boreatek.UI
                 SaveEntry entry = entries[i];
                 var topLeft = new Vector2(0f, 1f);
                 RectTransform row = CreatePanelCard("SaveRow_" + entry.id, _saveListContent, topLeft, topLeft, topLeft,
-                    new Vector2(10f, -10f - i * rowSpacing), new Vector2(620f, rowHeight), SaveRowColor);
-                Image rowImage = row.GetComponent<Image>();
-                Button rowButton = row.gameObject.AddComponent<Button>();
-                rowButton.targetGraphic = rowImage;
-                rowButton.onClick.AddListener(() => SelectSave(entry.id, rowImage));
+                    new Vector2(10f, -10f - i * rowSpacing), new Vector2(620f, rowHeight), ColBlueSteel);
+                var rowButton = AttachMetalButton(row, ColBlueSteel, ColIceCyan);
+                rowButton.onClick.AddListener(() => SelectSave(entry.id, rowButton));
 
                 Text name = CreateLabel(row, "SaveTitle", entry.name, new Vector2(18f, -9f), new Vector2(580f, 30f),
                     24, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
@@ -152,20 +154,20 @@ namespace Boreatek.UI
 
                 if (i == 0)
                 {
-                    SelectSave(entry.id, rowImage);
+                    SelectSave(entry.id, rowButton);
                 }
             }
         }
 
-        private void SelectSave(string id, Image row)
+        private void SelectSave(string id, BoreatekUiButton row)
         {
             if (_selectedSaveRow != null)
             {
-                _selectedSaveRow.color = SaveRowColor;
+                _selectedSaveRow.SetLatched(false);
             }
             _selectedSaveId = id;
             _selectedSaveRow = row;
-            _selectedSaveRow.color = SelectedSaveRowColor;
+            _selectedSaveRow.SetLatched(true);
             _loadSelectedButton.interactable = true;
         }
     }

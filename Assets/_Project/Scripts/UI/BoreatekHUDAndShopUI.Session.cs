@@ -14,6 +14,7 @@ namespace Boreatek.UI
         private Text _sessionMessage;
         private Text _gameplayMessage;
         private RawImage _titleArtwork;
+        private RawImage _titleShade;
         private RectTransform _gameplayMenuCard;
         private RectTransform _mainMenu, _pauseMenu, _deathMenu;
         private Button _playButton, _resumeButton, _respawnButton;
@@ -30,9 +31,7 @@ namespace Boreatek.UI
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 100;
             CanvasScaler scaler = _sessionCanvas.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.25f;
+            ConfigureHudScaler(scaler);
             _sessionCanvas.AddComponent<GraphicRaycaster>();
 
             _sessionBackdrop = _sessionCanvas.AddComponent<Image>();
@@ -43,15 +42,16 @@ namespace Boreatek.UI
             var center = new Vector2(0.5f, 0.5f);
             _gameplayMenuCard = CreatePanelCard("SessionCard", root,
                 center, center, center, Vector2.zero, new Vector2(560f, 416f), ColPanelDark);
+            ApplyMetalPanel(_gameplayMenuCard, ColDeepSteel, ColSteelRim);
 
             _pauseMenu = CreateSessionPanel(_gameplayMenuCard, "PauseMenu", "En pausa", ColIceCyan);
             _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 165f, ColBrassGold, session.Resume);
-            CreateSessionButton(_pauseMenu, "SaveGame", "Guardar partida", 231f, ColCardInner, session.SaveGame);
-            CreateSessionButton(_pauseMenu, "MainMenu", "Volver al menú principal", 297f, ColCardInner, session.ReturnToMainMenu);
+            CreateSessionButton(_pauseMenu, "SaveGame", "Guardar partida", 231f, ColBlueSteel, session.SaveGame);
+            CreateSessionButton(_pauseMenu, "MainMenu", "Volver al menú principal", 297f, ColDeepSteel, session.ReturnToMainMenu);
 
             _deathMenu = CreateSessionPanel(_gameplayMenuCard, "DeathMenu", "Has muerto", ColCandyRed);
             _respawnButton = CreateSessionButton(_deathMenu, "Respawn", "Reaparecer en la aldea", 182f, ColBrassGold, session.Respawn);
-            CreateSessionButton(_deathMenu, "MainMenu", "Volver al menú principal", 248f, ColCardInner, session.ReturnToMainMenu);
+            CreateSessionButton(_deathMenu, "MainMenu", "Volver al menú principal", 248f, ColDeepSteel, session.ReturnToMainMenu);
 
             _gameplayMessage = CreateLabel(_gameplayMenuCard, "SessionMessage", "",
                 new Vector2(28f, -362f), new Vector2(504f, 32f), 18,
@@ -70,16 +70,19 @@ namespace Boreatek.UI
                 aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
                 aspect.aspectRatio = (float)_titleArtwork.texture.width / _titleArtwork.texture.height;
             }
+            _titleShade = CreateTitleShade(root);
 
             _mainMenu = (RectTransform)CreateUIObject("MainMenu", root).transform;
             _mainMenu.anchorMin = _mainMenu.anchorMax = new Vector2(0.085f, 0.53f);
             _mainMenu.pivot = new Vector2(0f, 0.5f);
-            _mainMenu.sizeDelta = new Vector2(635f, 290f);
-            CreateLabel(_mainMenu, "Title", "BOREATEK", Vector2.zero, new Vector2(630f, 115f), 96,
+            _mainMenu.sizeDelta = new Vector2(635f, 310f);
+            CreateAccentLine(_mainMenu, "BrassRule", new Vector2(7f, -12f), new Vector2(54f, 3f), ColBrassRim);
+            CreateAccentLine(_mainMenu, "FrostRule", new Vector2(65f, -12f), new Vector2(258f, 1f), ColSteelRim);
+            CreateLabel(_mainMenu, "Title", "BOREATEK", new Vector2(1f, -27f), new Vector2(630f, 110f), 94,
                 FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
-            CreateLabel(_mainMenu, "Subtitle", "Supervivencia en la frontera polar", new Vector2(7f, -116f),
-                new Vector2(615f, 42f), 29, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
-            _playButton = CreateMenuButton(_mainMenu, "Play", "Jugar", 7f, 204f, 286f, ColBrassGold, session.OpenSaveSelection);
+            CreateLabel(_mainMenu, "Subtitle", "Supervivencia en la frontera polar", new Vector2(7f, -139f),
+                new Vector2(615f, 36f), 27, FontStyle.Normal, ColTextMuted, TextAnchor.MiddleLeft);
+            _playButton = CreateMenuButton(_mainMenu, "Play", "Jugar   ›", 7f, 211f, 286f, ColBrassGold, session.OpenSaveSelection);
         }
 
         internal void ShowSessionScreen(SessionScreen screen, string message)
@@ -91,6 +94,7 @@ namespace Boreatek.UI
             _hudCanvas.GetComponent<GraphicRaycaster>().enabled = !menuOpen;
             _sessionCanvas.SetActive(menuOpen);
             _titleArtwork.enabled = titleOpen && _titleArtwork.texture != null;
+            _titleShade.enabled = _titleArtwork.enabled;
             _mainMenu.gameObject.SetActive(screen == SessionScreen.MainMenu);
             _saveMenu.gameObject.SetActive(screen == SessionScreen.SaveSelection);
             _createSaveMenu.gameObject.SetActive(screen == SessionScreen.CreateSave);
@@ -144,6 +148,7 @@ namespace Boreatek.UI
             {
                 Destroy(_sessionCanvas);
             }
+            ReleaseThemeGraphics();
         }
 
         private RectTransform CreateSessionPanel(RectTransform card, string name, string title, Color titleColor)
@@ -152,6 +157,7 @@ namespace Boreatek.UI
             StretchFull(panel);
             CreateLabel(panel, "Title", title, new Vector2(28f, -60f), new Vector2(504f, 75f), 56,
                 FontStyle.Bold, titleColor, TextAnchor.MiddleCenter);
+            CreateAccentLine(panel, "HeaderRule", new Vector2(60f, -144f), new Vector2(440f, 2f), titleColor);
             return panel;
         }
 
@@ -164,6 +170,8 @@ namespace Boreatek.UI
             Button button = CreateStylizedButton(panel, name, label, new Vector2(x, -y),
                 new Vector2(width, 54f), color, action, out Text text);
             text.fontSize = 23;
+            text.resizeTextMinSize = 18;
+            text.resizeTextMaxSize = 23;
             return button;
         }
     }

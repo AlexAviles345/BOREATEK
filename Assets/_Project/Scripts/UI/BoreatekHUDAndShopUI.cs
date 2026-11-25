@@ -985,14 +985,18 @@ namespace Boreatek.UI
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
                 anchoredPos, size, bgColor);
 
-            Button btn = btnRect.gameObject.AddComponent<Button>();
-            btn.targetGraphic = btnRect.GetComponent<Image>();
+            bool lightSurface = bgColor.r * 0.2126f + bgColor.g * 0.7152f + bgColor.b * 0.0722f > 0.55f;
+            var btn = AttachMetalButton(btnRect, bgColor, lightSurface ? ColBrassRim : ColIceCyan, lightSurface);
             btn.onClick.AddListener(onClick);
 
-            Color textCol = (bgColor.r + bgColor.g + bgColor.b) > 1.65f ? ColPanelDark : Color.white;
             buttonLabel = CreateLabel(btnRect, "BtnTxt", label,
-                Vector2.zero, size, 13, FontStyle.Bold, textCol, TextAnchor.MiddleCenter);
-            StretchFull(buttonLabel.GetComponent<RectTransform>());
+                Vector2.zero, size, 15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+            StretchFull(buttonLabel.rectTransform, 7f);
+            buttonLabel.resizeTextForBestFit = true;
+            buttonLabel.resizeTextMinSize = 12;
+            buttonLabel.resizeTextMaxSize = 15;
+            buttonLabel.verticalOverflow = VerticalWrapMode.Truncate;
+            btn.SetLabel(buttonLabel);
 
             return btn;
         }
