@@ -253,8 +253,6 @@ namespace Boreatek.Player
 
             Vector3 startPosition = transform.position;
             Vector3 moveDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
-            _characterController.Move(moveDirection * (targetSpeed * dt));
-
             bool isGrounded = _characterController.isGrounded;
             if (isGrounded && _verticalVelocity.y < 0f)
             {
@@ -270,7 +268,7 @@ namespace Boreatek.Player
             }
 
             _verticalVelocity.y += _gravity * dt;
-            _characterController.Move(_verticalVelocity * dt);
+            _characterController.Move((moveDirection * targetSpeed + _verticalVelocity) * dt);
             if (_elfPose != null && dt > 0f)
             {
                 Vector3 travel = Vector3.ProjectOnPlane(transform.position - startPosition, Vector3.up);
