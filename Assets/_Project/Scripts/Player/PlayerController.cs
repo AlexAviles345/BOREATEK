@@ -488,6 +488,56 @@ namespace Boreatek.Player
             }
         }
 
+        [Serializable]
+        internal struct SaveState
+        {
+            public Vector3 position;
+            public Vector3 verticalVelocity;
+            public float yaw, pitch, cookieSeconds, swingCooldown;
+            public int pickaxeTier, pickaxeDamage;
+            public bool thirdPerson, headlamp;
+        }
+
+        internal SaveState CaptureSave() => new SaveState
+        {
+            position = transform.position,
+            verticalVelocity = _verticalVelocity,
+            yaw = _playerYaw,
+            pitch = _cameraPitch,
+            cookieSeconds = _gingerbreadCookieBuffTimer,
+            swingCooldown = _swingCooldownTimer,
+            pickaxeTier = _currentPickaxeTier,
+            pickaxeDamage = _pickaxeDamage,
+            thirdPerson = _useThirdPersonView,
+            headlamp = IsHeadlampEnabled
+        };
+
+        internal void RestoreSave(SaveState state)
+        {
+            _characterController.enabled = false;
+            _playerYaw = state.yaw;
+            _cameraPitch = state.pitch;
+            transform.SetPositionAndRotation(state.position, Quaternion.Euler(0f, _playerYaw, 0f));
+            _characterController.enabled = true;
+            _verticalVelocity = state.verticalVelocity;
+            _useThirdPersonView = state.thirdPerson;
+            if (_cameraPivot != null)
+            {
+                _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, 0f, 0f);
+            }
+            if (_helmetHeadlamp != null)
+            {
+                _helmetHeadlamp.enabled = state.headlamp;
+            }
+            UpdateCameraPositionImmediate();
+            UpgradePickaxeTier(state.pickaxeTier);
+            _pickaxeDamage = state.pickaxeDamage;
+            _gingerbreadCookieBuffTimer = state.cookieSeconds;
+            _gingerbreadSpeedMultiplier = state.cookieSeconds > 0f ? 1.32f : 1f;
+            _swingCooldownTimer = state.swingCooldown;
+            PublishStatus("Partida cargada.");
+        }
+
         public void PublishStatus(string message)
         {
             LastStatusMessage = message;

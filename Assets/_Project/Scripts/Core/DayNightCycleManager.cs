@@ -92,6 +92,34 @@ namespace Boreatek.Core
         public event Action<WeatherState> OnWeatherStateChanged;
         public event Action OnChristmasEveClimaxStarted;
 
+        [Serializable]
+        internal struct SaveState
+        {
+            public int cycle;
+            public float elapsed, blizzardSeconds, nextBlizzard;
+            public bool blizzard, christmasEve;
+        }
+
+        internal SaveState CaptureSave() => new SaveState
+        {
+            cycle = _currentCycleNumber, elapsed = _elapsedCycleSeconds,
+            blizzard = _isBlindBlizzardActive, christmasEve = _isChristmasEveClimax,
+            blizzardSeconds = _blizzardTimer, nextBlizzard = _nextBlizzardCheckTimer
+        };
+
+        internal void RestoreSave(SaveState state)
+        {
+            _currentCycleNumber = state.cycle;
+            _elapsedCycleSeconds = state.elapsed;
+            _isNightPhase = NormalizedCycleTime >= 0.5f;
+            _isBlindBlizzardActive = state.blizzard;
+            _isChristmasEveClimax = state.christmasEve;
+            _blizzardTimer = state.blizzardSeconds;
+            _nextBlizzardCheckTimer = state.nextBlizzard;
+            RefreshWeatherState();
+            UpdateLightingAndFog(1f);
+        }
+
         private void Awake()
         {
             if (Instance != null && Instance != this)

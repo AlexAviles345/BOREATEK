@@ -40,6 +40,30 @@ namespace Boreatek.World
 
         public event Action<HarvestableNode> OnNodeHarvested;
 
+        [Serializable]
+        internal struct SaveState
+        {
+            public int hitPoints;
+            public float meltSeconds, respawnSeconds;
+            public bool depleted;
+        }
+
+        internal SaveState CaptureSave() => new SaveState
+        {
+            hitPoints = _currentHitPoints, meltSeconds = _currentMeltTimer,
+            respawnSeconds = _respawnTimer, depleted = _isDepleted
+        };
+
+        internal void RestoreSave(SaveState state)
+        {
+            _currentHitPoints = state.hitPoints;
+            _currentMeltTimer = state.meltSeconds;
+            _respawnTimer = state.respawnSeconds;
+            _isDepleted = state.depleted;
+            SetVisualsActive(!_isDepleted);
+            RefreshIceVisual();
+        }
+
         private void Awake()
         {
             if (_visualMeshContainer == null)
@@ -104,15 +128,16 @@ namespace Boreatek.World
             }
 
             _currentMeltTimer += deltaTime;
+            RefreshIceVisual();
+        }
 
+        private void RefreshIceVisual()
+        {
             if (_iceOverlayVisual != null)
             {
                 float remainingIce = 1f - NormalizedMeltProgress;
                 _iceOverlayVisual.transform.localScale = Vector3.one * Mathf.Max(0.05f, remainingIce);
-                if (!IsFrozenLocked)
-                {
-                    _iceOverlayVisual.SetActive(false);
-                }
+                _iceOverlayVisual.SetActive(!_isDepleted && IsFrozenLocked);
             }
         }
 

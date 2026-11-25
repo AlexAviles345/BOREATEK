@@ -42,6 +42,33 @@ namespace Boreatek.AI
         public string EnemyDisplayName => _enemyDisplayName;
         public AIState CurrentState => _currentState;
 
+        [System.Serializable]
+        internal struct SaveState
+        {
+            public Vector3 position, patrolTarget;
+            public Quaternion rotation;
+            public AIState state;
+            public float health, attackCooldown, respawnSeconds;
+        }
+
+        internal SaveState CaptureSave() => new SaveState
+        {
+            position = transform.position, rotation = transform.rotation, patrolTarget = _currentPatrolTarget,
+            state = _currentState, health = _currentHealth, attackCooldown = _attackCooldownTimer,
+            respawnSeconds = _respawnTimer
+        };
+
+        internal void RestoreSave(SaveState state)
+        {
+            transform.SetPositionAndRotation(state.position, state.rotation);
+            _currentPatrolTarget = state.patrolTarget;
+            _currentState = state.state;
+            _currentHealth = state.health;
+            _attackCooldownTimer = state.attackCooldown;
+            _respawnTimer = state.respawnSeconds;
+            SetVisualActive(_currentState != AIState.Disabled);
+        }
+
         private void Awake()
         {
             _spawnOrigin = transform.position;

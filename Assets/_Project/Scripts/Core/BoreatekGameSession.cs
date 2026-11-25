@@ -1,5 +1,10 @@
+using System;
+using Boreatek.AI;
+using Boreatek.Automation;
+using Boreatek.Economy;
 using Boreatek.Player;
 using Boreatek.UI;
+using Boreatek.World;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -7,19 +12,23 @@ using UnityEngine.SceneManagement;
 namespace Boreatek.Core
 {
     [DefaultExecutionOrder(-100)]
-    public sealed class BoreatekGameSession : MonoBehaviour
+    public sealed partial class BoreatekGameSession : MonoBehaviour
     {
-        internal enum Screen { MainMenu, Playing, Paused, Dead }
+        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead }
 
         private PlayerController _player;
         private TemperatureSystem _temperature;
+        private InventoryAndShop _inventory;
         private BoreatekHUDAndShopUI _ui;
+        private HarvestableNode[] _nodes;
+        private DefectiveToyAI[] _enemies;
+        private int _worldSeed;
         private Screen _screen;
         private float _gameplayTimeScale;
         private bool _initialized;
         private bool _leavingScene;
 
-        internal void Initialize(PlayerController player, BoreatekHUDAndShopUI ui)
+        internal void Initialize(PlayerController player, BoreatekHUDAndShopUI ui, Transform worldRoot, int worldSeed)
         {
             if (_temperature != null)
             {
@@ -32,7 +41,12 @@ namespace Boreatek.Core
 
             _player = player;
             _temperature = player.GetComponent<TemperatureSystem>();
+            _inventory = player.GetComponent<InventoryAndShop>();
             _ui = ui;
+            _worldSeed = worldSeed;
+            // The seeded world builder creates nodes and enemies in a deterministic hierarchy order.
+            _nodes = worldRoot.GetComponentsInChildren<HarvestableNode>(true);
+            _enemies = worldRoot.GetComponentsInChildren<DefectiveToyAI>(true);
             _temperature.OnDied += ShowDeath;
             _initialized = true;
             _ui.BuildSessionMenu(this);
@@ -54,14 +68,96 @@ namespace Boreatek.Core
             {
                 Resume();
             }
+            else if (_screen == Screen.SaveSelection)
+            {
+                BackToTitle();
+            }
+            else if (_screen == Screen.CreateSave)
+            {
+                OpenSaveSelection();
+            }
         }
 
-        internal void StartNewGame()
+        internal void BackToTitle()
         {
-            if (_screen == Screen.MainMenu)
+            if (_screen == Screen.SaveSelection)
             {
+                SetScreen(Screen.MainMenu);
+            }
+        }
+
+        internal void OpenSaveSelection()
+        {
+            if (_screen == Screen.MainMenu || _screen == Screen.CreateSave)
+            {
+                _ui.RebuildSaveList(ReadSaveEntries(), LoadGame);
+                SetScreen(Screen.SaveSelection);
+            }
+        }
+
+        internal void OpenCreateSave()
+        {
+            if (_screen == Screen.SaveSelection)
+            {
+                SetScreen(Screen.CreateSave);
+            }
+        }
+
+        internal void StartNewGame(string name)
+        {
+            if (_screen != Screen.CreateSave)
+            {
+                return;
+            }
+            name = name.Trim();
+            if (name.Length == 0 || name.Length > MaxSaveNameLength)
+            {
+                _ui.SetSessionMessage($"Escribe un nombre de 1 a {MaxSaveNameLength} caracteres.");
+                return;
+            }
+
+            string id = Guid.NewGuid().ToString("N");
+            if (WriteSave(id, name))
+            {
+                _activeSaveId = id;
+                _activeSaveName = name;
                 SetScreen(Screen.Playing);
             }
+        }
+
+        internal void LoadGame(string id)
+        {
+            if (_screen != Screen.SaveSelection)
+            {
+                return;
+            }
+            if (!TryReadSave(id, out SaveData save))
+            {
+                _ui.RebuildSaveList(ReadSaveEntries(), LoadGame);
+                SetScreen(Screen.SaveSelection, "No se pudo cargar esta partida.");
+                return;
+            }
+
+            _activeSaveId = id;
+            _activeSaveName = GetSaveName(save);
+            for (int i = 0; i < _nodes.Length; i++)
+            {
+                _nodes[i].RestoreSave(save.nodes[i]);
+            }
+            for (int i = 0; i < _enemies.Length; i++)
+            {
+                _enemies[i].RestoreSave(save.enemies[i]);
+            }
+            _inventory.RestoreSave(save.inventory);
+            foreach (ExtractorSave item in save.extractors)
+            {
+                var extractor = MechanicalElfExtractor.CreateAutomatedExtractorOnNode(_nodes[item.nodeIndex], _inventory);
+                extractor.SecondsUntilExtraction = item.secondsUntilExtraction;
+            }
+            DayNightCycleManager.Instance.RestoreSave(save.campaign);
+            _temperature.RestoreSave(save.temperature);
+            _player.RestoreSave(save.player);
+            SetScreen(Screen.Playing);
         }
 
         internal void Resume()
@@ -69,6 +165,14 @@ namespace Boreatek.Core
             if (_screen == Screen.Paused)
             {
                 SetScreen(Screen.Playing);
+            }
+        }
+
+        internal void SaveGame()
+        {
+            if (_screen == Screen.Paused && WriteSave(_activeSaveId, _activeSaveName))
+            {
+                _ui.SetSessionMessage("Partida guardada.");
             }
         }
 

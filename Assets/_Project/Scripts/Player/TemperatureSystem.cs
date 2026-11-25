@@ -337,6 +337,34 @@ namespace Boreatek.Player
             OnVillageRescueTriggered?.Invoke(_diedOfCold);
         }
 
+        [Serializable]
+        internal struct SaveState
+        {
+            public float temperature, health, coatReduction, chocolateSeconds, coldGrace;
+            public int coatTier;
+        }
+
+        internal SaveState CaptureSave() => new SaveState
+        {
+            temperature = _currentTemperature,
+            health = _currentHealth,
+            coatReduction = _coatCoolingReduction,
+            chocolateSeconds = _hotChocolateBuffRemainingSeconds,
+            coldGrace = _hypothermiaCountdown,
+            coatTier = _thermalCoatTier
+        };
+
+        internal void RestoreSave(SaveState state)
+        {
+            _currentTemperature = Mathf.Clamp(state.temperature, 0f, _maxTemperature);
+            _currentHealth = Mathf.Clamp(state.health, 1f, _maxHealth);
+            _hotChocolateBuffRemainingSeconds = state.chocolateSeconds;
+            _hypothermiaCountdown = state.coldGrace;
+            UpgradeThermalCoat(state.coatTier, state.coatReduction);
+            OnTemperatureChanged?.Invoke(_currentTemperature, _maxTemperature);
+            OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
+        }
+
         private void CleanNullHeatSources()
         {
             _activeHeatSources.RemoveWhere(s => s == null || !s.gameObject.activeInHierarchy);

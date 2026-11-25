@@ -37,6 +37,7 @@ namespace Boreatek.Economy
         [SerializeField] private bool _hasGiftRadarUnlocked;
 
         private readonly Dictionary<ResourceType, int> _backpackContents = new Dictionary<ResourceType, int>();
+        private readonly List<HeatPlacement> _heatPlacements = new List<HeatPlacement>();
         private readonly Dictionary<ResourceType, ResourceDataSO> _resourceCatalog = new Dictionary<ResourceType, ResourceDataSO>();
         private readonly List<ShopItemSO> _shopCatalog = new List<ShopItemSO>();
 
@@ -362,14 +363,7 @@ namespace Boreatek.Economy
             }
 
             _stringLightsStock--;
-            SpawnStylizedHeatNode(
-                worldPos,
-                "Guirnalda Luminosa Navideña",
-                heatRegen: 5.5f,
-                radius: 6.5f,
-                canMeltChests: true,
-                lightColor: new Color(1.0f, 0.72f, 0.25f),
-                isBeacon: false);
+            PlaceHeatSource(worldPos, isBeacon: false, snapToGround: true);
 
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus("💡 Guirnalda Luminosa desplegada: Burbuja de calor (+5.5 °T/s, radio 6.5m) activa.");
@@ -387,14 +381,7 @@ namespace Boreatek.Economy
             }
 
             _thermalBeaconsStock--;
-            SpawnStylizedHeatNode(
-                worldPos,
-                "Baliza Térmica Portátil",
-                heatRegen: 13.0f,
-                radius: 10.5f,
-                canMeltChests: true,
-                lightColor: new Color(1.0f, 0.45f, 0.10f),
-                isBeacon: true);
+            PlaceHeatSource(worldPos, isBeacon: true, snapToGround: true);
 
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus("🔥 Baliza Térmica Portátil activada (+13 °T/s, radio 10.5m). Derritiendo Cofres Congelados cercanos...");
@@ -470,20 +457,18 @@ namespace Boreatek.Economy
             _playerController?.PublishStatus($"🤖 ¡Duende Mecánico Extractor y Cinta Transportadora instalados en {targetNode.NodeConfig.NodeDisplayName}!");
         }
 
-        private void SpawnStylizedHeatNode(
-            Vector3 pos,
-            string label,
-            float heatRegen,
-            float radius,
-            bool canMeltChests,
-            Color lightColor,
-            bool isBeacon)
+        private void PlaceHeatSource(Vector3 pos, bool isBeacon, bool snapToGround)
         {
-            if (Physics.Raycast(pos + Vector3.up * 2f, Vector3.down, out RaycastHit hit, 6f))
+            if (snapToGround && Physics.Raycast(pos + Vector3.up * 2f, Vector3.down, out RaycastHit hit, 6f))
             {
                 pos = hit.point;
             }
 
+            string label = isBeacon ? "Baliza Térmica Portátil" : "Guirnalda Luminosa Navideña";
+            float heatRegen = isBeacon ? 13f : 5.5f;
+            float radius = isBeacon ? 10.5f : 6.5f;
+            Color lightColor = isBeacon ? new Color(1f, 0.45f, 0.10f) : new Color(1f, 0.72f, 0.25f);
+            _heatPlacements.Add(new HeatPlacement { position = pos, isBeacon = isBeacon });
             GameObject root = new GameObject($"Deployed_{label}");
             root.transform.position = pos;
 
@@ -526,7 +511,81 @@ namespace Boreatek.Economy
             trigger.radius = radius;
 
             HeatSourceNode heatNode = root.AddComponent<HeatSourceNode>();
-            heatNode.ConfigureRuntime(label, heatRegen, radius, canMeltChests);
+            heatNode.ConfigureRuntime(label, heatRegen, radius, canMeltChests: true);
+        }
+
+        [Serializable]
+        internal struct HeatPlacement
+        {
+            public Vector3 position;
+            public bool isBeacon;
+        }
+
+        [Serializable]
+        internal struct ResourceStack
+        {
+            public ResourceType type;
+            public int count;
+        }
+
+        [Serializable]
+        internal struct SaveState
+        {
+            public int backpackTier, backpackSlots, coins, cores;
+            public int chocolate, cookies, peppermint, lights, beacons, firecrackers, extractors;
+            public float resourceLoss;
+            public bool radar;
+            public ResourceStack[] resources;
+            public HeatPlacement[] heatSources;
+        }
+
+        internal SaveState CaptureSave()
+        {
+            var resources = new List<ResourceStack>();
+            foreach (var item in _backpackContents)
+            {
+                resources.Add(new ResourceStack { type = item.Key, count = item.Value });
+            }
+
+            return new SaveState
+            {
+                backpackTier = _backpackTier, backpackSlots = _maxBackpackSlots,
+                coins = _gingerbreadCoins, cores = _luminousCoresDeliveredToForge,
+                chocolate = _hotChocolateThermosCount, cookies = _gingerbreadCookieCount,
+                peppermint = _peppermintCaneCount, lights = _stringLightsStock,
+                beacons = _thermalBeaconsStock, firecrackers = _festiveFirecrackersStock,
+                extractors = _mechanicalElfExtractorsStock, resourceLoss = _hypothermiaLossPercentage,
+                radar = _hasGiftRadarUnlocked, resources = resources.ToArray(),
+                heatSources = _heatPlacements.ToArray()
+            };
+        }
+
+        internal void RestoreSave(SaveState state)
+        {
+            _backpackTier = state.backpackTier;
+            _maxBackpackSlots = state.backpackSlots;
+            _gingerbreadCoins = state.coins;
+            _luminousCoresDeliveredToForge = state.cores;
+            _hotChocolateThermosCount = state.chocolate;
+            _gingerbreadCookieCount = state.cookies;
+            _peppermintCaneCount = state.peppermint;
+            _stringLightsStock = state.lights;
+            _thermalBeaconsStock = state.beacons;
+            _festiveFirecrackersStock = state.firecrackers;
+            _mechanicalElfExtractorsStock = state.extractors;
+            _hypothermiaLossPercentage = state.resourceLoss;
+            _hasGiftRadarUnlocked = state.radar;
+            _backpackContents.Clear();
+            foreach (ResourceStack item in state.resources)
+            {
+                _backpackContents[item.type] = item.count;
+            }
+            foreach (HeatPlacement item in state.heatSources)
+            {
+                PlaceHeatSource(item.position, item.isBeacon, snapToGround: false);
+            }
+            RecalculateBackpackCount();
+            OnInventoryOrCoinsChanged?.Invoke();
         }
 
         private void HandleRescueResourceLoss(bool fromCold)

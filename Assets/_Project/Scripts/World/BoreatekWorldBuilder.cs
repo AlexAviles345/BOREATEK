@@ -33,6 +33,7 @@ namespace Boreatek.World
         private readonly Dictionary<ResourceType, ResourceDataSO> _resources = new Dictionary<ResourceType, ResourceDataSO>();
         private readonly Dictionary<string, HarvestableNodeConfigSO> _nodeConfigs = new Dictionary<string, HarvestableNodeConfigSO>();
         private BoreatekGameSession _session;
+        private Transform _worldRoot;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrapOnSceneLoad()
@@ -73,7 +74,7 @@ namespace Boreatek.World
                 {
                     _session = gameObject.AddComponent<BoreatekGameSession>();
                 }
-                _session.Initialize(player, ui);
+                _session.Initialize(player, ui, _worldRoot, _worldSeed);
             }
         }
 
@@ -198,6 +199,7 @@ namespace Boreatek.World
             Random.InitState(_worldSeed);
 
             Transform worldRoot = new GameObject("Boreatek_StylizedWorld_3D").transform;
+            _worldRoot = worldRoot;
 
             BuildArcticSurfaceTerrain(worldRoot);
             BuildSantaIndustrialVillageHub(worldRoot);

@@ -24,6 +24,13 @@ namespace Boreatek.Automation
         private Vector3 _conveyorStartPos;
         private Vector3 _conveyorEndPos;
 
+        internal HarvestableNode AttachedNode => _attachedNode;
+        internal float SecondsUntilExtraction
+        {
+            get => _extractionTimer;
+            set => _extractionTimer = value;
+        }
+
         public void InitializeExtractor(
             HarvestableNode node,
             InventoryAndShop economy,

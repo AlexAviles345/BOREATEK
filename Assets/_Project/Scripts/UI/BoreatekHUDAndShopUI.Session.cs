@@ -12,6 +12,7 @@ namespace Boreatek.UI
         private GameObject _sessionCanvas;
         private Image _sessionBackdrop;
         private Text _sessionMessage;
+        private Text _gameplayMessage;
         private RectTransform _gameplayMenuCard;
         private RectTransform _mainMenu, _pauseMenu, _deathMenu;
         private Button _playButton, _resumeButton, _respawnButton;
@@ -36,20 +37,22 @@ namespace Boreatek.UI
             _sessionBackdrop = _sessionCanvas.AddComponent<Image>();
             RectTransform root = (RectTransform)_sessionCanvas.transform;
             BuildTitleScreen(root, session);
+            BuildSaveScreens(root, session);
 
             var center = new Vector2(0.5f, 0.5f);
             _gameplayMenuCard = CreatePanelCard("SessionCard", root,
                 center, center, center, Vector2.zero, new Vector2(560f, 416f), ColPanelDark);
 
             _pauseMenu = CreateSessionPanel(_gameplayMenuCard, "PauseMenu", "En pausa", ColIceCyan);
-            _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 182f, ColBrassGold, session.Resume);
-            CreateSessionButton(_pauseMenu, "MainMenu", "Volver al menú principal", 248f, ColCardInner, session.ReturnToMainMenu);
+            _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 165f, ColBrassGold, session.Resume);
+            CreateSessionButton(_pauseMenu, "SaveGame", "Guardar partida", 231f, ColCardInner, session.SaveGame);
+            CreateSessionButton(_pauseMenu, "MainMenu", "Volver al menú principal", 297f, ColCardInner, session.ReturnToMainMenu);
 
             _deathMenu = CreateSessionPanel(_gameplayMenuCard, "DeathMenu", "Has muerto", ColCandyRed);
             _respawnButton = CreateSessionButton(_deathMenu, "Respawn", "Reaparecer en la aldea", 182f, ColBrassGold, session.Respawn);
             CreateSessionButton(_deathMenu, "MainMenu", "Volver al menú principal", 248f, ColCardInner, session.ReturnToMainMenu);
 
-            _sessionMessage = CreateLabel(_gameplayMenuCard, "SessionMessage", "",
+            _gameplayMessage = CreateLabel(_gameplayMenuCard, "SessionMessage", "",
                 new Vector2(28f, -362f), new Vector2(504f, 32f), 18,
                 FontStyle.Normal, ColTextMuted, TextAnchor.MiddleCenter);
         }
@@ -64,17 +67,20 @@ namespace Boreatek.UI
                 FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
             CreateLabel(_mainMenu, "Subtitle", "Supervivencia en la frontera polar", new Vector2(7f, -116f),
                 new Vector2(615f, 42f), 29, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
-            _playButton = CreateMenuButton(_mainMenu, "Play", "Iniciar nueva partida", 7f, 204f, 360f, ColBrassGold, session.StartNewGame);
+            _playButton = CreateMenuButton(_mainMenu, "Play", "Jugar", 7f, 204f, 286f, ColBrassGold, session.OpenSaveSelection);
         }
 
         internal void ShowSessionScreen(SessionScreen screen, string message)
         {
             bool menuOpen = screen != SessionScreen.Playing;
-            bool titleOpen = screen == SessionScreen.MainMenu;
+            bool titleOpen = screen == SessionScreen.MainMenu || screen == SessionScreen.SaveSelection ||
+                screen == SessionScreen.CreateSave;
             _hudCanvas.enabled = !menuOpen;
             _hudCanvas.GetComponent<GraphicRaycaster>().enabled = !menuOpen;
             _sessionCanvas.SetActive(menuOpen);
             _mainMenu.gameObject.SetActive(screen == SessionScreen.MainMenu);
+            _saveMenu.gameObject.SetActive(screen == SessionScreen.SaveSelection);
+            _createSaveMenu.gameObject.SetActive(screen == SessionScreen.CreateSave);
             _gameplayMenuCard.gameObject.SetActive(screen == SessionScreen.Paused || screen == SessionScreen.Dead);
             _pauseMenu.gameObject.SetActive(screen == SessionScreen.Paused);
             _deathMenu.gameObject.SetActive(screen == SessionScreen.Dead);
@@ -84,11 +90,26 @@ namespace Boreatek.UI
                 _ when titleOpen => new Color(0.025f, 0.05f, 0.08f, 1f),
                 _ => new Color(0.025f, 0.05f, 0.08f, 0.76f)
             };
+            _sessionMessage = screen switch
+            {
+                SessionScreen.SaveSelection => _saveListMessage,
+                SessionScreen.CreateSave => _createSaveMessage,
+                _ => _gameplayMessage
+            };
             SetSessionMessage(message);
+
+            if (screen == SessionScreen.CreateSave)
+            {
+                _saveNameField.SetTextWithoutNotify("Nueva expedición");
+                _saveNameField.Select();
+                _saveNameField.ActivateInputField();
+                return;
+            }
 
             Button selected = screen switch
             {
                 SessionScreen.MainMenu => _playButton,
+                SessionScreen.SaveSelection => _loadSelectedButton.interactable ? _loadSelectedButton : _createSaveButton,
                 SessionScreen.Paused => _resumeButton,
                 SessionScreen.Dead => _respawnButton,
                 _ => null
