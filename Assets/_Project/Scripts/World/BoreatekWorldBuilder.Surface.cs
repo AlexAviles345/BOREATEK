@@ -12,15 +12,17 @@ namespace Boreatek.World
         private static readonly Color32 Brass = new Color32(172, 107, 63, 255);
         private static readonly Color32 Furnace = new Color32(255, 131, 43, 255);
 
-        private void BuildArcticSurfaceTerrain(Transform parent)
+        private Material[] CreateSnowPalette() => new Material[]
         {
-            Material[] snow =
-            {
                 _landscape.Finish(new Color32(172, 202, 221, 255)),
                 _landscape.Finish(new Color32(187, 215, 232, 255)),
                 _landscape.Finish(Frost),
                 _landscape.Finish(new Color32(219, 239, 247, 255))
-            };
+        };
+
+        private void BuildArcticSurfaceTerrain(Transform parent)
+        {
+            Material[] snow = CreateSnowPalette();
             var terrain = new Batch();
             const int step = 4;
             for (int z = -126; z < 126; z += step)
@@ -37,13 +39,12 @@ namespace Boreatek.World
             }
             _landscape.Place(parent, "ArcticSnowfields", terrain, collision: true);
             BuildArcticHorizon(parent);
-            PopulateSnowPineBelts(parent);
         }
 
-        private static int SnowBand(float x, float z) =>
+        internal static int SnowBand(float x, float z) =>
             Mathf.Clamp(Mathf.FloorToInt(Mathf.PerlinNoise(x * 0.113f + 32f, z * 0.121f + 42f) * 4f), 0, 3);
 
-        private static Vector3 SurfacePoint(float x, float z)
+        internal static Vector3 SurfacePoint(float x, float z)
         {
             float radius = new Vector2(x, z).magnitude;
             float clearPlaza = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(21f, 47f, radius));
@@ -94,7 +95,7 @@ namespace Boreatek.World
             }
         }
 
-        private void AddFrostedPine(Batch trees, Vector3 foot, float height, bool marked)
+        internal void AddFrostedPine(Batch trees, Vector3 foot, float height, bool marked)
         {
             Material bark = _landscape.Finish(new Color32(77, 58, 55, 255));
             Material pine = _landscape.Finish(new Color32(45, 87, 95, 255));

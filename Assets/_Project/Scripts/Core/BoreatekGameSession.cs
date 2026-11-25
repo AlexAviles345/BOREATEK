@@ -22,13 +22,15 @@ namespace Boreatek.Core
         private BoreatekHUDAndShopUI _ui;
         private HarvestableNode[] _nodes;
         private DefectiveToyAI[] _enemies;
+        private BoreatekSurfaceChunks _surface;
         private int _worldSeed;
         private Screen _screen;
         private float _gameplayTimeScale;
         private bool _initialized;
         private bool _leavingScene;
 
-        internal void Initialize(PlayerController player, BoreatekHUDAndShopUI ui, Transform worldRoot, int worldSeed)
+        internal void Initialize(PlayerController player, BoreatekHUDAndShopUI ui, Transform worldRoot, int worldSeed,
+            BoreatekSurfaceChunks surface)
         {
             if (_temperature != null)
             {
@@ -43,6 +45,7 @@ namespace Boreatek.Core
             _temperature = player.GetComponent<TemperatureSystem>();
             _inventory = player.GetComponent<InventoryAndShop>();
             _ui = ui;
+            _surface = surface;
             _worldSeed = worldSeed;
             // The seeded world builder creates nodes and enemies in a deterministic hierarchy order.
             _nodes = worldRoot.GetComponentsInChildren<HarvestableNode>(true);
@@ -156,6 +159,7 @@ namespace Boreatek.Core
             }
             DayNightCycleManager.Instance.RestoreSave(save.campaign);
             _temperature.RestoreSave(save.temperature);
+            _surface.EnsureGroundAt(save.player.position);
             _player.RestoreSave(save.player);
             SetScreen(Screen.Playing);
         }
@@ -206,6 +210,7 @@ namespace Boreatek.Core
             if (_screen == Screen.Dead)
             {
                 _temperature.RespawnAtVillage();
+                _surface.EnsureGroundAt(_player.transform.position);
                 _player.SetCharacterPresent(true);
                 SetScreen(Screen.Playing);
             }

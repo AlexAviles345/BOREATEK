@@ -70,6 +70,10 @@ namespace Boreatek.World
             BoreatekHUDAndShopUI ui = EnsureHUDAndShopUI(player);
             if (Application.isPlaying)
             {
+                var surfaceRoot = new GameObject("Streamed_ArcticSurface");
+                surfaceRoot.transform.SetParent(_worldRoot, false);
+                var surface = surfaceRoot.AddComponent<BoreatekSurfaceChunks>();
+                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowPalette());
                 var polarAtmosphere = _worldRoot.gameObject.AddComponent<BoreatekPolarAtmosphere>();
                 polarAtmosphere.Initialize(player.transform,
                     DayNightCycleManager.Instance ?? FindAnyObjectByType<DayNightCycleManager>());
@@ -77,7 +81,7 @@ namespace Boreatek.World
                 {
                     _session = gameObject.AddComponent<BoreatekGameSession>();
                 }
-                _session.Initialize(player, ui, _worldRoot, _worldSeed);
+                _session.Initialize(player, ui, _worldRoot, _worldSeed, surface);
             }
         }
 
@@ -206,7 +210,8 @@ namespace Boreatek.World
             _landscape = worldRoot.gameObject.AddComponent<BoreatekLandscapeGeometry>();
             _landscape.Initialize(_urpLitShader);
 
-            BuildArcticSurfaceTerrain(worldRoot);
+            if (!Application.isPlaying) BuildArcticSurfaceTerrain(worldRoot);
+            PopulateSnowPineBelts(worldRoot);
             BuildSantaIndustrialVillageHub(worldRoot);
             BuildProceduralOuterTundra(worldRoot);
             BuildProceduralGiantCandyForest(worldRoot);
