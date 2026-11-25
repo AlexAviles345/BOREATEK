@@ -136,20 +136,32 @@ namespace Boreatek.UI
 
         private void ReleaseThemeGraphics()
         {
-            if (_metalFace != null)
+            ReleaseGeneratedSprite(_metalFace);
+            ReleaseGeneratedSprite(_metalRim);
+            ReleaseGeneratedSprite(_roundedCardSprite);
+            ReleaseGeneratedSprite(_flatBarSprite);
+            ReleaseGeneratedGraphic(_titleShadeTexture);
+            ReleaseGeneratedGraphic(_frostVignetteTexture);
+        }
+
+        private static void ReleaseGeneratedSprite(Sprite sprite)
+        {
+            if (sprite != null)
             {
-                Destroy(_metalFace.texture);
-                Destroy(_metalFace);
+                ReleaseGeneratedGraphic(sprite.texture);
+                ReleaseGeneratedGraphic(sprite);
             }
-            if (_metalRim != null)
+        }
+
+        private static void ReleaseGeneratedGraphic(Object graphic)
+        {
+            if (graphic == null)
             {
-                Destroy(_metalRim.texture);
-                Destroy(_metalRim);
+                return;
             }
-            if (_titleShadeTexture != null)
-            {
-                Destroy(_titleShadeTexture);
-            }
+
+            if (Application.isPlaying) Destroy(graphic);
+            else DestroyImmediate(graphic);
         }
     }
 }

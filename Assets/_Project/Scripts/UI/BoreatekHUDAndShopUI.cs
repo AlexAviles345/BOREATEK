@@ -29,7 +29,6 @@ namespace Boreatek.UI
         private Canvas _hudCanvas;
         private Sprite _roundedCardSprite;
         private Sprite _flatBarSprite;
-        private Sprite _circleMedallionSprite;
         private Font _uiFont;
 
         // Referencias de barras y textos del Panel Izquierdo (Telemetría)
@@ -59,11 +58,18 @@ namespace Boreatek.UI
         private GameObject _interactionCardRoot;
         private Text _interactionPromptText;
         private Text _statusToastText;
-        private Image _frostVignetteOverlay;
+        private RawImage _frostVignetteOverlay;
+        private Texture2D _frostVignetteTexture;
+        private string _lastToastMessage;
+        private float _hideToastAt;
+        private float _nextRadarRefresh;
+        private float _nextTelemetryRefresh;
 
         // Referencias del Hotbar de 7 Casillas
         private readonly List<Text> _hotbarCountTexts = new List<Text>();
-        private readonly List<Image> _hotbarBorders = new List<Image>();
+        private readonly List<BoreatekUiGlyph> _hotbarGlyphs = new List<BoreatekUiGlyph>();
+        private readonly List<Color> _hotbarAccents = new List<Color>();
+        private readonly int[] _shownHotbarStock = new int[7];
 
         // Referencias del Modal de la Tienda del Taller
         private GameObject _shopModalRoot;
@@ -92,6 +98,9 @@ namespace Boreatek.UI
         public void BindPlayer(PlayerController player)
         {
             _player = player;
+            _lastToastMessage = null;
+            _nextTelemetryRefresh = 0f;
+            _nextRadarRefresh = 0f;
             if (_player != null)
             {
                 _tempSystem = _player.GetComponent<TemperatureSystem>();
@@ -142,8 +151,12 @@ namespace Boreatek.UI
                 return;
             }
 
-            UpdateVitalAndThermalTelemetry();
-            UpdateClockWeatherAndEquipment();
+            if (Time.unscaledTime >= _nextTelemetryRefresh)
+            {
+                _nextTelemetryRefresh = Time.unscaledTime + 0.10f;
+                UpdateVitalAndThermalTelemetry();
+                UpdateClockWeatherAndEquipment();
+            }
             UpdateHotbarAndToast();
             UpdateCrosshairInteractionPrompt();
             UpdateFrostWarningVignette();
@@ -169,7 +182,6 @@ namespace Boreatek.UI
         {
             _roundedCardSprite = CreateRoundedRectSprite(64, 64, radius: 10, borderThickness: 2);
             _flatBarSprite = CreateRoundedRectSprite(32, 32, radius: 6, borderThickness: 0);
-            _circleMedallionSprite = CreateCircleSprite(48);
         }
 
         private static Sprite CreateRoundedRectSprite(int width, int height, int radius, int borderThickness)
@@ -220,33 +232,6 @@ namespace Boreatek.UI
             return Sprite.Create(tex, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, border);
         }
 
-        private static Sprite CreateCircleSprite(int size)
-        {
-            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp
-            };
-
-            float r = size * 0.5f - 1f;
-            Vector2 center = new Vector2(size * 0.5f, size * 0.5f);
-            Color[] pixels = new Color[size * size];
-
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float d = Vector2.Distance(new Vector2(x, y), center);
-                    float a = Mathf.Clamp01(r + 0.5f - d);
-                    pixels[y * size + x] = new Color(1f, 1f, 1f, a);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-        }
-
         private void BuildResponsiveCanvasHierarchy()
         {
             GameObject oldCanvas = GameObject.Find("Boreatek_HUD_Canvas");
@@ -264,10 +249,7 @@ namespace Boreatek.UI
             _hudCanvas.sortingOrder = 50;
 
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
+            ConfigureHudScaler(scaler);
 
             canvasObj.AddComponent<GraphicRaycaster>();
 
@@ -285,215 +267,195 @@ namespace Boreatek.UI
         {
             GameObject frostObj = CreateUIObject("FrostWarning_Overlay", parent);
             StretchFull(frostObj.GetComponent<RectTransform>());
-            _frostVignetteOverlay = frostObj.AddComponent<Image>();
-            _frostVignetteOverlay.sprite = _roundedCardSprite;
-            _frostVignetteOverlay.type = Image.Type.Sliced;
-            _frostVignetteOverlay.color = new Color(0.25f, 0.72f, 0.96f, 0f);
+            _frostVignetteOverlay = frostObj.AddComponent<RawImage>();
+            if (_frostVignetteTexture == null)
+            {
+                _frostVignetteTexture = CreateFrostVignetteTexture();
+            }
+            _frostVignetteOverlay.texture = _frostVignetteTexture;
+            _frostVignetteOverlay.color = new Color(0.47f, 0.80f, 1f, 0f);
             _frostVignetteOverlay.raycastTarget = false;
         }
 
-        /// <summary>
-        /// Panel Superior Izquierdo: Temperatura Corporal, Salud Estructural, Tanque-Mochila y Economía.
-        /// </summary>
         private void BuildTopLeftVitalPanel(RectTransform parent)
         {
-            RectTransform card = CreatePanelCard("Panel_TopLeft_Telemetry", parent,
-                anchorMin: new Vector2(0f, 1f), anchorMax: new Vector2(0f, 1f),
-                pivot: new Vector2(0f, 1f), anchoredPos: new Vector2(24f, -24f),
-                size: new Vector2(450f, 265f), ColPanelDark);
+            var topLeft = new Vector2(0f, 1f);
+            RectTransform panel = CreatePanelCard("Panel_TopLeft_Telemetry", parent, topLeft, topLeft, topLeft,
+                new Vector2(24f, -24f), new Vector2(368f, 244f), ColDeepSteel);
+            ApplyMetalPanel(panel, ColDeepSteel, ColSteelRim);
+            panel.GetComponent<Image>().raycastTarget = false;
+            AddHudHeading(panel, "Estado del traje", 184f);
 
-            // Cabecera con acento dorado de latón
-            CreateLabel(card, "HeaderTitle", "🎄⚙️ TELEMETRÍA DEL DUENDE INGENIERO",
-                new Vector2(18f, -14f), new Vector2(414f, 26f), 17, FontStyle.Bold, ColBrassGold, TextAnchor.MiddleLeft);
+            RectTransform thermal = CreatePanelCard("ThermalStateBadge", panel, topLeft, topLeft, topLeft,
+                new Vector2(210f, -17f), new Vector2(140f, 26f), ColBlueSteel);
+            _tempBadgeBg = thermal.GetComponent<Image>();
+            _tempBadgeBg.raycastTarget = false;
+            _tempBadgeText = CreateLabel(thermal, "BadgeTxt", "", Vector2.zero, new Vector2(140f, 26f),
+                14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+            StretchFull(_tempBadgeText.rectTransform);
 
-            // Badge de estado térmico (En Burbuja / Expuesto al Frío / Chocolate)
-            RectTransform badgeRect = CreatePanelCard("ThermalStateBadge", card,
-                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f),
-                new Vector2(-18f, -46f), new Vector2(185f, 26f), ColEmeraldSafe);
-            _tempBadgeBg = badgeRect.GetComponent<Image>();
-            _tempBadgeText = CreateLabel(badgeRect, "BadgeTxt", "EN BURBUJA TÉRMICA",
-                Vector2.zero, new Vector2(185f, 26f), 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            StretchFull(_tempBadgeText.GetComponent<RectTransform>());
+            _tempBarFill = CreateHudGauge(panel, "Temperature", "Temperatura", 55f, 332f, ColWarmAmber, out _tempValueText);
+            _healthBarFill = CreateHudGauge(panel, "Health", "Salud", 98f, 332f, ColCandyRed, out _healthValueText);
+            _backpackBarFill = CreateHudGauge(panel, "Backpack", "Mochila", 141f, 332f, ColBrassGold, out _backpackValueText);
 
-            // 1. Barra de Temperatura Corporal
-            CreateLabel(card, "TempLabel", "🌡️ TEMPERATURA CORPORAL",
-                new Vector2(18f, -46f), new Vector2(230f, 24f), 13, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
-            _tempBarFill = CreateProgressBar(card, "TempProgressBar", new Vector2(18f, -74f), new Vector2(414f, 22f),
-                ColWarmAmber, out _tempValueText);
-
-            // 2. Barra de Salud Estructural
-            CreateLabel(card, "HpLabel", "❤️ SALUD ESTRUCTURAL",
-                new Vector2(18f, -104f), new Vector2(230f, 22f), 13, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
-            _healthBarFill = CreateProgressBar(card, "HealthProgressBar", new Vector2(18f, -128f), new Vector2(414f, 20f),
-                ColCandyRed, out _healthValueText);
-
-            // 3. Barra de Capacidad del Tanque-Mochila Presurizado de Latón
-            CreateLabel(card, "PackLabel", "🎒 TANQUE-MOCHILA PRESURIZADO DE LATÓN",
-                new Vector2(18f, -156f), new Vector2(350f, 22f), 13, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
-            _backpackBarFill = CreateProgressBar(card, "BackpackProgressBar", new Vector2(18f, -180f), new Vector2(414f, 20f),
-                ColBrassGold, out _backpackValueText);
-
-            // 4. Fila Inferior: Monedas de Jengibre, Núcleos Luminosos y Bioma Actual
-            RectTransform economyStrip = CreatePanelCard("EconomyStrip", card,
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(18f, -208f), new Vector2(414f, 44f), ColCardInner);
-
-            _coinsValueText = CreateLabel(economyStrip, "CoinsTxt", "🪙 60 Monedas de Jengibre",
-                new Vector2(12f, -4f), new Vector2(215f, 20f), 14, FontStyle.Bold, ColWarmAmber, TextAnchor.MiddleLeft);
-            _coresValueText = CreateLabel(economyStrip, "CoresTxt", "🌋 Núcleos Forja: 0 / 3",
-                new Vector2(225f, -4f), new Vector2(175f, 20f), 13, FontStyle.Bold, ColCandyRed, TextAnchor.MiddleRight);
-            _biomeNameText = CreateLabel(economyStrip, "BiomeTxt", "📍 Zona: Aldea Industrial de Santa",
-                new Vector2(12f, -23f), new Vector2(390f, 18f), 12, FontStyle.Normal, ColIceCyan, TextAnchor.MiddleLeft);
+            CreateAccentLine(panel, "EconomyRule", new Vector2(18f, -184f), new Vector2(332f, 1f), ColSteelRim);
+            _coinsValueText = CreateLabel(panel, "CoinsTxt", "", new Vector2(18f, -190f), new Vector2(186f, 23f),
+                15, FontStyle.Bold, ColBrassRim, TextAnchor.MiddleLeft);
+            _coresValueText = CreateLabel(panel, "CoresTxt", "", new Vector2(205f, -190f), new Vector2(145f, 23f),
+                15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
+            _biomeNameText = CreateLabel(panel, "BiomeTxt", "", new Vector2(18f, -216f), new Vector2(332f, 20f),
+                15, FontStyle.Normal, ColIceCyan, TextAnchor.MiddleLeft);
+            _biomeNameText.resizeTextForBestFit = true;
+            _biomeNameText.resizeTextMinSize = 12;
+            _biomeNameText.resizeTextMaxSize = 15;
+            _biomeNameText.verticalOverflow = VerticalWrapMode.Truncate;
         }
 
-        /// <summary>
-        /// Panel Superior Derecho: Reloj de Campaña de 20 Horas, Clima Dinámico, Equipo y Radar de Regalos.
-        /// </summary>
         private void BuildTopRightCampaignAndEquipmentPanel(RectTransform parent)
         {
-            RectTransform card = CreatePanelCard("Panel_TopRight_Campaign", parent,
-                anchorMin: new Vector2(1f, 1f), anchorMax: new Vector2(1f, 1f),
-                pivot: new Vector2(1f, 1f), anchoredPos: new Vector2(-24f, -24f),
-                size: new Vector2(430f, 235f), ColPanelDark);
+            var topRight = Vector2.one;
+            var topLeft = new Vector2(0f, 1f);
+            RectTransform panel = CreatePanelCard("Panel_TopRight_Campaign", parent, topRight, topRight, topRight,
+                new Vector2(-24f, -24f), new Vector2(348f, 227f), ColDeepSteel);
+            ApplyMetalPanel(panel, ColDeepSteel, ColSteelRim);
+            panel.GetComponent<Image>().raycastTarget = false;
+            AddHudHeading(panel, "Campaña", 312f);
 
-            CreateLabel(card, "CampaignHeader", "⏱️ CAMPAÑA DE 20 HORAS & EQUIPO",
-                new Vector2(18f, -14f), new Vector2(394f, 26f), 17, FontStyle.Bold, ColBrassGold, TextAnchor.MiddleLeft);
+            _cycleBarFill = CreateHudGauge(panel, "Cycle", "Ciclo", 55f, 312f, ColIceCyan, out _cycleTitleText);
+            RectTransform weather = CreatePanelCard("WeatherBadge", panel, topLeft, topLeft, topLeft,
+                new Vector2(18f, -99f), new Vector2(312f, 29f), ColBlueSteel);
+            _weatherBadgeBg = weather.GetComponent<Image>();
+            _weatherBadgeBg.raycastTarget = false;
+            _weatherBadgeText = CreateLabel(weather, "WeatherTxt", "", Vector2.zero, new Vector2(312f, 29f),
+                15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+            StretchFull(_weatherBadgeText.rectTransform, 4f);
 
-            // Barra del Ciclo Día / Noche de 20 Minutos Reales
-            _cycleBarFill = CreateProgressBar(card, "CycleProgressBar", new Vector2(18f, -46f), new Vector2(394f, 22f),
-                ColIceCyan, out _cycleTitleText);
-
-            // Badge del Estado Climático (Día Ártico / Noche Polar / Ventisca Ciega)
-            RectTransform weatherPill = CreatePanelCard("WeatherBadge", card,
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(18f, -76f), new Vector2(394f, 30f), ColCardInner);
-            _weatherBadgeBg = weatherPill.GetComponent<Image>();
-            _weatherBadgeText = CreateLabel(weatherPill, "WeatherTxt", "☀️ CLIMA: Día Ártico Despejado (Frío x1.0)",
-                Vector2.zero, new Vector2(394f, 30f), 13, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
-            StretchFull(_weatherBadgeText.GetComponent<RectTransform>());
-
-            // Resumen de Equipamiento del Duende Ingeniero
-            RectTransform equipBox = CreatePanelCard("EquipBox", card,
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(18f, -114f), new Vector2(394f, 76f), ColCardInner);
-
-            _equipmentSummaryText = CreateLabel(equipBox, "EquipSummaryTxt",
-                "⛏️ Pico Cristal Energético: Nivel 1 (Daño 1)\n" +
-                "🧥 Abrigo Térmico + Botas: Nivel 1 (-0% frío)\n" +
-                "🔦 Faro LED Frontal Casco: ENCENDIDO [F]",
-                new Vector2(12f, -6f), new Vector2(370f, 64f), 13, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
-
-            // Radar de Regalos / Ayuda de Tienda
-            _radarStatusText = CreateLabel(card, "RadarTxt",
-                "🛒 Presiona [Tab] o [B] para abrir la Tienda del Taller",
-                new Vector2(18f, -198f), new Vector2(394f, 24f), 13, FontStyle.Bold, ColWarmAmber, TextAnchor.MiddleCenter);
+            _equipmentSummaryText = CreateLabel(panel, "EquipSummaryTxt", "", new Vector2(18f, -136f),
+                new Vector2(312f, 62f), 15, FontStyle.Normal, ColTextLight, TextAnchor.UpperLeft);
+            _radarStatusText = CreateLabel(panel, "RadarTxt", "[Tab] Taller  ·  [F] Faro", new Vector2(18f, -202f),
+                new Vector2(312f, 18f), 14, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
         }
 
-        /// <summary>
-        /// Retícula central minimalista y Tarjeta Flotante de Interacción contextual.
-        /// </summary>
+        private void AddHudHeading(RectTransform panel, string title, float ruleWidth)
+        {
+            CreateLabel(panel, "Title", title, new Vector2(18f, -14f), new Vector2(ruleWidth, 29f),
+                20, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
+            CreateAccentLine(panel, "BrassHeaderRule", new Vector2(18f, -46f), new Vector2(36f, 2f), ColBrassRim);
+            CreateAccentLine(panel, "SteelHeaderRule", new Vector2(59f, -46f),
+                new Vector2(Mathf.Max(0f, ruleWidth - 41f), 1f), ColSteelRim);
+        }
+
         private void BuildCenterCrosshairAndInteractionCard(RectTransform parent)
         {
-            // Punto central de mira con borde cálido
-            RectTransform crosshair = CreatePanelCard("CenterCrosshair", parent,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(10f, 10f), ColWarmAmber);
-            crosshair.GetComponent<Image>().sprite = _circleMedallionSprite;
-            crosshair.GetComponent<Image>().raycastTarget = false;
+            var center = new Vector2(0.5f, 0.5f);
+            AddHudGlyph(parent, "CenterCrosshair", BoreatekGlyph.Aim, center, Vector2.zero, 22f, ColTextLight);
 
-            // Tarjeta contextual debajo de la mira
-            RectTransform promptCard = CreatePanelCard("InteractionPromptCard", parent,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -54f), new Vector2(620f, 44f), ColPanelDark);
-            _interactionCardRoot = promptCard.gameObject;
-            _interactionPromptText = CreateLabel(promptCard, "PromptTxt", "",
-                Vector2.zero, new Vector2(600f, 44f), 15, FontStyle.Bold, ColWarmAmber, TextAnchor.MiddleCenter);
-            StretchFull(_interactionPromptText.GetComponent<RectTransform>());
+            RectTransform prompt = CreatePanelCard("InteractionPromptCard", parent, center, center, center,
+                new Vector2(0f, -50f), new Vector2(590f, 50f), ColDeepSteel);
+            ApplyMetalPanel(prompt, ColDeepSteel, ColSteelRim);
+            prompt.GetComponent<Image>().raycastTarget = false;
+            _interactionCardRoot = prompt.gameObject;
+            _interactionPromptText = CreateLabel(prompt, "PromptTxt", "", Vector2.zero, new Vector2(566f, 44f),
+                16, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+            StretchFull(_interactionPromptText.rectTransform, 6f);
+            _interactionPromptText.verticalOverflow = VerticalWrapMode.Truncate;
             _interactionCardRoot.SetActive(false);
         }
 
-        /// <summary>
-        /// Hotbar inferior central de 7 casillas estilizadas + Banner de Estado y guía compacta de controles.
-        /// </summary>
         private void BuildBottomHotbarAndToastBanner(RectTransform parent)
         {
-            // Banner de notificaciones (Toast) encima del Hotbar
-            RectTransform toastCard = CreatePanelCard("StatusToastBanner", parent,
-                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-                new Vector2(0f, 134f), new Vector2(860f, 36f), ColPanelDark);
+            var bottom = new Vector2(0.5f, 0f);
+            RectTransform toast = CreatePanelCard("StatusToastBanner", parent, bottom, bottom, bottom,
+                new Vector2(0f, 143f), new Vector2(820f, 48f), ColDeepSteel);
+            ApplyMetalPanel(toast, ColDeepSteel, ColSteelRim);
+            toast.GetComponent<Image>().raycastTarget = false;
+            _statusToastText = CreateLabel(toast, "ToastTxt", "", Vector2.zero, new Vector2(790f, 44f),
+                16, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+            StretchFull(_statusToastText.rectTransform, 6f);
+            _statusToastText.verticalOverflow = VerticalWrapMode.Truncate;
+            toast.gameObject.SetActive(false);
 
-            _statusToastText = CreateLabel(toastCard, "ToastTxt",
-                "📢 Duende Ingeniero listo en la Aldea Industrial.",
-                Vector2.zero, new Vector2(840f, 36f), 14, FontStyle.Bold, ColWarmAmber, TextAnchor.MiddleCenter);
-            StretchFull(_statusToastText.GetComponent<RectTransform>());
-
-            // Contenedor de las 7 casillas del Hotbar
-            RectTransform hotbarRoot = CreatePanelCard("BottomHotbarContainer", parent,
-                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-                new Vector2(0f, 32f), new Vector2(860f, 94f), ColPanelDark);
+            var topLeft = new Vector2(0f, 1f);
+            RectTransform bar = CreatePanelCard("BottomHotbarContainer", parent, bottom, bottom, bottom,
+                new Vector2(0f, 38f), new Vector2(820f, 94f), ColDeepSteel);
+            ApplyMetalPanel(bar, ColDeepSteel, ColSteelRim);
+            bar.GetComponent<Image>().raycastTarget = false;
 
             string[] keys = { "1", "2", "3", "G", "H", "Q", "R" };
-            string[] names = { "Chocolate", "Galleta", "B. Menta", "Guirnalda", "Baliza", "Petardo", "Autómata" };
-            Color[] iconColors =
-            {
-                new Color(0.55f, 0.32f, 0.18f), // Chocolate caliente
-                new Color(0.88f, 0.62f, 0.24f), // Galleta jengibre
-                new Color(0.92f, 0.24f, 0.30f), // Bastón menta
-                new Color(1.00f, 0.80f, 0.22f), // Guirnalda luminosa
-                new Color(1.00f, 0.45f, 0.08f), // Baliza térmica
-                new Color(0.95f, 0.20f, 0.18f), // Petardo festivo
-                new Color(0.35f, 0.78f, 0.68f)  // Duende mecánico
-            };
-
+            string[] names = { "Chocolate", "Galleta", "Menta", "Guirnalda", "Baliza", "Petardo", "Autómata" };
+            BoreatekGlyph[] glyphs = { BoreatekGlyph.Thermos, BoreatekGlyph.Cookie, BoreatekGlyph.Candy,
+                BoreatekGlyph.Garland, BoreatekGlyph.Beacon, BoreatekGlyph.Firecracker, BoreatekGlyph.Automaton };
+            Color[] accents = { ColBrassRim, ColBrassGold, new Color32(250, 129, 141, 255), ColBrassRim,
+                ColWarmAmber, new Color32(254, 128, 119, 255), ColIceCyan };
             _hotbarCountTexts.Clear();
-            _hotbarBorders.Clear();
+            _hotbarGlyphs.Clear();
+            _hotbarAccents.Clear();
 
-            float startX = 14f;
-            float slotWidth = 114f;
-            float spacing = 6f;
-
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < keys.Length; i++)
             {
-                float x = startX + i * (slotWidth + spacing);
-                RectTransform slot = CreatePanelCard($"HotbarSlot_{keys[i]}", hotbarRoot,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                    new Vector2(x, -8f), new Vector2(slotWidth, 78f), ColCardInner);
+                RectTransform slot = CreatePanelCard($"HotbarSlot_{keys[i]}", bar, topLeft, topLeft, topLeft,
+                    new Vector2(11f + 115f * i, -9f), new Vector2(108f, 76f), ColBlueSteel);
+                ApplyMetalPanel(slot, ColBlueSteel, ColSteelRim);
+                slot.GetComponent<Image>().raycastTarget = false;
+                CreateLabel(slot, "KeyTxt", keys[i], new Vector2(9f, -7f), new Vector2(22f, 22f),
+                    15, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
+                Text count = CreateLabel(slot, "CountTxt", "", new Vector2(69f, -7f), new Vector2(29f, 22f),
+                    15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
+                BoreatekUiGlyph glyph = AddHudGlyph(slot, "ItemGlyph", glyphs[i], new Vector2(0.5f, 1f),
+                    new Vector2(0f, -28f), 29f, accents[i]);
+                CreateLabel(slot, "ItemNameTxt", names[i], new Vector2(4f, -51f), new Vector2(100f, 21f),
+                    14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
 
-                _hotbarBorders.Add(slot.GetComponent<Image>());
-
-                // Badge de tecla (Arriba Izquierda)
-                RectTransform keyBadge = CreatePanelCard("KeyBadge", slot,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                    new Vector2(6f, -6f), new Vector2(26f, 22f), ColBrassGold);
-                Text keyTxt = CreateLabel(keyBadge, "KeyTxt", keys[i],
-                    Vector2.zero, new Vector2(26f, 22f), 13, FontStyle.Bold, ColPanelDark, TextAnchor.MiddleCenter);
-                StretchFull(keyTxt.GetComponent<RectTransform>());
-
-                // Medallón cromático del ítem
-                RectTransform medallion = CreatePanelCard("ItemMedallion", slot,
-                    new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                    new Vector2(8f, -10f), new Vector2(34f, 34f), iconColors[i]);
-                medallion.GetComponent<Image>().sprite = _circleMedallionSprite;
-
-                // Cantidad disponible (Arriba Derecha)
-                Text countTxt = CreateLabel(slot, "CountTxt", "x1",
-                    new Vector2(slotWidth - 42f, -6f), new Vector2(36f, 22f), 14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
-                _hotbarCountTexts.Add(countTxt);
-
-                // Nombre corto del ítem (Abajo)
-                CreateLabel(slot, "ItemNameTxt", names[i],
-                    new Vector2(4f, -52f), new Vector2(slotWidth - 8f, 22f), 12, FontStyle.Bold, ColTextMuted, TextAnchor.MiddleCenter);
+                _hotbarCountTexts.Add(count);
+                _hotbarGlyphs.Add(glyph);
+                _hotbarAccents.Add(accents[i]);
+                _shownHotbarStock[i] = -1;
             }
 
-            // Guía sutil de controles en el borde inferior
-            RectTransform footerHint = CreatePanelCard("ControlsFooterStrip", parent,
-                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-                new Vector2(0f, 4f), new Vector2(860f, 24f), new Color(0.03f, 0.06f, 0.10f, 0.82f));
+            Text controls = CreateLabel(parent, "ControlsTxt",
+                "[WASD] Mover   ·   [Shift] Correr   ·   [Clic izq.] Picar   ·   [E] Interactuar   ·   [Esc] Pausa",
+                Vector2.zero, new Vector2(820f, 23f), 14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
+            RectTransform footer = controls.rectTransform;
+            footer.anchorMin = footer.anchorMax = footer.pivot = bottom;
+            footer.anchoredPosition = new Vector2(0f, 9f);
+        }
 
-            Text hintTxt = CreateLabel(footerHint, "ControlsTxt",
-                "[WASD] Mover  •  [Shift] Correr  •  [Clic Izq] Picar  •  [E] Interactuar / Tolva  •  [F] Faro LED  •  [V] Cámara 1ra/3ra  •  [Tab] Tienda",
-                Vector2.zero, new Vector2(850f, 24f), 12, FontStyle.Normal, ColTextMuted, TextAnchor.MiddleCenter);
-            StretchFull(hintTxt.GetComponent<RectTransform>());
+        private static BoreatekUiGlyph AddHudGlyph(RectTransform parent, string name, BoreatekGlyph glyph,
+            Vector2 anchor, Vector2 position, float size, Color tint)
+        {
+            var icon = CreateUIObject(name, parent).AddComponent<BoreatekUiGlyph>();
+            RectTransform rect = icon.rectTransform;
+            rect.anchorMin = rect.anchorMax = anchor;
+            rect.anchoredPosition = position;
+            rect.sizeDelta = Vector2.one * size;
+            icon.SetGlyph(glyph);
+            icon.color = tint;
+            icon.raycastTarget = false;
+            return icon;
+        }
+
+        private static Texture2D CreateFrostVignetteTexture()
+        {
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    Vector2 p = new Vector2(x, y) / (size - 1f) * 2f - Vector2.one;
+                    float edge = Mathf.Max(Mathf.Abs(p.x), Mathf.Abs(p.y));
+                    float alpha = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 1f, edge));
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(255f * alpha));
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+            return texture;
         }
 
         /// <summary>
@@ -624,114 +586,144 @@ namespace Boreatek.UI
         {
             if (_tempSystem != null)
             {
-                float normTemp = _tempSystem.NormalizedTemperature;
-                _tempBarFill.fillAmount = normTemp;
-                _tempBarFill.color = Color.Lerp(ColIceCyan, ColWarmAmber, normTemp);
-                _tempValueText.text = $"{Mathf.RoundToInt(_tempSystem.CurrentTemperature)} / 100 °T";
+                float temperature = _tempSystem.CurrentTemperature;
+                _tempBarFill.fillAmount = _tempSystem.NormalizedTemperature;
+                _tempBarFill.color = Color.Lerp(ColIceCyan, ColWarmAmber, _tempSystem.NormalizedTemperature);
+                _tempValueText.text = $"{temperature:0} / {_tempSystem.MaxTemperature:0} °T";
 
                 if (_tempSystem.IsInsideHeatBubble)
                 {
-                    _tempBadgeText.text = "🔥 EN BURBUJA TÉRMICA";
-                    _tempBadgeBg.color = ColEmeraldSafe;
+                    _tempBadgeText.text = "A resguardo";
+                    _tempBadgeBg.color = new Color32(28, 82, 72, 255);
                 }
                 else if (_tempSystem.IsHotChocolateActive)
                 {
-                    _tempBadgeText.text = $"☕ CHOCOLATE ({Mathf.CeilToInt(_tempSystem.HotChocolateRemainingSeconds)}s)";
-                    _tempBadgeBg.color = ColWarmAmber;
+                    _tempBadgeText.text = $"Calor  {_tempSystem.HotChocolateRemainingSeconds:0}s";
+                    _tempBadgeBg.color = new Color32(107, 61, 29, 255);
                 }
                 else
                 {
-                    _tempBadgeText.text = "❄️ EXPUESTO AL FRÍO";
-                    _tempBadgeBg.color = _tempSystem.CurrentTemperature < 30f ? ColCandyRed : new Color(0.18f, 0.45f, 0.68f);
+                    bool critical = temperature < 30f;
+                    _tempBadgeText.text = critical ? "Frío crítico" : "A la intemperie";
+                    _tempBadgeBg.color = critical ? new Color32(128, 42, 52, 255) : ColBlueSteel;
                 }
 
-                float normHp = _tempSystem.NormalizedHealth;
-                _healthBarFill.fillAmount = normHp;
-                _healthValueText.text = $"{Mathf.RoundToInt(_tempSystem.CurrentHealth)} / 100 HP";
-                _biomeNameText.text = $"📍 Zona: {_tempSystem.ActiveHeatSourceName}";
+                _healthBarFill.fillAmount = _tempSystem.NormalizedHealth;
+                _healthValueText.text = $"{_tempSystem.CurrentHealth:0} / {_tempSystem.MaxHealth:0} HP";
+                _biomeNameText.text = _tempSystem.ActiveHeatSourceName;
             }
 
             if (_inventoryShop != null)
             {
-                float normLoad = _inventoryShop.MaxBackpackSlots > 0
-                    ? (float)_inventoryShop.CurrentBackpackCount / _inventoryShop.MaxBackpackSlots
-                    : 0f;
-                _backpackBarFill.fillAmount = Mathf.Clamp01(normLoad);
-                bool isFull = _inventoryShop.CurrentBackpackCount >= _inventoryShop.MaxBackpackSlots;
-                _backpackBarFill.color = isFull ? ColCandyRed : ColBrassGold;
-                _backpackValueText.text = isFull
-                    ? $"{_inventoryShop.CurrentBackpackCount} / {_inventoryShop.MaxBackpackSlots} (¡LLENO! Ve a la Tolva)"
-                    : $"Nv.{_inventoryShop.BackpackTier} — {_inventoryShop.CurrentBackpackCount} / {_inventoryShop.MaxBackpackSlots} Minerales";
-
-                _coinsValueText.text = $"🪙 {_inventoryShop.GingerbreadCoins} Monedas de Jengibre";
-                _coresValueText.text = $"🌋 Núcleos Forja: {_inventoryShop.LuminousCoresDeliveredToForge} / {_inventoryShop.LuminousCoresRequiredForChristmasEve}";
+                int count = _inventoryShop.CurrentBackpackCount;
+                int slots = _inventoryShop.MaxBackpackSlots;
+                bool full = count >= slots;
+                _backpackBarFill.fillAmount = slots > 0 ? (float)count / slots : 0f;
+                _backpackBarFill.color = full ? ColCandyRed : ColBrassGold;
+                _backpackValueText.text = full ? $"{count} / {slots}  ·  Llena" : $"{count} / {slots}";
+                _coinsValueText.text = $"{_inventoryShop.GingerbreadCoins} monedas";
+                _coresValueText.text = $"Forja  {_inventoryShop.LuminousCoresDeliveredToForge}/{_inventoryShop.LuminousCoresRequiredForChristmasEve}";
             }
         }
 
         private void UpdateClockWeatherAndEquipment()
         {
-            DayNightCycleManager dnc = DayNightCycleManager.Instance;
-            if (dnc != null)
+            DayNightCycleManager clock = DayNightCycleManager.Instance;
+            if (clock != null)
             {
-                _cycleBarFill.fillAmount = dnc.NormalizedCycleTime;
-                _cycleBarFill.color = dnc.IsNightPhase ? new Color(0.28f, 0.48f, 0.85f) : ColWarmAmber;
-
-                int minsRemaining = Mathf.CeilToInt((1f - dnc.NormalizedCycleTime) * 20f);
-                string phaseName = dnc.IsNightPhase ? "🌙 Noche Polar" : "☀️ Día Ártico";
-                _cycleTitleText.text = $"Ciclo {dnc.CurrentCycleNumber}/{DayNightCycleManager.CAMPAIGN_TOTAL_CYCLES} — {phaseName} (~{minsRemaining}m rest.)";
-
-                _weatherBadgeText.text = GetSpanishWeatherDescription(dnc.CurrentWeather, dnc.CurrentWeatherCoolingMultiplier);
-                _weatherBadgeBg.color = dnc.IsBlindBlizzardActive
-                    ? new Color(0.22f, 0.42f, 0.62f, 0.95f)
-                    : ColCardInner;
+                _cycleBarFill.fillAmount = clock.NormalizedCycleTime;
+                _cycleBarFill.color = clock.IsNightPhase ? ColIceCyan : ColBrassGold;
+                int minutes = Mathf.CeilToInt((1f - clock.NormalizedCycleTime) * 20f);
+                _cycleTitleText.text = $"{clock.CurrentCycleNumber}/{DayNightCycleManager.CAMPAIGN_TOTAL_CYCLES}  ·  {minutes} min";
+                _weatherBadgeText.text = GetSpanishWeatherDescription(clock.CurrentWeather, clock.CurrentWeatherCoolingMultiplier);
+                _weatherBadgeBg.color = clock.IsBlindBlizzardActive ? new Color32(38, 76, 113, 255) : ColBlueSteel;
             }
 
             int coatTier = _tempSystem != null ? _tempSystem.ThermalCoatTier : 1;
             int coatPct = _tempSystem != null ? Mathf.RoundToInt(_tempSystem.CoatCoolingReduction * 100f) : 0;
-            string headlampState = _player.IsHeadlampEnabled ? "ENCENDIDO [F]" : "APAGADO [F]";
-
+            string headlampState = _player.IsHeadlampEnabled ? "Encendido" : "Apagado";
             _equipmentSummaryText.text =
-                $"⛏️ Pico Cristal Energético: Nivel {_player.CurrentPickaxeTier} (Daño {_player.PickaxeDamage})\n" +
-                $"🧥 Abrigo Térmico + Botas: Nivel {coatTier} (-{coatPct}% enfriamiento)\n" +
-                $"🔦 Faro LED Frontal Casco: {headlampState}";
+                $"Pico  Nv. {_player.CurrentPickaxeTier} · Daño {_player.PickaxeDamage}\n" +
+                $"Abrigo  Nv. {coatTier} · −{coatPct}% frío\n" +
+                $"Faro  {headlampState}";
 
-            if (_inventoryShop != null && _inventoryShop.HasGiftRadarUnlocked)
+            if (_inventoryShop == null || !_inventoryShop.HasGiftRadarUnlocked)
             {
-                float d = FindNearestFrozenChestDistance();
-                _radarStatusText.text = d < 999f
-                    ? $"📡 RADAR DE REGALOS: Cofre Congelado a {d:0.0} m"
-                    : "📡 RADAR DE REGALOS: Zona despejada de cofres";
+                _radarStatusText.text = "[Tab] Taller  ·  [F] Faro";
+            }
+            else if (Time.unscaledTime >= _nextRadarRefresh)
+            {
+                _nextRadarRefresh = Time.unscaledTime + 0.5f;
+                float distance = FindNearestFrozenChestDistance();
+                _radarStatusText.text = distance < 999f ? $"Radar  ·  Cofre a {distance:0} m" : "Radar  ·  Sin cofres cercanos";
             }
         }
 
         private void UpdateHotbarAndToast()
         {
-            if (_statusToastText != null)
+            string message = _player.LastStatusMessage;
+            if (message != _lastToastMessage)
             {
-                _statusToastText.text = $"📢 {_player.LastStatusMessage}";
+                _lastToastMessage = message;
+                _statusToastText.text = RemoveMessageGlyphPrefix(message);
+                _hideToastAt = Time.time + 5f;
             }
 
-            if (_inventoryShop == null || _hotbarCountTexts.Count < 7)
+            bool showToast = Time.time < _hideToastAt && !string.IsNullOrEmpty(_statusToastText.text);
+            GameObject toast = _statusToastText.transform.parent.gameObject;
+            if (toast.activeSelf != showToast)
+            {
+                toast.SetActive(showToast);
+            }
+
+            if (_inventoryShop == null)
             {
                 return;
             }
 
-            int[] counts =
-            {
-                _inventoryShop.HotChocolateThermosCount,
-                _inventoryShop.GingerbreadCookieCount,
-                _inventoryShop.PeppermintCaneCount,
-                _inventoryShop.StringLightsStock,
-                _inventoryShop.ThermalBeaconsStock,
-                _inventoryShop.FestiveFirecrackersStock,
-                _inventoryShop.MechanicalElfExtractorsStock
-            };
+            SetHotbarStock(0, _inventoryShop.HotChocolateThermosCount);
+            SetHotbarStock(1, _inventoryShop.GingerbreadCookieCount);
+            SetHotbarStock(2, _inventoryShop.PeppermintCaneCount);
+            SetHotbarStock(3, _inventoryShop.StringLightsStock);
+            SetHotbarStock(4, _inventoryShop.ThermalBeaconsStock);
+            SetHotbarStock(5, _inventoryShop.FestiveFirecrackersStock);
+            SetHotbarStock(6, _inventoryShop.MechanicalElfExtractorsStock);
+        }
 
-            for (int i = 0; i < 7; i++)
+        private void SetHotbarStock(int index, int amount)
+        {
+            if (_shownHotbarStock[index] == amount)
             {
-                _hotbarCountTexts[i].text = $"x{counts[i]}";
-                _hotbarCountTexts[i].color = counts[i] > 0 ? ColTextLight : ColCandyRed;
+                return;
             }
+
+            _shownHotbarStock[index] = amount;
+            _hotbarCountTexts[index].text = amount.ToString();
+            _hotbarCountTexts[index].color = amount > 0 ? ColTextLight : ColTextMuted;
+            _hotbarGlyphs[index].color = amount > 0 ? _hotbarAccents[index] : new Color32(105, 129, 146, 255);
+        }
+
+        private static string RemoveMessageGlyphPrefix(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return "";
+            }
+
+            int index = 0;
+            while (index < text.Length)
+            {
+                char c = text[index];
+                var category = char.GetUnicodeCategory(c);
+                if (!char.IsWhiteSpace(c) && category != System.Globalization.UnicodeCategory.Surrogate &&
+                    category != System.Globalization.UnicodeCategory.OtherSymbol &&
+                    category != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    break;
+                }
+                index++;
+            }
+            return index == 0 ? text : text.Substring(index);
         }
 
         private void UpdateCrosshairInteractionPrompt()
@@ -754,7 +746,7 @@ namespace Boreatek.UI
                 if (!string.IsNullOrEmpty(prompt))
                 {
                     _interactionCardRoot.SetActive(true);
-                    _interactionPromptText.text = prompt;
+                    _interactionPromptText.text = RemoveMessageGlyphPrefix(prompt);
                     return;
                 }
             }
@@ -810,13 +802,13 @@ namespace Boreatek.UI
             switch (state)
             {
                 case WeatherState.ClearArcticDay:
-                    return $"☀️ Clima: Día Ártico Despejado (Enfriamiento x{mult:0.0})";
+                    return $"Día ártico  ·  Frío ×{mult:0.0}";
                 case WeatherState.PolarNight:
-                    return $"🌙 Clima: Noche Polar con Auroras (Enfriamiento x{mult:0.0})";
+                    return $"Noche polar  ·  Frío ×{mult:0.0}";
                 case WeatherState.BlindBlizzard:
-                    return $"🌨️ ¡EVENTO: VENTISCA CIEGA! (Enfriamiento x{mult:0.0})";
+                    return $"Ventisca ciega  ·  Frío ×{mult:0.0}";
                 case WeatherState.ChristmasEveOvercharge:
-                    return $"🎄 ¡LA GRAN NOCHEBUENA! (Recursos 2x | Tormenta x{mult:0.0})";
+                    return $"Gran Nochebuena  ·  Frío ×{mult:0.0}";
                 default:
                     return "Clima Polar";
             }
@@ -891,35 +883,29 @@ namespace Boreatek.UI
             return rt;
         }
 
-        private Image CreateProgressBar(
-            RectTransform parent,
-            string name,
-            Vector2 anchoredPos,
-            Vector2 size,
-            Color fillColor,
-            out Text valueLabel)
+        private Image CreateHudGauge(RectTransform parent, string name, string label, float y,
+            float width, Color fillColor, out Text valueLabel)
         {
-            RectTransform bgRect = CreatePanelCard(name + "_BG", parent,
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
-                anchoredPos, size, new Color(0.03f, 0.06f, 0.09f, 0.95f));
+            CreateLabel(parent, name + "_Label", label, new Vector2(18f, -y), new Vector2(123f, 20f),
+                15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
+            valueLabel = CreateLabel(parent, name + "_Value", "", new Vector2(143f, -y), new Vector2(width - 125f, 20f),
+                15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
 
-            GameObject fillObj = CreateUIObject(name + "_Fill", bgRect);
-            RectTransform fillRect = fillObj.GetComponent<RectTransform>();
-            StretchFull(fillRect, padding: 2f);
-
-            Image fillImg = fillObj.AddComponent<Image>();
-            fillImg.sprite = _flatBarSprite;
-            fillImg.type = Image.Type.Filled;
-            fillImg.fillMethod = Image.FillMethod.Horizontal;
-            fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
-            fillImg.fillAmount = 1f;
-            fillImg.color = fillColor;
-
-            valueLabel = CreateLabel(bgRect, name + "_ValueTxt", "100 / 100",
-                Vector2.zero, size, 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            StretchFull(valueLabel.GetComponent<RectTransform>());
-
-            return fillImg;
+            var topLeft = new Vector2(0f, 1f);
+            RectTransform track = CreatePanelCard(name + "_Track", parent, topLeft, topLeft, topLeft,
+                new Vector2(18f, -y - 24f), new Vector2(width, 9f), new Color32(35, 56, 73, 255));
+            Image trackImage = track.GetComponent<Image>();
+            trackImage.sprite = _flatBarSprite;
+            trackImage.raycastTarget = false;
+            var fill = CreateUIObject(name + "_Fill", track).AddComponent<Image>();
+            StretchFull(fill.rectTransform, 1f);
+            fill.sprite = _flatBarSprite;
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fill.color = fillColor;
+            fill.raycastTarget = false;
+            return fill;
         }
 
         private Text CreateLabel(
