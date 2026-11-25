@@ -708,63 +708,7 @@ namespace Boreatek.World
             invShop.RegisterResourceCatalog(_resources.Values);
             PlayerController playerCtrl = playerObj.AddComponent<PlayerController>();
 
-            // Modelo 3D Estilizado / Chibi del Duende Ingeniero (IP 100% Original)
-            Transform visualRoot = new GameObject("ElfEngineer_ChibiModel3D").transform;
-            visualRoot.SetParent(playerObj.transform, false);
-
-            // 1. Botas de Nieve y Abrigo Térmico Acolchado (Verde Oliva #4A5D4E + Cuero + Forro de Borrego)
-            CreateBox(visualRoot, "SnowBoot_L", new Vector3(-0.16f, 0.14f, 0.04f), new Vector3(0.22f, 0.26f, 0.34f),
-                new Color(0.28f, 0.22f, 0.18f));
-            CreateBox(visualRoot, "SnowBoot_R", new Vector3(0.16f, 0.14f, 0.04f), new Vector3(0.22f, 0.26f, 0.34f),
-                new Color(0.28f, 0.22f, 0.18f));
-            CreateCylinder(visualRoot, "QuiltedThermalCoat_Olive", new Vector3(0f, 0.56f, 0f),
-                new Vector3(0.62f, 0.34f, 0.54f), new Color(0.29f, 0.36f, 0.31f));
-            CreateCylinder(visualRoot, "SheepskinCollar", new Vector3(0f, 0.88f, 0f),
-                new Vector3(0.66f, 0.08f, 0.60f), new Color(0.86f, 0.83f, 0.76f));
-
-            // 2. Cabeza Chibi Expresiva con Nariz Rojiza y Orejas Puntiagudas Prominentes
-            CreateSphere(visualRoot, "ChibiHead", new Vector3(0f, 1.12f, 0f), Vector3.one * 0.50f,
-                new Color(0.95f, 0.76f, 0.66f));
-            CreateSphere(visualRoot, "RosyColdNose", new Vector3(0f, 1.10f, 0.25f), Vector3.one * 0.11f,
-                new Color(0.92f, 0.38f, 0.36f));
-            GameObject earL = CreateBox(visualRoot, "PointedEar_L", new Vector3(-0.34f, 1.12f, 0f),
-                new Vector3(0.28f, 0.10f, 0.10f), new Color(0.95f, 0.72f, 0.62f));
-            earL.transform.localRotation = Quaternion.Euler(0f, 0f, 18f);
-            GameObject earR = CreateBox(visualRoot, "PointedEar_R", new Vector3(0.34f, 1.12f, 0f),
-                new Vector3(0.28f, 0.10f, 0.10f), new Color(0.95f, 0.72f, 0.62f));
-            earR.transform.localRotation = Quaternion.Euler(0f, 0f, -18f);
-
-            // 3. Casco Minero Metálico con Faro Frontal LED
-            CreateSphere(visualRoot, "MiningHelmet_Metal", new Vector3(0f, 1.26f, 0f), new Vector3(0.56f, 0.38f, 0.58f),
-                new Color(0.27f, 0.35f, 0.29f));
-            CreateCylinder(visualRoot, "BrassHeadlampBezel", new Vector3(0f, 1.32f, 0.27f),
-                new Vector3(0.18f, 0.06f, 0.18f), new Color(0.78f, 0.58f, 0.26f));
-
-            GameObject headlampLightObj = new GameObject("Helmet_HeadlampSpotLight");
-            headlampLightObj.transform.SetParent(visualRoot, false);
-            headlampLightObj.transform.localPosition = new Vector3(0f, 1.32f, 0.32f);
-            Light headlamp = headlampLightObj.AddComponent<Light>();
-            headlamp.type = LightType.Spot;
-            headlamp.color = new Color(1.0f, 0.90f, 0.70f);
-            headlamp.intensity = 5.5f;
-            headlamp.range = 24f;
-            headlamp.spotAngle = 62f;
-
-            // 4. Tanque-Mochila Presurizado de Latón con Manómetros
-            CreateCylinder(visualRoot, "PressurizedBrassTankBackpack", new Vector3(0f, 0.62f, -0.34f),
-                new Vector3(0.32f, 0.32f, 0.32f), new Color(0.78f, 0.58f, 0.28f));
-            GameObject gaugeNeedle = CreateBox(visualRoot, "BrassPressureGaugeNeedle", new Vector3(0.17f, 0.66f, -0.34f),
-                new Vector3(0.04f, 0.12f, 0.04f), new Color(0.90f, 0.18f, 0.18f));
-
-            // 5. Pico Industrial con Cristal Energético Rojo
-            Transform pickaxeRoot = new GameObject("IndustrialPickaxe_Pivot").transform;
-            pickaxeRoot.SetParent(visualRoot, false);
-            pickaxeRoot.localPosition = new Vector3(0.38f, 0.58f, 0.25f);
-
-            CreateCylinder(pickaxeRoot, "Pickaxe_Handle", new Vector3(0f, 0.25f, 0f),
-                new Vector3(0.06f, 0.32f, 0.06f), new Color(0.42f, 0.28f, 0.18f));
-            GameObject crystalTip = CreateBox(pickaxeRoot, "Pickaxe_RedCandyCrystalTip", new Vector3(0f, 0.56f, 0.16f),
-                new Vector3(0.12f, 0.14f, 0.46f), new Color(0.92f, 0.18f, 0.24f), emissionIntensity: 2.8f);
+            ElfVisuals elf = BuildElfModel(playerObj.transform);
 
             // Pivote de cámara conectado a Main Camera
             Transform camPivot = new GameObject("Player_CameraPivot").transform;
@@ -797,15 +741,17 @@ namespace Boreatek.World
 
             Transform respawnPoint = new GameObject("Village_SafeRespawnPoint").transform;
             respawnPoint.position = new Vector3(0f, 1.2f, -5.5f);
-            tempSys.SetVillageRespawnPoint(respawnPoint, gaugeNeedle.transform);
+            tempSys.SetVillageRespawnPoint(respawnPoint, elf.LowerGauge, elf.UpperGauge);
 
             playerCtrl.ConfigureRigReferences(
                 camPivot,
                 mainCam,
-                headlamp,
-                pickaxeRoot,
-                crystalTip.GetComponent<Renderer>(),
-                visualRoot);
+                elf.Headlamp,
+                elf.Pickaxe,
+                elf.Crystal,
+                elf.Root,
+                elf.Head,
+                elf.LampLens);
 
             return playerCtrl;
         }

@@ -8,15 +8,15 @@ namespace Boreatek.World
     public sealed class BoreatekLandscapeGeometry : MonoBehaviour
     {
         private readonly List<Object> _assets = new List<Object>();
-        private readonly Dictionary<(Color, float, float), Material> _materials =
-            new Dictionary<(Color, float, float), Material>();
+        private readonly Dictionary<(Color, float, float, float), Material> _materials =
+            new Dictionary<(Color, float, float, float), Material>();
         private Shader _shader;
 
         internal void Initialize(Shader shader) => _shader = shader;
 
-        internal Material Finish(Color color, float emission = 0f, float smoothness = 0.2f)
+        internal Material Finish(Color color, float emission = 0f, float smoothness = 0.2f, float metallic = 0f)
         {
-            var key = (color, emission, smoothness);
+            var key = (color, emission, smoothness, metallic);
             if (_materials.TryGetValue(key, out Material cached))
             {
                 return cached;
@@ -24,6 +24,7 @@ namespace Boreatek.World
 
             var material = Own(new Material(_shader) { name = "M_Boreatek_Scenery", color = color });
             if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
+            if (material.HasProperty("_Metallic")) material.SetFloat("_Metallic", metallic);
             if (emission > 0f && material.HasProperty("_EmissionColor"))
             {
                 material.EnableKeyword("_EMISSION");
@@ -82,17 +83,27 @@ namespace Boreatek.World
         internal sealed class Batch
         {
             private readonly List<Vector3> _vertices = new List<Vector3>();
+            private readonly List<Vector3> _normals = new List<Vector3>();
             private readonly List<List<int>> _triangles = new List<List<int>>();
             private readonly Dictionary<Material, int> _slots = new Dictionary<Material, int>();
             internal readonly List<Material> Materials = new List<Material>();
 
             internal void Triangle(Vector3 a, Vector3 b, Vector3 c, Material material)
             {
-                var indices = GetIndices(material);
+                Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
+                AddTriangle((a, normal), (b, normal), (c, normal), GetIndices(material));
+            }
+
+            private void AddTriangle((Vector3 p, Vector3 n) a, (Vector3 p, Vector3 n) b,
+                (Vector3 p, Vector3 n) c, List<int> indices)
+            {
                 int index = _vertices.Count;
-                _vertices.Add(a);
-                _vertices.Add(b);
-                _vertices.Add(c);
+                _vertices.Add(a.p);
+                _vertices.Add(b.p);
+                _vertices.Add(c.p);
+                _normals.Add(a.n);
+                _normals.Add(b.n);
+                _normals.Add(c.n);
                 indices.Add(index);
                 indices.Add(index + 1);
                 indices.Add(index + 2);
@@ -102,6 +113,39 @@ namespace Boreatek.World
             {
                 Triangle(a, b, c, material);
                 Triangle(a, c, d, material);
+            }
+
+            internal void Ellipsoid(Vector3 center, Vector3 radii, int sides, int bands, Material material,
+                Quaternion? rotation = null, bool dome = false)
+            {
+                Quaternion orientation = rotation ?? Quaternion.identity;
+                float low = dome ? 0f : -Mathf.PI * 0.5f;
+                float high = Mathf.PI * 0.5f;
+                var indices = GetIndices(material);
+                for (int band = 0; band < bands; band++)
+                {
+                    float phi0 = Mathf.Lerp(low, high, band / (float)bands);
+                    float phi1 = Mathf.Lerp(low, high, (band + 1f) / bands);
+                    for (int side = 0; side < sides; side++)
+                    {
+                        float a = side * 2f * Mathf.PI / sides, b = (side + 1) * 2f * Mathf.PI / sides;
+                        var u0 = EllipsoidPoint(center, radii, orientation, a, phi0);
+                        var v0 = EllipsoidPoint(center, radii, orientation, b, phi0);
+                        var u1 = EllipsoidPoint(center, radii, orientation, a, phi1);
+                        var v1 = EllipsoidPoint(center, radii, orientation, b, phi1);
+                        if (band < bands - 1) AddTriangle(u0, u1, v1, indices);
+                        if (dome || band > 0) AddTriangle(u0, v1, v0, indices);
+                    }
+                }
+            }
+
+            private static (Vector3, Vector3) EllipsoidPoint(Vector3 center, Vector3 radii, Quaternion rotation,
+                float azimuth, float elevation)
+            {
+                float horizontal = Mathf.Cos(elevation);
+                var unit = new Vector3(horizontal * Mathf.Cos(azimuth), Mathf.Sin(elevation), horizontal * Mathf.Sin(azimuth));
+                var normal = new Vector3(unit.x / radii.x, unit.y / radii.y, unit.z / radii.z).normalized;
+                return (center + rotation * Vector3.Scale(unit, radii), rotation * normal);
             }
 
             internal void Box(Vector3 center, Vector3 size, Material material, Quaternion? rotation = null)
@@ -176,9 +220,9 @@ namespace Boreatek.World
                 var mesh = new Mesh { name = name };
                 if (_vertices.Count > 65535) mesh.indexFormat = IndexFormat.UInt32;
                 mesh.SetVertices(_vertices);
+                mesh.SetNormals(_normals);
                 mesh.subMeshCount = _triangles.Count;
                 for (int i = 0; i < _triangles.Count; i++) mesh.SetTriangles(_triangles[i], i, false);
-                mesh.RecalculateNormals();
                 mesh.RecalculateBounds();
                 return mesh;
             }

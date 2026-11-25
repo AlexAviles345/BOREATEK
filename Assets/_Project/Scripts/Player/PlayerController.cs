@@ -63,6 +63,9 @@ namespace Boreatek.Player
         private bool _isShopMenuOpen;
         private bool _gameplayEnabled = true;
         private Transform _characterVisual;
+        private Renderer _thirdPersonHead;
+        private Renderer _headlampLens;
+        private MaterialPropertyBlock _pickaxeFinish;
         private IInteractable _currentFocusedInteractable;
         private Quaternion _initialPickaxeLocalRot = Quaternion.identity;
 
@@ -162,7 +165,7 @@ namespace Boreatek.Player
             // F: Encender / Apagar Faro Frontal LED del Casco Minero
             if (kb.fKey.wasPressedThisFrame && _helmetHeadlamp != null)
             {
-                _helmetHeadlamp.enabled = !_helmetHeadlamp.enabled;
+                SetHeadlampEnabled(!_helmetHeadlamp.enabled);
                 PublishStatus(_helmetHeadlamp.enabled
                     ? "Faro Frontal LED del casco ENCENDIDO."
                     : "Faro Frontal LED del casco APAGADO (menor detección enemiga).");
@@ -418,7 +421,9 @@ namespace Boreatek.Player
             Light headlamp,
             Transform pickaxeRoot,
             Renderer pickaxeCrystalRenderer,
-            Transform characterVisual)
+            Transform characterVisual,
+            Renderer thirdPersonHead = null,
+            Renderer headlampLens = null)
         {
             _cameraPivot = cameraPivot;
             _playerCamera = cam;
@@ -426,6 +431,8 @@ namespace Boreatek.Player
             _pickaxeVisualRoot = pickaxeRoot;
             _pickaxeCrystalTipRenderer = pickaxeCrystalRenderer;
             _characterVisual = characterVisual;
+            _thirdPersonHead = thirdPersonHead;
+            _headlampLens = headlampLens;
 
             if (_pickaxeVisualRoot != null)
             {
@@ -445,7 +452,12 @@ namespace Boreatek.Player
                 Color crystalColor = _currentPickaxeTier == 1
                     ? new Color(0.90f, 0.22f, 0.27f)
                     : (_currentPickaxeTier == 2 ? new Color(1.0f, 0.45f, 0.12f) : new Color(1.0f, 0.85f, 0.25f));
-                _pickaxeCrystalTipRenderer.material.color = crystalColor;
+                _pickaxeFinish ??= new MaterialPropertyBlock();
+                _pickaxeCrystalTipRenderer.GetPropertyBlock(_pickaxeFinish);
+                _pickaxeFinish.SetColor("_BaseColor", crystalColor);
+                _pickaxeFinish.SetColor("_Color", crystalColor);
+                _pickaxeFinish.SetColor("_EmissionColor", crystalColor * 2.1f);
+                _pickaxeCrystalTipRenderer.SetPropertyBlock(_pickaxeFinish);
             }
 
             OnPickaxeTierChanged?.Invoke(_currentPickaxeTier);
@@ -525,10 +537,7 @@ namespace Boreatek.Player
             {
                 _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, 0f, 0f);
             }
-            if (_helmetHeadlamp != null)
-            {
-                _helmetHeadlamp.enabled = state.headlamp;
-            }
+            SetHeadlampEnabled(state.headlamp);
             UpdateCameraPositionImmediate();
             UpgradePickaxeTier(state.pickaxeTier);
             _pickaxeDamage = state.pickaxeDamage;
@@ -553,6 +562,8 @@ namespace Boreatek.Player
 
         private void UpdateCameraPositionImmediate()
         {
+            if (_thirdPersonHead != null) _thirdPersonHead.enabled = _useThirdPersonView;
+            RefreshHeadlampLens();
             if (_playerCamera != null && _cameraPivot != null)
             {
                 _playerCamera.transform.SetParent(_cameraPivot, false);
@@ -561,6 +572,17 @@ namespace Boreatek.Player
                     : _firstPersonCameraOffset;
                 _playerCamera.transform.localRotation = Quaternion.identity;
             }
+        }
+
+        private void SetHeadlampEnabled(bool enabled)
+        {
+            if (_helmetHeadlamp != null) _helmetHeadlamp.enabled = enabled;
+            RefreshHeadlampLens();
+        }
+
+        private void RefreshHeadlampLens()
+        {
+            if (_headlampLens != null) _headlampLens.enabled = _useThirdPersonView && IsHeadlampEnabled;
         }
     }
 }

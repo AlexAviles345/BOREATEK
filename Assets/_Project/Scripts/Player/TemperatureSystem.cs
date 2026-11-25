@@ -40,6 +40,7 @@ namespace Boreatek.Player
         [Header("Diegetic Brass Backpack Gauge")]
         [Tooltip("Aguja o indicador visual del manómetro térmico en el Tanque-Mochila Presurizado de Latón.")]
         [SerializeField] private Transform _brassGaugeNeedleTransform;
+        private Transform _upperBrassGaugeNeedle;
 
         private readonly HashSet<HeatSourceNode> _activeHeatSources = new HashSet<HeatSourceNode>();
         private BiomeType _currentBiome = BiomeType.SantaIndustrialVillage;
@@ -240,11 +241,12 @@ namespace Boreatek.Player
 
         private void UpdateDiegeticBrassGauge()
         {
-            if (_brassGaugeNeedleTransform != null)
-            {
-                float angle = Mathf.Lerp(-120f, 120f, NormalizedTemperature);
-                _brassGaugeNeedleTransform.localRotation = Quaternion.Euler(0f, 0f, -angle);
-            }
+            if (_brassGaugeNeedleTransform == null && _upperBrassGaugeNeedle == null) return;
+
+            float angle = Mathf.Lerp(-120f, 120f, NormalizedTemperature);
+            Quaternion reading = Quaternion.Euler(0f, 0f, -angle);
+            if (_brassGaugeNeedleTransform != null) _brassGaugeNeedleTransform.localRotation = reading;
+            if (_upperBrassGaugeNeedle != null) _upperBrassGaugeNeedle.localRotation = reading;
         }
 
         /// <summary>
@@ -295,13 +297,15 @@ namespace Boreatek.Player
             _coatCoolingReduction = Mathf.Clamp(newCoolingReduction, 0f, 0.65f);
         }
 
-        public void SetVillageRespawnPoint(Transform respawnTransform, Transform gaugeNeedle = null)
+        public void SetVillageRespawnPoint(Transform respawnTransform, Transform gaugeNeedle = null,
+            Transform upperGaugeNeedle = null)
         {
             _villageRespawnPoint = respawnTransform;
             if (gaugeNeedle != null)
             {
                 _brassGaugeNeedleTransform = gaugeNeedle;
             }
+            _upperBrassGaugeNeedle = upperGaugeNeedle;
         }
 
         private void Die(bool fromCold)
