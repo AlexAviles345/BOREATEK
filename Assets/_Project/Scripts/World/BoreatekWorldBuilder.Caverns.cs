@@ -12,6 +12,14 @@ namespace Boreatek.World
             new Vector2(2.81f, 3.82f), new Vector2(3.43f, 2.58f), new Vector2(3.43f, 0.25f)
         };
 
+        private static readonly Vector2[] CavernProfile =
+        {
+            new Vector2(-0.959f, 0.0f), new Vector2(-0.93f, 0.24f), new Vector2(-0.88f, 0.56f),
+            new Vector2(-0.75f, 0.81f), new Vector2(-0.45f, 0.96f), new Vector2(-0.14f, 0.96f),
+            new Vector2(0.18f, 0.98f), new Vector2(0.51f, 0.91f), new Vector2(0.77f, 0.75f),
+            new Vector2(0.91f, 0.53f), new Vector2(0.93f, 0.21f), new Vector2(0.959f, 0.0f)
+        };
+
         private void DressTunnel(Transform tunnel, Vector3 start, Quaternion rotation, float length, Color wallColor)
         {
             var liner = new Batch();
@@ -90,6 +98,7 @@ namespace Boreatek.World
             Material shard = _landscape.Finish(glow, stratum == 3 ? 0.14f : 0.55f, 0.64f);
             Material trail = _landscape.Finish(new Color32(243, 122, 53, 255), 1.1f);
             var art = new System.Random(_worldSeed ^ (1009 * stratum));
+            AddCavernEnvelope(walls, size, stratum, rock, glow);
             for (int side = -1; side <= 1; side += 2)
             {
                 for (int i = 0; i < 13; i++)
@@ -118,7 +127,83 @@ namespace Boreatek.World
                 }
             }
             _landscape.Place(chamber, "Cavern_FacetedWallsAndRouteMarkers", walls);
+            if (stratum == 2) DressGeodeGate(chamber, size);
             if (stratum == 3) DressGeothermalFissure(chamber, size);
+        }
+
+        private void AddCavernEnvelope(Batch shell, Vector3 size, int stratum, Color rock, Color glow)
+        {
+            Color tint = stratum == 3 ? new Color(0.23f, 0.20f, 0.21f) : glow;
+            Material[] facets =
+            {
+                _landscape.Finish(rock * 0.78f),
+                _landscape.Finish(Color.Lerp(rock, tint, 0.16f)),
+                _landscape.Finish(Color.Lerp(rock, tint, 0.37f), stratum == 2 ? 0.1f : 0f, 0.38f),
+                _landscape.Finish(Color.Lerp(rock, tint, 0.57f), stratum == 2 ? 0.29f : 0.02f, 0.42f)
+            };
+            const int slices = 11;
+            var points = new Vector3[slices + 1, CavernProfile.Length];
+            for (int row = 0; row <= slices; row++)
+            {
+                float z = Mathf.Lerp(-size.z * 0.5f, size.z * 0.5f, row / (float)slices);
+                for (int column = 0; column < CavernProfile.Length; column++)
+                {
+                    Vector2 rim = CavernProfile[column];
+                    float uneven = Mathf.PerlinNoise(row * 0.66f + stratum * 9f, column * 0.71f + 19f) - 0.5f;
+                    float lift = rim.y > 0.2f ? uneven * 1.20f : 0f;
+                    float x = rim.x * size.x * 0.5f + lift * 0.85f;
+                    float y = rim.y * size.y + lift;
+                    float depth = z + (row > 0 && row < slices ? uneven * 0.75f : 0f);
+                    points[row, column] = new Vector3(x, y, depth);
+                }
+            }
+            for (int row = 0; row < slices; row++)
+            {
+                for (int column = 0; column < CavernProfile.Length - 1; column++)
+                {
+                    Vector3 a = points[row, column], b = points[row, column + 1];
+                    Vector3 c = points[row + 1, column + 1], d = points[row + 1, column];
+                    int shade = CaveFacetShade(row, column, stratum);
+                    shell.Triangle(a, b, c, facets[shade]);
+                    shell.Triangle(a, c, d, facets[CaveFacetShade(row + 13, column + 3, stratum)]);
+                }
+            }
+        }
+
+        private static int CaveFacetShade(int row, int column, int stratum)
+        {
+            float shade = Mathf.PerlinNoise(row * 0.61f + 55f, column * 0.41f + 13f * stratum);
+            return Mathf.Clamp(Mathf.FloorToInt(shade * 4.5f), 0, 3);
+        }
+
+        private void DressGeodeGate(Transform chamber, Vector3 size)
+        {
+            var arch = new Batch();
+            Material outerIce = _landscape.Finish(new Color32(58, 141, 187, 255), 0.35f, 0.48f);
+            Material coreIce = _landscape.Finish(new Color32(58, 183, 229, 255), 0.9f, 0.48f);
+            Material frostedTip = _landscape.Finish(new Color32(147, 220, 247, 255), 0.92f, 0.59f);
+            const int sectors = 12;
+            float z = size.z * 0.5f - 0.8f;
+            for (int i = 0; i < sectors; i++)
+            {
+                Vector3 a = GeodeRim(i * Mathf.PI / sectors, z);
+                Vector3 b = GeodeRim((i + 1) * Mathf.PI / sectors, z);
+                arch.Frustum(a, b, 0.58f, 0.53f, 6, i % 3 == 0 ? outerIce : coreIce);
+                if (i % 2 == 0)
+                {
+                    float angle = (i + 0.4f) * Mathf.PI / sectors;
+                    Vector3 root = Vector3.Lerp(a, b, 0.4f);
+                    var edge = new Vector3(Mathf.Cos(angle) * 0.96f, Mathf.Sin(angle) * 1.11f, -0.37f);
+                    AddCrystal(arch, root, root + edge, 0.34f, coreIce, frostedTip);
+                }
+            }
+            _landscape.Place(chamber, "Geode_IceFractureGate", arch);
+        }
+
+        private static Vector3 GeodeRim(float angle, float z)
+        {
+            return new Vector3(Mathf.Cos(angle) * 4.72f, 0.54f + Mathf.Sin(angle) * 5.58f,
+                z + Mathf.Sin(angle * 5f) * 0.21f);
         }
 
         private void DressGeothermalFissure(Transform chamber, Vector3 size)

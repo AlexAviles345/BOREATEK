@@ -87,12 +87,12 @@ namespace Boreatek.World
                 Triangle(a, c, d, material);
             }
 
-            internal void Box(Vector3 center, Vector3 size, Material material, Quaternion rotation = default)
+            internal void Box(Vector3 center, Vector3 size, Material material, Quaternion? rotation = null)
             {
-                if (rotation == default) rotation = Quaternion.identity;
-                Vector3 x = rotation * (Vector3.right * size.x * 0.5f);
-                Vector3 y = rotation * (Vector3.up * size.y * 0.5f);
-                Vector3 z = rotation * (Vector3.forward * size.z * 0.5f);
+                Quaternion orientation = rotation ?? Quaternion.identity;
+                Vector3 x = orientation * (Vector3.right * size.x * 0.5f);
+                Vector3 y = orientation * (Vector3.up * size.y * 0.5f);
+                Vector3 z = orientation * (Vector3.forward * size.z * 0.5f);
                 Vector3 a = center - x - y - z, b = center + x - y - z;
                 Vector3 c = center + x + y - z, d = center - x + y - z;
                 Vector3 e = center - x - y + z, f = center + x - y + z;
