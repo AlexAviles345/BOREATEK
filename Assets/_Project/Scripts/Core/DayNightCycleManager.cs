@@ -129,6 +129,14 @@ namespace Boreatek.Core
             UpdateLightingAndFog(Time.deltaTime);
         }
 
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
         private void UpdateClockAndPhases(float dt)
         {
             _elapsedCycleSeconds += dt;

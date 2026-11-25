@@ -158,19 +158,6 @@ namespace Boreatek.Player
                 ToggleShopMenu();
             }
 
-            // Escape: Liberar o bloquear cursor
-            if (kb.escapeKey.wasPressedThisFrame)
-            {
-                if (_isShopMenuOpen)
-                {
-                    ToggleShopMenu();
-                }
-                else
-                {
-                    SetCursorLock(!_isCursorLocked);
-                }
-            }
-
             // F: Encender / Apagar Faro Frontal LED del Casco Minero
             if (kb.fKey.wasPressedThisFrame && _helmetHeadlamp != null)
             {

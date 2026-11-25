@@ -11,8 +11,10 @@ namespace Boreatek.UI
     {
         private GameObject _sessionCanvas;
         private Image _sessionBackdrop;
-        private RectTransform _mainMenu;
-        private Button _playButton;
+        private Text _sessionMessage;
+        private RectTransform _gameplayMenuCard;
+        private RectTransform _mainMenu, _pauseMenu;
+        private Button _playButton, _resumeButton;
 
         internal void BuildSessionMenu(BoreatekGameSession session)
         {
@@ -34,6 +36,18 @@ namespace Boreatek.UI
             _sessionBackdrop = _sessionCanvas.AddComponent<Image>();
             RectTransform root = (RectTransform)_sessionCanvas.transform;
             BuildTitleScreen(root, session);
+
+            var center = new Vector2(0.5f, 0.5f);
+            _gameplayMenuCard = CreatePanelCard("SessionCard", root,
+                center, center, center, Vector2.zero, new Vector2(560f, 416f), ColPanelDark);
+
+            _pauseMenu = CreateSessionPanel(_gameplayMenuCard, "PauseMenu", "En pausa", ColIceCyan);
+            _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 182f, ColBrassGold, session.Resume);
+            CreateSessionButton(_pauseMenu, "MainMenu", "Volver al menú principal", 248f, ColCardInner, session.ReturnToMainMenu);
+
+            _sessionMessage = CreateLabel(_gameplayMenuCard, "SessionMessage", "",
+                new Vector2(28f, -362f), new Vector2(504f, 32f), 18,
+                FontStyle.Normal, ColTextMuted, TextAnchor.MiddleCenter);
         }
 
         private void BuildTitleScreen(RectTransform root, BoreatekGameSession session)
@@ -49,17 +63,38 @@ namespace Boreatek.UI
             _playButton = CreateMenuButton(_mainMenu, "Play", "Iniciar nueva partida", 7f, 204f, 360f, ColBrassGold, session.StartNewGame);
         }
 
-        internal void ShowSessionScreen(SessionScreen screen)
+        internal void ShowSessionScreen(SessionScreen screen, string message)
         {
-            bool menuOpen = screen == SessionScreen.MainMenu;
+            bool menuOpen = screen != SessionScreen.Playing;
+            bool titleOpen = screen == SessionScreen.MainMenu;
             _hudCanvas.enabled = !menuOpen;
             _hudCanvas.GetComponent<GraphicRaycaster>().enabled = !menuOpen;
             _sessionCanvas.SetActive(menuOpen);
-            _sessionBackdrop.color = new Color(0.025f, 0.05f, 0.08f, 1f);
+            _mainMenu.gameObject.SetActive(screen == SessionScreen.MainMenu);
+            _gameplayMenuCard.gameObject.SetActive(screen == SessionScreen.Paused);
+            _pauseMenu.gameObject.SetActive(screen == SessionScreen.Paused);
+            _sessionBackdrop.color = screen switch
+            {
+                _ when titleOpen => new Color(0.025f, 0.05f, 0.08f, 1f),
+                _ => new Color(0.025f, 0.05f, 0.08f, 0.76f)
+            };
+            SetSessionMessage(message);
+
+            Button selected = screen switch
+            {
+                SessionScreen.MainMenu => _playButton,
+                SessionScreen.Paused => _resumeButton,
+                _ => null
+            };
             if (EventSystem.current != null)
             {
-                EventSystem.current.SetSelectedGameObject(menuOpen ? _playButton.gameObject : null);
+                EventSystem.current.SetSelectedGameObject(selected != null ? selected.gameObject : null);
             }
+        }
+
+        internal void SetSessionMessage(string message)
+        {
+            _sessionMessage.text = message;
         }
 
         private void OnDestroy()
@@ -69,6 +104,18 @@ namespace Boreatek.UI
                 Destroy(_sessionCanvas);
             }
         }
+
+        private RectTransform CreateSessionPanel(RectTransform card, string name, string title, Color titleColor)
+        {
+            RectTransform panel = (RectTransform)CreateUIObject(name, card).transform;
+            StretchFull(panel);
+            CreateLabel(panel, "Title", title, new Vector2(28f, -60f), new Vector2(504f, 75f), 56,
+                FontStyle.Bold, titleColor, TextAnchor.MiddleCenter);
+            return panel;
+        }
+
+        private Button CreateSessionButton(RectTransform panel, string name, string label, float y, Color color,
+            UnityAction action) => CreateMenuButton(panel, name, label, 60f, y, 440f, color, action);
 
         private Button CreateMenuButton(RectTransform panel, string name, string label, float x, float y,
             float width, Color color, UnityAction action)
