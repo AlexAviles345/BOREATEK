@@ -10,6 +10,8 @@ namespace Boreatek.World
         private readonly List<Object> _assets = new List<Object>();
         private readonly Dictionary<(Color, float, float, float), Material> _materials =
             new Dictionary<(Color, float, float, float), Material>();
+        private readonly Dictionary<string, (Mesh mesh, Material[] materials)> _sharedMeshes =
+            new Dictionary<string, (Mesh mesh, Material[] materials)>();
         private Shader _shader;
 
         internal void Initialize(Shader shader) => _shader = shader;
@@ -60,12 +62,27 @@ namespace Boreatek.World
 
         internal GameObject Place(Transform parent, string name, Batch batch, bool collision = false)
         {
+            Mesh mesh = Own(batch.Build("SM_" + name));
+            return PlaceMesh(parent, name, mesh, batch.Materials.ToArray(), collision);
+        }
+
+        internal void PlaceShared(Transform parent, string name, System.Func<Batch> build)
+        {
+            if (!_sharedMeshes.TryGetValue(name, out var model))
+            {
+                Batch batch = build();
+                model = (Own(batch.Build("SM_" + name)), batch.Materials.ToArray());
+                _sharedMeshes.Add(name, model);
+            }
+            PlaceMesh(parent, name, model.mesh, model.materials, collision: false);
+        }
+
+        private static GameObject PlaceMesh(Transform parent, string name, Mesh mesh, Material[] materials, bool collision)
+        {
             var obj = new GameObject(name);
             obj.transform.SetParent(parent, false);
-            Mesh mesh = Own(batch.Build("SM_" + name));
             obj.AddComponent<MeshFilter>().sharedMesh = mesh;
-            var renderer = obj.AddComponent<MeshRenderer>();
-            renderer.sharedMaterials = batch.Materials.ToArray();
+            obj.AddComponent<MeshRenderer>().sharedMaterials = materials;
             if (collision) obj.AddComponent<MeshCollider>().sharedMesh = mesh;
             return obj;
         }

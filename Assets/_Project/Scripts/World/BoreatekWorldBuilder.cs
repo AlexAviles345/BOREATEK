@@ -644,15 +644,7 @@ namespace Boreatek.World
             enemy.transform.SetParent(parent, false);
             enemy.transform.position = pos;
 
-            // Torso oxidado verde/rojo y cabeza esférica con ojos ámbar brillantes
-            CreateBox(enemy.transform, "RustedTorso", new Vector3(0f, 0.95f, 0f), new Vector3(0.95f, 1.1f, 0.65f),
-                new Color(0.28f, 0.33f, 0.27f));
-            CreateSphere(enemy.transform, "SphericalLeadHead", new Vector3(0f, 1.8f, 0f), Vector3.one * 0.72f,
-                new Color(0.58f, 0.46f, 0.32f));
-            CreateSphere(enemy.transform, "AmberEye_L", new Vector3(-0.16f, 1.84f, 0.32f), Vector3.one * 0.14f,
-                new Color(1.0f, 0.65f, 0.10f), emissionIntensity: 3.0f);
-            CreateSphere(enemy.transform, "AmberEye_R", new Vector3(0.16f, 1.84f, 0.32f), Vector3.one * 0.14f,
-                new Color(1.0f, 0.65f, 0.10f), emissionIntensity: 3.0f);
+            _landscape.PlaceShared(enemy.transform, "Soldier_PatinaAndClockwork", BuildLeadSoldierModel);
 
             CapsuleCollider col = enemy.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, 1.1f, 0f);
@@ -669,10 +661,7 @@ namespace Boreatek.World
             golem.transform.SetParent(parent, false);
             golem.transform.position = pos;
 
-            CreateBox(golem.transform, "GolemIceTorso", new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 2.0f, 1.3f),
-                new Color(0.32f, 0.64f, 0.86f), emissionIntensity: 1.2f);
-            CreateBox(golem.transform, "GolemHead", new Vector3(0f, 2.8f, 0f), new Vector3(1.0f, 0.9f, 1.0f),
-                new Color(0.55f, 0.82f, 0.98f), emissionIntensity: 1.8f);
+            _landscape.PlaceShared(golem.transform, "Golem_FacetedIceAndScrap", BuildFrostGolemModel);
 
             CapsuleCollider col = golem.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, 1.6f, 0f);
