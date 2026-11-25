@@ -272,7 +272,7 @@ namespace Boreatek.Player
         /// <summary>
         /// Recibe daño en combate contra Soldados de Juguete Defectuosos o Gólems de Escarcha.
         /// </summary>
-        public void ApplyCombatDamage(float damage)
+        public void ApplyCombatDamage(float damage, Vector3? attackerPosition = null)
         {
             if (_isDead || damage <= 0f || Time.timeScale <= 0f)
             {
@@ -285,6 +285,10 @@ namespace Boreatek.Player
             if (_currentHealth <= 0f)
             {
                 Die(fromCold: false);
+            }
+            else if (TryGetComponent(out PlayerController player))
+            {
+                player.ReactToCombatDamage(attackerPosition);
             }
         }
 

@@ -63,6 +63,7 @@ namespace Boreatek.Player
         private bool _isShopMenuOpen;
         private bool _gameplayEnabled = true;
         private Transform _characterVisual;
+        private ElfPose _elfPose;
         private Renderer _thirdPersonHead;
         private Renderer _headlampLens;
         private MaterialPropertyBlock _pickaxeFinish;
@@ -129,6 +130,7 @@ namespace Boreatek.Player
             }
 
             UpdatePickaxeSwingVisual(dt);
+            _elfPose?.Update(dt);
         }
 
         private void UpdateTimers(float dt)
@@ -250,6 +252,7 @@ namespace Boreatek.Player
                 }
             }
 
+            Vector3 startPosition = transform.position;
             Vector3 moveDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
             _characterController.Move(moveDirection * (targetSpeed * dt));
 
@@ -269,6 +272,13 @@ namespace Boreatek.Player
 
             _verticalVelocity.y += _gravity * dt;
             _characterController.Move(_verticalVelocity * dt);
+            if (_elfPose != null && dt > 0f)
+            {
+                Vector3 travel = Vector3.ProjectOnPlane(transform.position - startPosition, Vector3.up);
+                float pace = travel.magnitude / (Mathf.Max(targetSpeed, 0.01f) * dt);
+                _elfPose.UpdateTravel(transform.InverseTransformDirection(travel.normalized), pace,
+                    isSprinting, _characterController.isGrounded, dt);
+            }
         }
 
         private void UpdateInteractionFocus()
@@ -318,31 +328,41 @@ namespace Boreatek.Player
             // E: Interactuar con el objeto apuntado (Tolva Central, Cofre Congelado, Veta, Tienda)
             if (kb.eKey.wasPressedThisFrame && _currentFocusedInteractable != null)
             {
+                if (_currentFocusedInteractable.CanInteract(gameObject))
+                {
+                    PlayInteraction(ElfPose.Gesture.Reach, _playerCamera.transform.forward);
+                }
                 _currentFocusedInteractable.Interact(gameObject);
             }
 
             // G: Desplegar Guirnalda Luminosa Navideña (Burbuja de calor de 6m)
             if (kb.gKey.wasPressedThisFrame)
             {
+                if (_inventoryAndShop.StringLightsStock > 0) PlayInteraction(ElfPose.Gesture.Place, transform.forward);
                 _inventoryAndShop.TryDeployStringLight(transform.position + transform.forward * 1.6f);
             }
 
             // H: Desplegar Baliza Térmica Portátil (Burbuja de 10m + derrite Cofres Congelados)
             if (kb.hKey.wasPressedThisFrame)
             {
+                if (_inventoryAndShop.ThermalBeaconsStock > 0) PlayInteraction(ElfPose.Gesture.Place, transform.forward);
                 _inventoryAndShop.TryDeployThermalBeacon(transform.position + transform.forward * 2.0f);
             }
 
             // Q: Lanzar Petardo Festivo (Explosivo contra roca/hielo duro y Gólems)
             if (kb.qKey.wasPressedThisFrame)
             {
+                if (_inventoryAndShop.FestiveFirecrackersStock > 0) PlayInteraction(ElfPose.Gesture.Throw, transform.forward);
                 _inventoryAndShop.TryDetonateFestiveFirecracker(transform.position + transform.forward * 2.5f);
             }
 
             // R: Instalar Duende Mecánico Extractor sobre una veta cercana
             if (kb.rKey.wasPressedThisFrame)
             {
+                int stock = _inventoryAndShop.MechanicalElfExtractorsStock;
                 _inventoryAndShop.TryDeployMechanicalElfExtractor(transform.position);
+                if (_inventoryAndShop.MechanicalElfExtractorsStock < stock)
+                    PlayInteraction(ElfPose.Gesture.Place, transform.forward);
             }
 
             // 1, 2, 3: Consumibles Rápidos (Chocolate Caliente, Galleta de Jengibre, Bastón de Menta)
@@ -442,6 +462,21 @@ namespace Boreatek.Player
             UpdateCameraPositionImmediate();
         }
 
+        internal void ConfigureProceduralPose(ElfPose pose) => _elfPose = pose;
+
+        private void PlayInteraction(ElfPose.Gesture gesture, Vector3 direction)
+        {
+            _elfPose?.BeginGesture(gesture, transform.InverseTransformDirection(direction));
+        }
+
+        internal void ReactToCombatDamage(Vector3? attackerPosition)
+        {
+            Vector3 away = attackerPosition.HasValue
+                ? Vector3.ProjectOnPlane(transform.position - attackerPosition.Value, Vector3.up).normalized
+                : -transform.forward;
+            _elfPose?.ReactToHit(transform.InverseTransformDirection(away));
+        }
+
         public void UpgradePickaxeTier(int newTier)
         {
             _currentPickaxeTier = Mathf.Clamp(newTier, 1, 3);
@@ -493,6 +528,7 @@ namespace Boreatek.Player
         internal void SetCharacterPresent(bool present)
         {
             _verticalVelocity = Vector3.zero;
+            _elfPose?.Reset();
             _characterController.enabled = present;
             if (_characterVisual != null)
             {
@@ -527,6 +563,7 @@ namespace Boreatek.Player
         internal void RestoreSave(SaveState state)
         {
             _characterController.enabled = false;
+            _elfPose?.Reset();
             _playerYaw = state.yaw;
             _cameraPitch = state.pitch;
             transform.SetPositionAndRotation(state.position, Quaternion.Euler(0f, _playerYaw, 0f));

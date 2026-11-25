@@ -1,4 +1,5 @@
 using UnityEngine;
+using Boreatek.Player;
 using Batch = Boreatek.World.BoreatekLandscapeGeometry.Batch;
 
 namespace Boreatek.World
@@ -10,9 +11,10 @@ namespace Boreatek.World
             internal readonly Transform Root, Pickaxe, LowerGauge, UpperGauge;
             internal readonly Renderer Head, LampLens, Crystal;
             internal readonly Light Headlamp;
+            internal readonly ElfPose Pose;
 
             internal ElfVisuals(Transform root, Transform pickaxe, Transform lowerGauge, Transform upperGauge,
-                Renderer head, Renderer lampLens, Renderer crystal, Light headlamp)
+                Renderer head, Renderer lampLens, Renderer crystal, Light headlamp, ElfPose pose)
             {
                 Root = root;
                 Pickaxe = pickaxe;
@@ -22,6 +24,7 @@ namespace Boreatek.World
                 LampLens = lampLens;
                 Crystal = crystal;
                 Headlamp = headlamp;
+                Pose = pose;
             }
         }
 
@@ -33,19 +36,25 @@ namespace Boreatek.World
             Material leather = CharacterFinish(104, 59, 42, 0.24f);
             Material fur = CharacterFinish(190, 177, 148);
             Material brass = CharacterFinish(185, 132, 66, 0.49f, 0.46f);
-            BuildElfCoat(rig, cloth, olive, leather, fur, brass);
-            Renderer head = BuildElfHead(rig, fur, brass, out Light lamp, out Renderer lens);
-            BuildElfBackpack(rig, brass, leather, out Transform lowerGauge, out Transform upperGauge);
-            Transform pickaxe = BuildElfPickaxe(rig, leather, brass, out Renderer crystal);
-            return new ElfVisuals(rig, pickaxe, lowerGauge, upperGauge, head, lens, crystal, lamp);
+            Vector3 waist = Vector3.up * 0.37f;
+            Transform torso = CharacterPart(rig, "Waist", waist);
+            Transform body = CharacterPart(torso, "Torso", -waist);
+            BuildElfCoat(body, cloth, olive, leather, fur, brass);
+            Vector3 neck = new Vector3(0f, 0.817f, -0.025f);
+            Transform headJoint = CharacterPart(body, "Neck", neck);
+            Renderer head = BuildElfHead(CharacterPart(headJoint, "Head", -neck), fur, brass, out Light lamp, out Renderer lens);
+            BuildElfBackpack(body, brass, leather, out Transform lowerGauge, out Transform upperGauge);
+            ElfPose.Arm left = BuildElfArm(body, -1, cloth, olive, fur, out _);
+            ElfPose.Arm right = BuildElfArm(body, 1, cloth, olive, fur, out Transform toolHand);
+            Transform pickaxe = BuildElfPickaxe(toolHand, leather, brass, out Renderer crystal);
+            var pose = new ElfPose(torso, headJoint, left, right,
+                BuildElfLeg(rig, -1, cloth, fur), BuildElfLeg(rig, 1, cloth, fur));
+            return new ElfVisuals(rig, pickaxe, lowerGauge, upperGauge, head, lens, crystal, lamp, pose);
         }
 
         private void BuildElfCoat(Transform rig, Material cloth, Material olive, Material leather, Material fur, Material brass)
         {
             var body = new Batch();
-            Material sole = CharacterFinish(49, 46, 43);
-            Material boot = CharacterFinish(86, 69, 56, 0.23f);
-            Material glove = CharacterFinish(132, 119, 95);
             body.Ellipsoid(new Vector3(0f, 0.525f, 0f), new Vector3(0.294f, 0.309f, 0.223f), 16, 8, cloth);
             body.Frustum(new Vector3(0f, 0.285f, 0f), new Vector3(0f, 0.344f, 0f), 0.246f, 0.297f, 14, leather);
             body.Ellipsoid(new Vector3(0f, 0.785f, -0.014f), new Vector3(0.271f, 0.097f, 0.217f), 16, 6, fur);
@@ -66,29 +75,6 @@ namespace Boreatek.World
 
             for (int side = -1; side <= 1; side += 2)
             {
-                float x = side * 0.151f;
-                body.Ellipsoid(new Vector3(x, 0.204f, 0.015f), new Vector3(0.103f, 0.118f, 0.116f), 11, 6, boot);
-                body.Ellipsoid(new Vector3(x, 0.089f, 0.075f), new Vector3(0.121f, 0.081f, 0.183f), 12, 6, boot);
-                body.Ellipsoid(new Vector3(x, 0.039f, 0.075f), new Vector3(0.126f, 0.035f, 0.188f), 12, 5, sole);
-                body.Frustum(new Vector3(x, 0.229f, 0.018f), new Vector3(x, 0.265f, 0.012f), 0.106f, 0.106f, 10, fur);
-                for (int tread = 0; tread < 3; tread++)
-                {
-                    body.Box(new Vector3(x, 0.02f, -0.037f + 0.098f * tread), new Vector3(0.221f, 0.028f, 0.034f), sole);
-                    body.Box(new Vector3(x, 0.147f + tread * 0.021f, 0.183f - tread * 0.017f),
-                        new Vector3(0.106f, 0.015f, 0.017f), fur, Quaternion.Euler(0f, 0f, -7f + 7f * tread));
-                }
-
-                Vector3 shoulder = new Vector3(side * 0.236f, 0.698f, 0.016f);
-                Vector3 elbow = new Vector3(side * 0.335f, 0.529f, 0.056f);
-                Vector3 wrist = new Vector3(side * 0.357f, 0.467f, 0.156f);
-                body.Ellipsoid(shoulder, new Vector3(0.095f, 0.104f, 0.110f), 11, 6, olive);
-                body.Frustum(shoulder, elbow, 0.106f, 0.085f, 10, cloth);
-                body.Frustum(elbow, wrist, 0.090f, 0.077f, 10, olive);
-                body.Frustum(Vector3.Lerp(elbow, wrist, 0.76f), wrist, 0.089f, 0.091f, 10, fur);
-                body.Ellipsoid(wrist + new Vector3(0f, -0.008f, 0.045f), new Vector3(0.075f, 0.067f, 0.079f), 12, 6, glove);
-                body.Ellipsoid(wrist + new Vector3(-side * 0.053f, 0.014f, 0.059f),
-                    new Vector3(0.033f, 0.034f, 0.042f), 8, 5, glove);
-
                 body.Box(new Vector3(side * 0.163f, 0.445f, 0.193f), new Vector3(0.116f, 0.115f, 0.027f),
                     leather, Quaternion.Euler(0f, side * 15f, side * -5f));
                 body.Box(new Vector3(side * 0.149f, 0.724f, 0.164f), new Vector3(0.064f, 0.165f, 0.029f),
@@ -96,7 +82,59 @@ namespace Boreatek.World
                 body.Box(new Vector3(side * 0.167f, 0.678f, 0.192f), new Vector3(0.069f, 0.045f, 0.018f), brass);
                 body.Box(new Vector3(side * 0.167f, 0.678f, 0.203f), new Vector3(0.042f, 0.021f, 0.01f), leather);
             }
-            _landscape.Place(rig, "Elf_QuiltedCoatMittensAndBoots", body);
+            _landscape.Place(rig, "Elf_QuiltedCoat", body);
+        }
+
+        private ElfPose.Leg BuildElfLeg(Transform rig, int side, Material cloth, Material fur)
+        {
+            string label = side < 0 ? "Left" : "Right";
+            Transform hip = CharacterPart(rig, label + "Hip", new Vector3(side * 0.151f, 0.336f, 0f));
+            Transform ankle = CharacterPart(hip, label + "Ankle", new Vector3(0f, -0.215f, 0f));
+            var trouser = new Batch();
+            trouser.Frustum(Vector3.up * 0.03f, Vector3.down * 0.16f, 0.098f, 0.086f, 9, cloth);
+            _landscape.Place(hip, label + "Trouser", trouser);
+
+            var foot = new Batch();
+            Material sole = CharacterFinish(49, 46, 43);
+            Material boot = CharacterFinish(86, 69, 56, 0.23f);
+            foot.Ellipsoid(new Vector3(0f, 0.083f, 0.015f), new Vector3(0.103f, 0.118f, 0.116f), 11, 6, boot);
+            foot.Ellipsoid(new Vector3(0f, -0.032f, 0.075f), new Vector3(0.121f, 0.081f, 0.183f), 12, 6, boot);
+            foot.Ellipsoid(new Vector3(0f, -0.082f, 0.075f), new Vector3(0.126f, 0.035f, 0.188f), 12, 5, sole);
+            foot.Frustum(new Vector3(0f, 0.108f, 0.018f), new Vector3(0f, 0.144f, 0.012f), 0.106f, 0.106f, 10, fur);
+            for (int tread = 0; tread < 3; tread++)
+            {
+                foot.Box(new Vector3(0f, -0.101f, -0.037f + 0.098f * tread), new Vector3(0.221f, 0.028f, 0.034f), sole);
+                foot.Box(new Vector3(0f, 0.026f + tread * 0.021f, 0.183f - tread * 0.017f),
+                    new Vector3(0.106f, 0.015f, 0.017f), fur, Quaternion.Euler(0f, 0f, -7f + 7f * tread));
+            }
+            _landscape.Place(ankle, label + "Boot", foot);
+            return new ElfPose.Leg(hip, ankle);
+        }
+
+        private ElfPose.Arm BuildElfArm(Transform body, int side, Material cloth, Material olive, Material fur,
+            out Transform hand)
+        {
+            string label = side < 0 ? "Left" : "Right";
+            var shoulder = new Vector3(side * 0.236f, 0.698f, 0.016f);
+            var elbow = new Vector3(side * 0.335f, 0.529f, 0.056f) - shoulder;
+            var wrist = new Vector3(side * 0.022f, -0.062f, 0.100f);
+            Transform upper = CharacterPart(body, label + "Shoulder", shoulder);
+            Transform lower = CharacterPart(upper, label + "Elbow", elbow);
+            hand = CharacterPart(lower, label + "Grip", wrist + new Vector3(side * 0.004f, -0.002f, 0.070f));
+
+            var sleeve = new Batch();
+            sleeve.Ellipsoid(Vector3.zero, new Vector3(0.095f, 0.104f, 0.110f), 11, 6, olive);
+            sleeve.Frustum(Vector3.zero, elbow, 0.106f, 0.085f, 10, cloth);
+            _landscape.Place(upper, label + "Sleeve", sleeve);
+            var cuff = new Batch();
+            Material glove = CharacterFinish(132, 119, 95);
+            cuff.Frustum(Vector3.zero, wrist, 0.090f, 0.077f, 10, olive);
+            cuff.Frustum(wrist * 0.76f, wrist, 0.089f, 0.091f, 10, fur);
+            cuff.Ellipsoid(wrist + new Vector3(0f, -0.008f, 0.045f), new Vector3(0.075f, 0.067f, 0.079f), 12, 6, glove);
+            cuff.Ellipsoid(wrist + new Vector3(-side * 0.053f, 0.014f, 0.059f),
+                new Vector3(0.033f, 0.034f, 0.042f), 8, 5, glove);
+            _landscape.Place(lower, label + "MittenAndCuff", cuff);
+            return new ElfPose.Arm(upper, lower);
         }
 
         private Renderer BuildElfHead(Transform rig, Material fur, Material brass, out Light lamp, out Renderer lens)
@@ -222,7 +260,7 @@ namespace Boreatek.World
 
         private Transform BuildElfPickaxe(Transform rig, Material leather, Material brass, out Renderer crystalRenderer)
         {
-            Transform grip = CharacterPart(rig, "IndustrialPickaxe_Pivot", new Vector3(0.361f, 0.465f, 0.226f));
+            Transform grip = CharacterPart(rig, "IndustrialPickaxe_Pivot", Vector3.zero);
             grip.localRotation = Quaternion.Euler(11f, -14f, -21f);
             var frame = new Batch();
             var crystals = new Batch();

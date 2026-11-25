@@ -220,7 +220,7 @@ namespace Boreatek.AI
             _attackCooldownTimer = _attackCooldownSeconds;
             if (_targetPlayerTemp != null)
             {
-                _targetPlayerTemp.ApplyCombatDamage(_attackDamage);
+                _targetPlayerTemp.ApplyCombatDamage(_attackDamage, transform.position);
                 _targetPlayer.PublishStatus($"⚠️ ¡{_enemyDisplayName} te atacó (-{_attackDamage} HP)! Usa tu Pico [Clic Izq] o Bastón de Menta [3].");
             }
         }

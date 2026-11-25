@@ -741,6 +741,7 @@ namespace Boreatek.World
                 elf.Root,
                 elf.Head,
                 elf.LampLens);
+            playerCtrl.ConfigureProceduralPose(elf.Pose);
 
             return playerCtrl;
         }
