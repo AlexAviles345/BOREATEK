@@ -16,7 +16,7 @@ namespace Boreatek.Player
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(TemperatureSystem))]
-    public class PlayerController : MonoBehaviour
+    public partial class PlayerController : MonoBehaviour
     {
         [Header("Locomotion Settings")]
         [SerializeField] private float _walkSpeed = 6.0f;
@@ -56,7 +56,6 @@ namespace Boreatek.Player
         private float _cameraPitch;
         private float _playerYaw;
         private float _swingCooldownTimer;
-        private float _swingAnimationTimer;
         private float _gingerbreadCookieBuffTimer;
         private float _gingerbreadSpeedMultiplier = 1f;
         private bool _isCursorLocked = true;
@@ -123,14 +122,14 @@ namespace Boreatek.Player
 
             HandleMovement(dt);
             UpdateInteractionFocus();
+            AdvancePickaxeSwing(dt);
 
             if (!_isShopMenuOpen)
             {
                 HandleActionInputs();
             }
 
-            UpdatePickaxeSwingVisual(dt);
-            _elfPose?.Update(dt);
+            UpdateCharacterAnimation(dt);
         }
 
         private void UpdateTimers(float dt)
@@ -284,6 +283,7 @@ namespace Boreatek.Player
         private void UpdateInteractionFocus()
         {
             _currentFocusedInteractable = null;
+            _aimHit = default;
             if (_playerCamera == null)
             {
                 return;
@@ -292,8 +292,9 @@ namespace Boreatek.Player
             float rayDist = _useThirdPersonView ? _miningReachDistance + 3.5f : _miningReachDistance;
             Ray ray = new Ray(_playerCamera.transform.position, _playerCamera.transform.forward);
 
-            if (Physics.Raycast(ray, out RaycastHit hit, rayDist))
+            if (TryGetAimHit(ray, rayDist, out RaycastHit hit))
             {
+                _aimHit = hit;
                 _currentFocusedInteractable = hit.collider.GetComponentInParent<IInteractable>();
             }
         }
@@ -308,7 +309,7 @@ namespace Boreatek.Player
                                  (kb != null && kb.enterKey.wasPressedThisFrame) ||
                                  (Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame);
 
-            if (attackPressed && _swingCooldownTimer <= 0f)
+            if (attackPressed && CanSwingPickaxe)
             {
                 if (!_isCursorLocked)
                 {
@@ -328,11 +329,16 @@ namespace Boreatek.Player
             // E: Interactuar con el objeto apuntado (Tolva Central, Cofre Congelado, Veta, Tienda)
             if (kb.eKey.wasPressedThisFrame && _currentFocusedInteractable != null)
             {
-                if (_currentFocusedInteractable.CanInteract(gameObject))
+                if (_currentFocusedInteractable is HarvestableNode node)
                 {
-                    PlayInteraction(ElfPose.Gesture.Reach, _playerCamera.transform.forward);
+                    if (CanSwingPickaxe && node.CanInteract(gameObject)) PerformPickaxeSwing(node);
                 }
-                _currentFocusedInteractable.Interact(gameObject);
+                else
+                {
+                    if (_currentFocusedInteractable.CanInteract(gameObject))
+                        PlayInteraction(ElfPose.Gesture.Reach, _playerCamera.transform.forward);
+                    _currentFocusedInteractable.Interact(gameObject);
+                }
             }
 
             // G: Desplegar Guirnalda Luminosa Navideña (Burbuja de calor de 6m)
@@ -382,59 +388,6 @@ namespace Boreatek.Player
             }
         }
 
-        private void PerformPickaxeSwing()
-        {
-            float effectiveCooldown = IsGingerbreadCookieActive ? _swingCooldownSeconds * 0.65f : _swingCooldownSeconds;
-            _swingCooldownTimer = effectiveCooldown;
-            _swingAnimationTimer = 0.25f;
-
-            if (_playerCamera == null)
-            {
-                return;
-            }
-
-            float rayDist = _useThirdPersonView ? _miningReachDistance + 3.5f : _miningReachDistance;
-            Ray ray = new Ray(_playerCamera.transform.position, _playerCamera.transform.forward);
-
-            if (Physics.Raycast(ray, out RaycastHit hit, rayDist))
-            {
-                HarvestableNode node = hit.collider.GetComponentInParent<HarvestableNode>();
-                if (node != null)
-                {
-                    node.HitWithPickaxe(_currentPickaxeTier, _pickaxeDamage, _inventoryAndShop, this);
-                    return;
-                }
-
-                AI.DefectiveToyAI enemy = hit.collider.GetComponentInParent<AI.DefectiveToyAI>();
-                if (enemy != null)
-                {
-                    enemy.TakePickaxeDamage(_pickaxeDamage * 25f, _currentPickaxeTier, this);
-                }
-            }
-        }
-
-        private void UpdatePickaxeSwingVisual(float dt)
-        {
-            if (_pickaxeVisualRoot == null)
-            {
-                return;
-            }
-
-            if (_swingAnimationTimer > 0f)
-            {
-                _swingAnimationTimer -= dt;
-                float t = Mathf.Sin((1f - (_swingAnimationTimer / 0.25f)) * Mathf.PI);
-                _pickaxeVisualRoot.localRotation = _initialPickaxeLocalRot * Quaternion.Euler(t * 58f, 0f, 0f);
-            }
-            else
-            {
-                _pickaxeVisualRoot.localRotation = Quaternion.Slerp(
-                    _pickaxeVisualRoot.localRotation,
-                    _initialPickaxeLocalRot,
-                    dt * 12f);
-            }
-        }
-
         public void ConfigureRigReferences(
             Transform cameraPivot,
             Camera cam,
@@ -462,7 +415,14 @@ namespace Boreatek.Player
             UpdateCameraPositionImmediate();
         }
 
-        internal void ConfigureProceduralPose(ElfPose pose) => _elfPose = pose;
+        internal void ConfigureProceduralPose(ElfPose pose)
+        {
+            _elfPose = pose;
+            _pickaxeGripParent = _pickaxeVisualRoot.parent;
+            _pickaxeGripPosition = _pickaxeVisualRoot.localPosition;
+            _pickaxeGripScale = _pickaxeVisualRoot.localScale;
+            RefreshPickaxeView();
+        }
 
         private void PlayInteraction(ElfPose.Gesture gesture, Vector3 direction)
         {
@@ -514,6 +474,7 @@ namespace Boreatek.Player
             }
 
             _isShopMenuOpen = !_isShopMenuOpen;
+            if (_isShopMenuOpen) CancelPickaxeSwing();
             SetCursorLock(!_isShopMenuOpen);
         }
 
@@ -528,8 +489,10 @@ namespace Boreatek.Player
         internal void SetCharacterPresent(bool present)
         {
             _verticalVelocity = Vector3.zero;
+            CancelPickaxeSwing();
             _elfPose?.Reset();
             _characterController.enabled = present;
+            if (_pickaxeVisualRoot != null) _pickaxeVisualRoot.gameObject.SetActive(present);
             if (_characterVisual != null)
             {
                 _characterVisual.gameObject.SetActive(present);
@@ -563,6 +526,7 @@ namespace Boreatek.Player
         internal void RestoreSave(SaveState state)
         {
             _characterController.enabled = false;
+            CancelPickaxeSwing();
             _elfPose?.Reset();
             _playerYaw = state.yaw;
             _cameraPitch = state.pitch;
@@ -601,6 +565,7 @@ namespace Boreatek.Player
         {
             if (_thirdPersonHead != null) _thirdPersonHead.enabled = _useThirdPersonView;
             RefreshHeadlampLens();
+            RefreshPickaxeView();
             if (_playerCamera != null && _cameraPivot != null)
             {
                 _playerCamera.transform.SetParent(_cameraPivot, false);

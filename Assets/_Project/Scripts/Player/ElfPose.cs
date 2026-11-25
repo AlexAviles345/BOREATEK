@@ -85,7 +85,7 @@ namespace Boreatek.Player
             Update(0f);
         }
 
-        internal void Update(float dt)
+        internal void Update(float dt, PickaxeStroke strike = default, Vector3 aim = default)
         {
             float phase = _cycle * 2f * Mathf.PI;
             float stride = Mathf.Cos(phase) * _pace;
@@ -107,12 +107,21 @@ namespace Boreatek.Player
             PoseLeg(_rightLeg, phase + Mathf.PI, 1f);
             float armSwing = stride * Mathf.Lerp(24f, 39f, _run);
             float reach = _gesture == Gesture.Throw ? 121f : (_gesture == Gesture.Place ? 45f : 81f);
+            float aimTilt = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(aim.y, -1f, 1f)) * Mathf.Rad2Deg, -45f, 55f);
+            float pickaxePitch = -137f * strike.Raise + (-69f - aimTilt * 0.65f) * strike.Contact +
+                (-31f - aimTilt * 0.54f) * strike.Follow;
             _leftArm.Shoulder.localRotation = Quaternion.Euler(
-                Mathf.Lerp(armSwing, -reach - _gestureDirection.y * 25f, action) - recoil * 19f - _air * 23f,
+                Mathf.Lerp(armSwing, -reach - _gestureDirection.y * 25f, action) - recoil * 19f -
+                _air * 23f - strike.Contact * 22f,
                 action * _gestureDirection.x * 35f, action * 8f + recoil * 14f);
             _leftArm.Elbow.localRotation = Quaternion.Euler(-Mathf.Abs(stride) * 13f - action * 19f - recoil * 26f, 0f, 0f);
-            _rightArm.Shoulder.localRotation = Quaternion.Euler(-armSwing * 0.56f - recoil * 18f - _air * 16f, 0f, -recoil * 12f);
-            _rightArm.Elbow.localRotation = Quaternion.Euler(-Mathf.Abs(stride) * 11f - recoil * 20f, 0f, 0f);
+            _rightArm.Shoulder.localRotation = Quaternion.Euler(
+                (-armSwing * 0.56f - recoil * 18f - _air * 16f) * (1f - strike.Weight) + pickaxePitch,
+                strike.Raise * 13f + strike.Contact * 6f,
+                -recoil * 12f + strike.Raise * 34f + strike.Contact * 41f + strike.Follow * 12f);
+            _rightArm.Elbow.localRotation = Quaternion.Euler(
+                (-Mathf.Abs(stride) * 11f - recoil * 20f) * (1f - strike.Weight) -
+                strike.Raise * 55f + strike.Contact * 13f + strike.Follow * 23f, 0f, 0f);
 
             _landing = Mathf.Max(0f, _landing - dt);
             _hit = Mathf.Max(0f, _hit - dt);
@@ -126,7 +135,8 @@ namespace Boreatek.Player
             float pitch = -stride * _travel.z + _air * (side > 0f ? -25f : 18f);
             float roll = stride * _travel.x;
             leg.Hip.localRotation = Quaternion.Euler(pitch, 0f, roll);
-            float compression = (1f - Mathf.Cos(Mathf.Abs(stride) * Mathf.Deg2Rad)) * -leg.Ankle.localPosition.y;
+            float stance = Vector3.Dot(leg.Hip.localRotation * Vector3.down, Vector3.down);
+            float compression = (1f - stance) * -leg.Ankle.localPosition.y * (1f - _air);
             leg.Hip.localPosition = leg.Rest + Vector3.up * (lift * Mathf.Lerp(0.074f, 0.125f, _run) - compression);
             leg.Ankle.localRotation = Quaternion.Euler(-pitch * 0.88f + lift * 18f, 0f, -roll * 0.92f);
         }

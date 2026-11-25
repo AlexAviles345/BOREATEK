@@ -278,13 +278,15 @@ namespace Boreatek.World
             {
                 Vector3 hub = new Vector3(side * 0.035f, 0.443f, 0.012f);
                 Vector3 shoulder = new Vector3(side * 0.166f, 0.411f, 0.020f);
-                Vector3 point = new Vector3(side * 0.304f, 0.323f, 0.045f);
+                Vector3 point = new Vector3(side * 0.239f, 0.364f, 0.031f);
                 frame.Frustum(hub, shoulder, 0.058f, 0.043f, 8, steel);
-                frame.Frustum(shoulder, point, 0.041f, 0.009f, 7, steel);
-                Vector3 socket = Vector3.Lerp(hub, shoulder, 0.70f);
-                frame.Frustum(socket, socket + Vector3.up * 0.041f, 0.038f, 0.035f, 7, brass);
-                AddCrystal(crystals, socket + Vector3.up * 0.027f,
-                    new Vector3(side * 0.191f, 0.560f, 0.046f), 0.039f, ruby, ruby);
+                frame.Frustum(shoulder, point, 0.039f, 0.026f, 7, steel);
+                Vector3 socket = PickaxeStroke.BladeBase;
+                socket.x *= side;
+                frame.Frustum(socket, point, 0.043f, 0.035f, 7, brass);
+                Vector3 crystalTip = PickaxeStroke.BladeTip;
+                crystalTip.x *= side;
+                AddCrystal(crystals, socket, crystalTip, 0.033f, ruby, ruby);
             }
             _landscape.Place(grip, "Elf_PickaxeSteelAndLeather", frame);
             crystalRenderer = _landscape.Place(grip, "Elf_TwinCandyCrystalTips", crystals).GetComponent<Renderer>();
