@@ -62,6 +62,7 @@ namespace Boreatek.UI
         private Text _destructionValue;
         private Text _statusToastText;
         private RawImage _frostVignetteOverlay;
+        private RawImage _damageVignetteOverlay;
         private Texture2D _frostVignetteTexture;
         private string _lastToastMessage;
         private float _hideToastAt;
@@ -154,6 +155,7 @@ namespace Boreatek.UI
             UpdateHotbarAndToast();
             UpdateCrosshairInteractionPrompt();
             UpdateFrostWarningVignette();
+            UpdateDamageFeedback();
             UpdateShopModalVisibility();
         }
 
@@ -269,6 +271,24 @@ namespace Boreatek.UI
             _frostVignetteOverlay.texture = _frostVignetteTexture;
             _frostVignetteOverlay.color = new Color(0.47f, 0.80f, 1f, 0f);
             _frostVignetteOverlay.raycastTarget = false;
+
+            GameObject damage = CreateUIObject("CombatDamage_Overlay", parent);
+            StretchFull(damage.GetComponent<RectTransform>());
+            _damageVignetteOverlay = damage.AddComponent<RawImage>();
+            _damageVignetteOverlay.texture = _frostVignetteTexture;
+            _damageVignetteOverlay.color = new Color(0.99f, 0.075f, 0.10f, 0f);
+            _damageVignetteOverlay.raycastTarget = false;
+        }
+
+        private void UpdateDamageFeedback()
+        {
+            if (_tempSystem == null) return;
+            float elapsed = Mathf.Clamp01((Time.time - _tempSystem.CombatHitAt) / 0.48f);
+            float flash = (1f - elapsed) * (1f - elapsed);
+            var tint = _damageVignetteOverlay.color;
+            tint.a = flash * Mathf.Lerp(0.47f, 0.83f, _tempSystem.CombatHitStrength);
+            _damageVignetteOverlay.color = tint;
+            _healthBarFill.color = Color.Lerp(ColCandyRed, new Color(1f, 0.70f, 0.56f), flash);
         }
 
         private void BuildTopLeftVitalPanel(RectTransform parent)

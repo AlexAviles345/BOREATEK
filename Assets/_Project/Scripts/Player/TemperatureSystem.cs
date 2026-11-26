@@ -69,6 +69,8 @@ namespace Boreatek.Player
 
         public event Action<float, float> OnTemperatureChanged;
         public event Action<float, float> OnHealthChanged;
+        internal float CombatHitAt { get; private set; } = float.NegativeInfinity;
+        internal float CombatHitStrength { get; private set; }
         public event Action<BiomeType, string> OnBiomeOrThermalZoneChanged;
         internal event Action<bool> OnVillageRescueTriggered;
         internal event Action<bool> OnDied;
@@ -272,6 +274,8 @@ namespace Boreatek.Player
                 return;
             }
 
+            CombatHitAt = Time.time;
+            CombatHitStrength = Mathf.Clamp01(damage / (_maxHealth * 0.24f));
             _currentHealth = Mathf.Max(0f, _currentHealth - damage);
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
 
@@ -282,7 +286,7 @@ namespace Boreatek.Player
             else if (TryGetComponent(out PlayerController player))
             {
                 BoreatekSoundscape.Play(SoundCue.Hurt);
-                player.ReactToCombatDamage(attackerPosition);
+                player.ReactToCombatDamage(attackerPosition, CombatHitStrength);
             }
         }
 
@@ -330,6 +334,7 @@ namespace Boreatek.Player
             _isDead = false;
             _currentTemperature = _maxTemperature;
             _currentHealth = _maxHealth;
+            CombatHitAt = float.NegativeInfinity;
             _hypothermiaCountdown = _hypothermiaGraceSeconds;
             _hotChocolateBuffRemainingSeconds = 0f;
             _activeHeatSources.Clear();
@@ -376,6 +381,7 @@ namespace Boreatek.Player
         {
             _currentTemperature = Mathf.Clamp(state.temperature, 0f, _maxTemperature);
             _currentHealth = Mathf.Clamp(state.health, 1f, _maxHealth);
+            CombatHitAt = float.NegativeInfinity;
             _hotChocolateBuffRemainingSeconds = state.chocolateSeconds;
             _hypothermiaCountdown = state.coldGrace;
             UpgradeThermalCoat(state.coatTier, state.coatReduction);

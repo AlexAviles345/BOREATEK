@@ -54,6 +54,7 @@ namespace Boreatek.Player
         private InventoryAndShop _inventoryAndShop;
 
         private Vector3 _verticalVelocity;
+        private Vector3 _knockbackVelocity;
         private float _cameraPitch;
         private float _playerYaw;
         private float _swingCooldownTimer;
@@ -270,7 +271,8 @@ namespace Boreatek.Player
             }
 
             _verticalVelocity.y += _gravity * dt;
-            _characterController.Move((moveDirection * targetSpeed + _verticalVelocity) * dt);
+            _characterController.Move((moveDirection * targetSpeed + _verticalVelocity + _knockbackVelocity) * dt);
+            _knockbackVelocity = Vector3.MoveTowards(_knockbackVelocity, Vector3.zero, dt * 21f);
             if (dt > 0f)
             {
                 Vector3 travel = Vector3.ProjectOnPlane(transform.position - startPosition, Vector3.up);
@@ -278,7 +280,7 @@ namespace Boreatek.Player
                 float pace = distance / (Mathf.Max(targetSpeed, 0.01f) * dt);
                 bool onGround = _characterController.isGrounded;
                 _elfPose?.UpdateTravel(transform.InverseTransformDirection(travel.normalized), pace, isSprinting, onGround, dt);
-                PlayFootsteps(distance, isGrounded, onGround, isSprinting);
+                PlayFootsteps(moveInput.sqrMagnitude > 0.01f ? distance : 0f, isGrounded, onGround, isSprinting);
             }
         }
 
@@ -486,11 +488,13 @@ namespace Boreatek.Player
             _elfPose?.BeginGesture(gesture, transform.InverseTransformDirection(direction));
         }
 
-        internal void ReactToCombatDamage(Vector3? attackerPosition)
+        internal void ReactToCombatDamage(Vector3? attackerPosition, float strength)
         {
             Vector3 away = attackerPosition.HasValue
                 ? Vector3.ProjectOnPlane(transform.position - attackerPosition.Value, Vector3.up).normalized
                 : -transform.forward;
+            if (away.sqrMagnitude < 0.01f) away = -transform.forward;
+            _knockbackVelocity = away * Mathf.Lerp(2.3f, 4.8f, strength);
             _elfPose?.ReactToHit(transform.InverseTransformDirection(away));
         }
 
@@ -547,6 +551,7 @@ namespace Boreatek.Player
         internal void SetCharacterPresent(bool present)
         {
             _verticalVelocity = Vector3.zero;
+            _knockbackVelocity = Vector3.zero;
             _footstepDistance = 0f;
             _snowFootprints?.ResetBoots();
             CancelPickaxeSwing();
@@ -595,6 +600,7 @@ namespace Boreatek.Player
             transform.SetPositionAndRotation(state.position, Quaternion.Euler(0f, _playerYaw, 0f));
             _characterController.enabled = true;
             _verticalVelocity = state.verticalVelocity;
+            _knockbackVelocity = Vector3.zero;
             _footstepDistance = 0f;
             _snowFootprints?.ResetBoots();
             RestorePerspective(state);
