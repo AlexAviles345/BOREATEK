@@ -281,16 +281,9 @@ namespace Boreatek.World
                 new Vector3(2.4f, 1.8f, 2.2f), new Color(0.69f, 0.49f, 0.31f));
             CreateBox(hopperRoot.transform, "Hopper_GlowChute", new Vector3(0f, 0.55f, 0f),
                 new Vector3(0.85f, 0.2f, 0.85f), new Color(1.0f, 0.62f, 0.11f), emissionIntensity: 2.2f);
-            CentralHopper hopper = hopperRoot.AddComponent<CentralHopper>();
-            hopper.ConfigureRuntime(isShopTerminal: false);
+            hopperRoot.AddComponent<CentralHopper>();
 
-            // Terminal de la Tienda del Taller (Interactuable con 'E' o 'Tab')
-            GameObject shopRoot = CreateBox(village, "Workshop_Shop_Terminal", new Vector3(3.8f, 1.0f, 3.5f),
-                new Vector3(2.2f, 2.0f, 1.8f), new Color(0.29f, 0.36f, 0.31f));
-            CreateBox(shopRoot.transform, "Shop_Screen_Neon", new Vector3(0f, 0.25f, -0.52f),
-                new Vector3(0.8f, 0.45f, 0.1f), new Color(0.30f, 0.85f, 0.65f), emissionIntensity: 2.2f);
-            CentralHopper shopTerminal = shopRoot.AddComponent<CentralHopper>();
-            shopTerminal.ConfigureRuntime(isShopTerminal: true);
+            BuildChristmasMerchant(village);
             DressVillagePlaza(village);
         }
 

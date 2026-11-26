@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Boreatek.Economy;
 using Boreatek.World;
 using UnityEngine;
 
@@ -15,6 +16,7 @@ namespace Boreatek.Core
         internal static readonly (string name, Vector2 point, int layer)[] Landmarks =
         {
             ("Forja Central", new Vector2(0f, 5f), 0),
+            (WorkshopMerchant.StallName, BoreatekWorldBuilder.MerchantLocation, 0),
             ("Herrería", new Vector2(-9.2f, 3.2f), 0),
             ("Comedor", new Vector2(-19.6f, -4.4f), 0),
             ("Mensajería", new Vector2(19f, -4.6f), 0),

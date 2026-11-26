@@ -262,7 +262,7 @@ namespace Boreatek.Economy
 
         public bool TryPurchaseShopItem(ShopItemSO item)
         {
-            if (item == null)
+            if (item == null || _playerController == null || !_playerController.CanTradeWithMerchant || !_shopCatalog.Contains(item))
             {
                 return false;
             }
@@ -345,7 +345,7 @@ namespace Boreatek.Economy
         {
             if (_hotChocolateThermosCount <= 0)
             {
-                _playerController?.PublishStatus("❌ No tienes Termos de Chocolate Caliente. Cómpralos en la Tienda de la Aldea [Tab].");
+                _playerController?.PublishStatus("No te queda chocolate caliente. Bruma vende termos en la plaza.");
                 return;
             }
 
@@ -392,7 +392,7 @@ namespace Boreatek.Economy
         {
             if (_festiveFirecrackersStock <= 0)
             {
-                _playerController?.PublishStatus("❌ Sin Petardos Festivos. Cómpralos en la Tienda del Taller [Tab].");
+                _playerController?.PublishStatus("Sin petardos. Consigue más en el puesto de Bruma.");
                 return;
             }
 
@@ -429,7 +429,7 @@ namespace Boreatek.Economy
         {
             if (_mechanicalElfExtractorsStock <= 0)
             {
-                _playerController?.PublishStatus("❌ No tienes Duendes Mecánicos Extractores en inventario. Cómpralos en la tienda [Tab].");
+                _playerController?.PublishStatus("Sin autómatas extractores. Consigue uno en el puesto de Bruma.");
                 return;
             }
 

@@ -63,7 +63,7 @@ namespace Boreatek.Player
         private float _gingerbreadCookieBuffTimer;
         private float _gingerbreadSpeedMultiplier = 1f;
         private bool _isCursorLocked = true;
-        private bool _isShopMenuOpen;
+        private WorkshopMerchant _merchant;
         private bool _gameplayEnabled = true;
         private Transform _characterVisual;
         private ElfPose _elfPose;
@@ -77,7 +77,8 @@ namespace Boreatek.Player
         public int PickaxeDamage => _pickaxeDamage;
         public bool IsHeadlampEnabled => _helmetHeadlamp != null && _helmetHeadlamp.enabled;
         public bool IsGingerbreadCookieActive => _gingerbreadCookieBuffTimer > 0f;
-        public bool IsShopMenuOpen => _isShopMenuOpen;
+        public bool IsShopMenuOpen => _merchant != null;
+        internal bool CanTradeWithMerchant => _gameplayEnabled && IsShopMenuOpen && _merchant.CanInteract(gameObject);
         public IInteractable CurrentFocusedInteractable => _currentFocusedInteractable;
         public string LastStatusMessage { get; private set; } = "Duende Ingeniero listo en la Aldea Industrial.";
 
@@ -117,23 +118,24 @@ namespace Boreatek.Player
             }
 
             float dt = Time.deltaTime;
+            if (IsShopMenuOpen && !CanTradeWithMerchant) CloseShopMenu();
             UpdateTimers(dt);
             HandleUtilityShortcuts();
             bool hudPointer = Keyboard.current?.leftAltKey.isPressed == true ||
                 Keyboard.current?.rightAltKey.isPressed == true;
-            if (!_isShopMenuOpen && _isCursorLocked == hudPointer) SetCursorLock(!hudPointer);
+            if (!IsShopMenuOpen && _isCursorLocked == hudPointer) SetCursorLock(!hudPointer);
 
             if (_pilotingPlane != null)
             {
-                UpdateFlight(dt, !_isShopMenuOpen && !hudPointer);
+                UpdateFlight(dt, !IsShopMenuOpen && !hudPointer);
                 return;
             }
             if (_mountedSled != null)
             {
-                UpdateSled(dt, !_isShopMenuOpen && !hudPointer);
+                UpdateSled(dt, !IsShopMenuOpen && !hudPointer);
                 return;
             }
-            if (!_isShopMenuOpen && _isCursorLocked)
+            if (!IsShopMenuOpen && _isCursorLocked)
             {
                 HandleLookRotation();
             }
@@ -143,12 +145,12 @@ namespace Boreatek.Player
             AdvancePickaxeSwing(dt);
             AdvanceHeatPlacement(dt);
 
-            if (!_isShopMenuOpen && !hudPointer)
+            if (!IsShopMenuOpen && !hudPointer)
             {
                 HandleEquipmentSelection();
                 HandleActionInputs();
             }
-            UpdatePlacementGuide(!_isShopMenuOpen && !hudPointer);
+            UpdatePlacementGuide(!IsShopMenuOpen && !hudPointer);
 
             UpdateCharacterAnimation(dt);
             RefreshHeldEquipment(dt);
@@ -177,11 +179,6 @@ namespace Boreatek.Player
             if (kb == null)
             {
                 return;
-            }
-
-            if (kb.tabKey.wasPressedThisFrame)
-            {
-                ToggleShopMenu();
             }
 
             // F: Encender / Apagar Faro Frontal LED del Casco Minero
@@ -228,7 +225,7 @@ namespace Boreatek.Player
         {
             Vector2 moveInput = Vector2.zero;
             Keyboard kb = Keyboard.current;
-            if (kb != null && !_isShopMenuOpen)
+            if (kb != null && !IsShopMenuOpen)
             {
                 if (kb.wKey.isPressed || kb.upArrowKey.isPressed) moveInput.y += 1f;
                 if (kb.sKey.isPressed || kb.downArrowKey.isPressed) moveInput.y -= 1f;
@@ -237,7 +234,7 @@ namespace Boreatek.Player
                 moveInput = Vector2.ClampMagnitude(moveInput, 1f);
             }
 
-            if (Gamepad.current != null && !_isShopMenuOpen)
+            if (Gamepad.current != null && !IsShopMenuOpen)
             {
                 Vector2 stick = Gamepad.current.leftStick.ReadValue();
                 if (stick.sqrMagnitude > moveInput.sqrMagnitude)
@@ -279,7 +276,7 @@ namespace Boreatek.Player
             bool jumpPressed = (kb != null && kb.spaceKey.wasPressedThisFrame) ||
                                (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame);
 
-            if (jumpPressed && isGrounded && !_isShopMenuOpen)
+            if (jumpPressed && isGrounded && !IsShopMenuOpen)
             {
                 _verticalVelocity.y = Mathf.Sqrt(_jumpHeight * -2f * _gravity);
                 BoreatekSoundscape.Play(SoundCue.Jump, strength: 0.28f);
@@ -495,27 +492,30 @@ namespace Boreatek.Player
             PublishStatus("Galleta de Jengibre consumida: +30% velocidad en nieve y +40% velocidad de picado (45s).");
         }
 
-        public void ToggleShopMenu()
+        internal void OpenShopMenu(WorkshopMerchant merchant)
         {
-            if (!_gameplayEnabled)
-            {
-                return;
-            }
+            if (!_gameplayEnabled || IsShopMenuOpen || !_characterController.enabled ||
+                merchant == null || !merchant.CanInteract(gameObject)) return;
 
-            _isShopMenuOpen = !_isShopMenuOpen;
+            _merchant = merchant;
+            CancelPickaxeSwing();
+            CancelHeatPlacement();
+            SetCursorLock(false);
             BoreatekSoundscape.Play(SoundCue.Click, strength: 0.65f);
-            if (_isShopMenuOpen)
-            {
-                CancelPickaxeSwing();
-                CancelHeatPlacement();
-            }
-            SetCursorLock(!_isShopMenuOpen);
+        }
+
+        internal void CloseShopMenu()
+        {
+            if (!IsShopMenuOpen) return;
+            _merchant = null;
+            SetCursorLock(_gameplayEnabled);
+            BoreatekSoundscape.Play(SoundCue.Click, strength: 0.65f);
         }
 
         internal void SetGameplayEnabled(bool active)
         {
             _gameplayEnabled = active;
-            _isShopMenuOpen = false;
+            _merchant = null;
             _currentFocusedInteractable = null;
             if (!active) CancelHeatPlacement();
             SetCursorLock(active);

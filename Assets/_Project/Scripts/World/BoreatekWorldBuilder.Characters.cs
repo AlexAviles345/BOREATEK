@@ -33,7 +33,7 @@ namespace Boreatek.World
             }
         }
 
-        private ElfVisuals BuildElfModel(Transform player, Color32? workUniform = null)
+        private ElfVisuals BuildElfModel(Transform player, Color32? workUniform = null, bool festiveHat = false)
         {
             Transform rig = CharacterPart(player, "ElfEngineer_ChibiModel3D", Vector3.zero);
             rig.localScale = Vector3.one * (ElfHeight / UnscaledElfHeight);
@@ -53,7 +53,7 @@ namespace Boreatek.World
             BuildElfCoat(body, cloth, olive, leather, fur, brass);
             Vector3 neck = new Vector3(0f, 0.817f, -0.025f);
             Transform headJoint = CharacterPart(body, "Neck", neck);
-            Renderer head = BuildElfHead(CharacterPart(headJoint, "Head", -neck), fur, brass, !workUniform.HasValue,
+            Renderer head = BuildElfHead(CharacterPart(headJoint, "Head", -neck), fur, brass, !workUniform.HasValue, festiveHat,
                 out Light lamp, out Renderer lens);
             ElfPose.Arm left = BuildElfArm(body, -1, cloth, olive, fur, out _);
             ElfPose.Arm right = BuildElfArm(body, 1, cloth, olive, fur, out Transform toolHand);
@@ -158,7 +158,7 @@ namespace Boreatek.World
             return new ElfPose.Arm(upper, lower);
         }
 
-        private Renderer BuildElfHead(Transform rig, Material fur, Material brass, bool powered,
+        private Renderer BuildElfHead(Transform rig, Material fur, Material brass, bool powered, bool festiveHat,
             out Light lamp, out Renderer lens)
         {
             var head = new Batch();
@@ -199,6 +199,22 @@ namespace Boreatek.World
             head.Frustum(new Vector3(-0.085f, 0.935f, 0.229f), new Vector3(-0.033f, 0.919f, 0.237f), 0.005f, 0.007f, 6, hair);
             head.Frustum(new Vector3(-0.033f, 0.919f, 0.237f), new Vector3(0.038f, 0.921f, 0.237f), 0.007f, 0.007f, 6, hair);
             head.Frustum(new Vector3(0.038f, 0.921f, 0.237f), new Vector3(0.085f, 0.936f, 0.229f), 0.007f, 0.005f, 6, hair);
+
+            if (festiveHat)
+            {
+                Material velvet = CharacterFinish(164, 55, 66, 0.14f);
+                Material trim = CharacterFinish(232, 213, 176, 0.18f);
+                Vector3 brim = new Vector3(0f, 1.163f, -0.010f);
+                Vector3 fold = new Vector3(0.120f, 1.505f, -0.048f);
+                Vector3 tip = new Vector3(0.275f, 1.467f, -0.008f);
+                head.Frustum(brim, brim + Vector3.up * 0.078f, 0.295f, 0.273f, 16, trim);
+                head.Frustum(brim + Vector3.up * 0.064f, fold, 0.270f, 0.095f, 13, velvet);
+                head.Frustum(fold, tip, 0.095f, 0.023f, 10, velvet);
+                head.Ellipsoid(tip, Vector3.one * 0.070f, 9, 6, trim);
+                lamp = null;
+                lens = null;
+                return _landscape.Place(rig, "Cara_Y_Gorro_De_Bruma", head).GetComponent<Renderer>();
+            }
 
             head.Ellipsoid(new Vector3(0f, 1.167f, -0.017f), new Vector3(0.280f, 0.229f, 0.259f), 22, 10, shell, dome: true);
             head.Frustum(new Vector3(0f, 1.149f, -0.014f), new Vector3(0f, 1.178f, -0.014f), 0.291f, 0.28f, 24, steel);

@@ -17,7 +17,7 @@ namespace Boreatek.UI
     /// - Barra de herramientas, mochila y avisos de juego.
     /// - Retícula central minimalista + Tarjeta flotante contextual al apuntar a un nodo, cofre congelado o tolva.
     /// - Viñeta perimetral de escarcha cuando la temperatura cae de 35 °T.
-    /// - Ventana Modal de la Tienda del Taller ([Tab]) con tarjetas, filtros y descarga en Tolva Central.
+    /// - Tienda del comerciante con tarjetas y filtros para la compra de equipo.
     /// </summary>
     public partial class BoreatekHUDAndShopUI : MonoBehaviour
     {
@@ -347,7 +347,7 @@ namespace Boreatek.UI
 
             _equipmentSummaryText = CreateLabel(panel, "EquipSummaryTxt", "", new Vector2(18f, -136f),
                 new Vector2(312f, 62f), 15, FontStyle.Normal, ColTextLight, TextAnchor.UpperLeft);
-            _radarStatusText = CreateLabel(panel, "RadarTxt", "[Tab] Taller  ·  [F] Faro", new Vector2(18f, -202f),
+            _radarStatusText = CreateLabel(panel, "RadarTxt", "[F] Faro  ·  [M] Mapa", new Vector2(18f, -202f),
                 new Vector2(312f, 18f), 14, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
         }
 
@@ -554,7 +554,7 @@ namespace Boreatek.UI
 
             if (_inventoryShop == null || !_inventoryShop.HasGiftRadarUnlocked)
             {
-                _radarStatusText.text = "[Tab] Taller  ·  [F] Faro";
+                _radarStatusText.text = "[F] Faro  ·  [M] Mapa";
             }
             else if (Time.unscaledTime >= _nextRadarRefresh)
             {

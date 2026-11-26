@@ -11,7 +11,7 @@ namespace Boreatek.Player
 
         internal void TryMountSled(BoreatekVillageSled sled)
         {
-            if (!_gameplayEnabled || _mountedSled != null || _pilotingPlane != null || _isShopMenuOpen || !sled.AttachRider(this)) return;
+            if (!_gameplayEnabled || _mountedSled != null || _pilotingPlane != null || IsShopMenuOpen || !sled.AttachRider(this)) return;
             _mountedSled = sled;
             _sledLookYaw = _sledLookPitch = 0f;
             PrepareVehicleSeat();

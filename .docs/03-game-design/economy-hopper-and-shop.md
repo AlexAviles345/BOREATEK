@@ -11,7 +11,9 @@ En el corazón de la **Aldea Industrial de Santa**, junto a la gran Forja Circul
 
 ---
 
-## 2. Catálogo Completo de la Tienda del Taller
+## 2. Catálogo del Puesto de Bruma
+
+Bruma vende provisiones, herramientas y mejoras junto al pino navideño de la plaza. Acércate y pulsa `E` para abrir su catálogo. Pulsa `Esc` para cerrar. La Tolva Central recibe la carga de minerales por separado.
 
 ### 2.1. Categoría 1: Comida y Bebidas (Consumibles)
 

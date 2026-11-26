@@ -109,7 +109,8 @@ namespace Boreatek.Core
 
             if (_screen == Screen.Playing)
             {
-                SetScreen(Screen.Paused);
+                if (_player.IsShopMenuOpen) _player.CloseShopMenu();
+                else SetScreen(Screen.Paused);
             }
             else if (_screen == Screen.Paused)
             {

@@ -15,14 +15,10 @@ namespace Boreatek.UI
         private ScrollRect _shopCatalogScroll;
         private Text _shopCoinsHeaderText;
         private Text _shopStatusText;
-        private Text _shopDepositText;
-        private Button _shopDepositButton;
         private Button _shopCloseButton;
         private BoreatekUiButton _selectedShopTab;
         private ShopCategory? _selectedShopCategoryFilter;
         private int _shownShopCoins = -1;
-        private int _shownShopLoad = -1;
-        private int _shownShopCapacity = -1;
         private readonly List<ShopPurchaseControl> _shopPurchaseControls = new List<ShopPurchaseControl>();
 
         private readonly struct ShopPurchaseControl
@@ -51,7 +47,7 @@ namespace Boreatek.UI
                 Vector2.zero, new Vector2(1148f, 700f), ColDeepSteel);
             ApplyMetalPanel(panel, ColDeepSteel, ColSteelRim);
 
-            CreateLabel(panel, "ShopTitle", "Taller de la aldea", new Vector2(26f, -21f), new Vector2(590f, 52f),
+            CreateLabel(panel, "ShopTitle", WorkshopMerchant.StallName, new Vector2(26f, -21f), new Vector2(590f, 52f),
                 36, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
             CreateAccentLine(panel, "HeaderRule", new Vector2(26f, -87f), new Vector2(1096f, 2f), ColBrassRim);
 
@@ -63,8 +59,8 @@ namespace Boreatek.UI
                 new Vector2(240f, 44f), 18, FontStyle.Bold, ColBrassRim, TextAnchor.MiddleCenter);
             StretchFull(_shopCoinsHeaderText.rectTransform, 4f);
 
-            _shopCloseButton = CreateStylizedButton(panel, "BtnCloseShop", "Cerrar  [Tab]",
-                new Vector2(980f, -26f), new Vector2(142f, 44f), ColBlueSteel, () => _player?.ToggleShopMenu());
+            _shopCloseButton = CreateStylizedButton(panel, "BtnCloseShop", "Cerrar  [Esc]",
+                new Vector2(980f, -26f), new Vector2(142f, 44f), ColBlueSteel, () => _player?.CloseShopMenu());
 
             _selectedShopCategoryFilter = null;
             _selectedShopTab = CreateShopFilter(panel, "TabAll", "Todas", 26f, null);
@@ -74,8 +70,8 @@ namespace Boreatek.UI
             CreateShopFilter(panel, "TabUpgrades", "Mejoras", 386f, ShopCategory.PermanentUpgrade);
             CreateShopFilter(panel, "TabAuto", "Autómatas", 506f, ShopCategory.Automation);
 
-            _shopDepositButton = CreateStylizedButton(panel, "BtnDepositHopper", "Depositar en la tolva",
-                new Vector2(828f, -105f), new Vector2(294f, 48f), ColBrassGold, DepositShopLoad, out _shopDepositText);
+            CreateLabel(panel, "CoinSource", "Canjea minerales en la Tolva Central",
+                new Vector2(729f, -105f), new Vector2(393f, 48f), 16, FontStyle.Normal, ColTextMuted, TextAnchor.MiddleRight);
             _shopCatalogScroll = CreateVerticalCatalog(panel, "ShopCardsGridArea", "ShopCards",
                 new Vector2(26f, -168f), new Vector2(1074f, 467f));
             _shopStatusText = CreateLabel(panel, "ShopStatus", "", new Vector2(26f, -649f), new Vector2(1096f, 28f),
@@ -192,18 +188,6 @@ namespace Boreatek.UI
             }
         }
 
-        private void DepositShopLoad()
-        {
-            if (_inventoryShop == null || _inventoryShop.CurrentBackpackCount == 0)
-            {
-                return;
-            }
-            int coins = _inventoryShop.DepositAllResourcesIntoCentralHopper();
-            _shopStatusText.text = $"Carga entregada · +{coins} monedas";
-            RefreshShopValues(force: true);
-            _selectedShopTab.Select();
-        }
-
         private void RefreshShopValues(bool force = false)
         {
             if (_inventoryShop == null)
@@ -230,15 +214,6 @@ namespace Boreatek.UI
                 }
             }
 
-            int load = _inventoryShop.CurrentBackpackCount;
-            int slots = _inventoryShop.MaxBackpackSlots;
-            if (force || _shownShopLoad != load || _shownShopCapacity != slots)
-            {
-                _shownShopLoad = load;
-                _shownShopCapacity = slots;
-                _shopDepositButton.interactable = load > 0;
-                _shopDepositText.text = load > 0 ? $"Depositar en la tolva · {load}/{slots}" : "Mochila vacía";
-            }
         }
 
         private void UpdateShopModalVisibility()

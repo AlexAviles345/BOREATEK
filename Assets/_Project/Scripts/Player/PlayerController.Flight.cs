@@ -13,7 +13,7 @@ namespace Boreatek.Player
 
         internal void TryMountPlane(BoreatekBushPlane plane, bool resuming = false)
         {
-            if ((!_gameplayEnabled && !resuming) || _pilotingPlane != null || _mountedSled != null || _isShopMenuOpen ||
+            if ((!_gameplayEnabled && !resuming) || _pilotingPlane != null || _mountedSled != null || IsShopMenuOpen ||
                 !plane.Board(this, resuming)) return;
             _pilotingPlane = plane;
             _flightLookYaw = _flightLookPitch = 0f;
