@@ -58,6 +58,7 @@ namespace Boreatek.Player
         private float _playerYaw;
         private float _swingCooldownTimer;
         private float _footstepDistance;
+        private SnowFootprints _snowFootprints;
         private float _gingerbreadCookieBuffTimer;
         private float _gingerbreadSpeedMultiplier = 1f;
         private bool _isCursorLocked = true;
@@ -297,15 +298,22 @@ namespace Boreatek.Player
             _footstepDistance += distance;
             if (_footstepDistance < stride) return;
             _footstepDistance = Mathf.Repeat(_footstepDistance, stride);
-            BoreatekSoundscape.Play(FootstepSurface(), strength: sprinting ? 0.22f : 0.15f);
+            bool foundGround = Physics.Raycast(transform.position + Vector3.up * 0.28f, Vector3.down, out RaycastHit ground,
+                0.72f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            SoundCue surface = FootstepSurface(foundGround ? ground.collider : null);
+            BoreatekSoundscape.Play(surface, strength: sprinting ? 0.22f : 0.15f);
+            if (foundGround) _snowFootprints?.Step(ground, IsSnowfield(ground.collider), transform.forward);
         }
 
-        private SoundCue FootstepSurface()
+        internal void BindFootprints(SnowFootprints footprints) => _snowFootprints = footprints;
+
+        private static bool IsSnowfield(Collider ground) => ground.name is "ArcticSnowfield" or "ArcticSnowfields";
+
+        private SoundCue FootstepSurface(Collider ground)
         {
-            if (Physics.Raycast(transform.position + Vector3.up * 0.20f, Vector3.down, out RaycastHit ground,
-                0.65f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            if (ground != null)
             {
-                switch (ground.collider.name)
+                switch (ground.name)
                 {
                     case "Entrance_Bridge": return SoundCue.StepPlanks;
                     case "ArcticSnowfield":
@@ -315,6 +323,7 @@ namespace Boreatek.Player
                     case "Foundation_Walls_And_Roof":
                     case "Shell_And_Walkable_Floor":
                     case "Walkway_To_Steam_Room":
+                    case "Village_Paved_Lanes":
                     case "Mine_Entrance_Arch_And_Approach": return SoundCue.StepStone;
                 }
             }
@@ -539,6 +548,7 @@ namespace Boreatek.Player
         {
             _verticalVelocity = Vector3.zero;
             _footstepDistance = 0f;
+            _snowFootprints?.ResetBoots();
             CancelPickaxeSwing();
             _elfPose?.Reset();
             _characterController.enabled = present;
@@ -586,6 +596,7 @@ namespace Boreatek.Player
             _characterController.enabled = true;
             _verticalVelocity = state.verticalVelocity;
             _footstepDistance = 0f;
+            _snowFootprints?.ResetBoots();
             RestorePerspective(state);
             if (_cameraPivot != null)
             {
