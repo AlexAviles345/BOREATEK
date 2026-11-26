@@ -74,7 +74,7 @@ namespace Boreatek.World
             dispenser.Frustum(new Vector3(0.49f, 0.28f, 0.21f), new Vector3(0.37f, 0.77f, 0.28f), 0.033f, 0.032f, 6, foundry.Iron);
             dispenser.Box(new Vector3(0.37f, 0.79f, 0.29f), new Vector3(0.11f, 0.15f, 0.047f), red);
             _landscape.Place(pump, "Dispensador_Y_Manguera", dispenser, collision: true);
-            pump.gameObject.AddComponent<AviationFuelPump>();
+            var fuelPump = pump.gameObject.AddComponent<AviationFuelPump>();
 
             var freight = new Batch();
             foreach (float x in new[] { 0.85f, 1.63f })
@@ -85,10 +85,10 @@ namespace Boreatek.World
                 freight.Frustum(tank + Vector3.up * 0.54f, tank + Vector3.up * 0.62f, 0.312f, 0.312f, 10, foundry.Iron);
             }
             _landscape.Place(service, "Barriles_De_Gasolina", freight, collision: true);
-            BuildRedBushPlane(airfield);
+            fuelPump.BindPlane(BuildRedBushPlane(airfield));
         }
 
-        private void BuildRedBushPlane(Transform airfield)
+        private BoreatekBushPlane BuildRedBushPlane(Transform airfield)
         {
             var home = StarterMeshFoot(AirfieldLocation.x, AirfieldLocation.y) + Vector3.up * 0.027f;
             Transform plane = CharacterPart(airfield, "Avioneta_Roja", home);
@@ -174,6 +174,7 @@ namespace Boreatek.World
             AddPlaneCollider(plane, new Vector3(0f, 2.20f, 0.24f), new Vector3(7.92f, 0.25f, 1.54f));
             var flight = plane.gameObject.AddComponent<BoreatekBushPlane>();
             flight.Initialize(seat, glazing, propeller, elevator, rudder, left, right);
+            return flight;
         }
 
         private static void BuildPlaneHull(Batch batch, Material matte, Material enamel, Material cream)

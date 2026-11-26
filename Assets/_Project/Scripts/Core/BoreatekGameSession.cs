@@ -317,8 +317,9 @@ namespace Boreatek.Core
             SetScreen(Screen.Dead, DeathMessage(fromCold));
         }
 
-        private static string DeathMessage(bool fromCold) =>
-            fromCold ? "La hipotermia acabó con tu expedición." : "Has caído en combate.";
+        private string DeathMessage(bool fromCold) => _player.DiedInPlaneExplosion
+            ? "La avioneta explotó. Puedes pedir otra en la estación aérea al volver a la aldea."
+            : fromCold ? "La hipotermia acabó con tu expedición." : "Has caído en combate.";
 
         internal void Respawn()
         {

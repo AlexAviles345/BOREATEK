@@ -523,6 +523,7 @@ namespace Boreatek.Player
 
         internal void SetCharacterPresent(bool present)
         {
+            if (present) DiedInPlaneExplosion = false;
             if (!present && _pilotingPlane != null) LeavePlane(force: true);
             if (!present && _mountedSled != null) LeaveSled(force: true);
             _verticalVelocity = Vector3.zero;
@@ -549,7 +550,7 @@ namespace Boreatek.Player
             public int pickaxeTier, pickaxeDamage;
             public int cameraPerspective;
             public int equipmentSlot;
-            public bool thirdPerson, headlamp;
+            public bool thirdPerson, headlamp, diedInPlaneExplosion;
         }
 
         internal SaveState CaptureSave() => new SaveState
@@ -565,7 +566,8 @@ namespace Boreatek.Player
             thirdPerson = !InFirstPerson,
             cameraPerspective = (int)CurrentPerspective,
             equipmentSlot = (int)SelectedEquipment,
-            headlamp = IsHeadlampEnabled
+            headlamp = IsHeadlampEnabled,
+            diedInPlaneExplosion = DiedInPlaneExplosion
         };
 
         internal void RestoreSave(SaveState state)
@@ -575,6 +577,7 @@ namespace Boreatek.Player
             _elfPose?.Reset();
             _playerYaw = state.yaw;
             _cameraPitch = state.pitch;
+            DiedInPlaneExplosion = state.diedInPlaneExplosion;
             transform.SetPositionAndRotation(state.position, Quaternion.Euler(0f, _playerYaw, 0f));
             _characterController.enabled = true;
             _verticalVelocity = state.verticalVelocity;

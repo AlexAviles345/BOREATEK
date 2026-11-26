@@ -7,7 +7,7 @@ namespace Boreatek.Audio
         Click, Confirm, StepSnow, StepPlanks, StepIce, Jump, Land, Swing, Wood, Metal, Stone, Ice, Crystal,
         Break, Blocked, Deploy, Blast, Eat, Drink, Hurt, Death, Servo, GolemStep, RobotReady, GolemReady,
         RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone, SwordSwing, SledBell, PlaneTouchdown, PlaneRefuel,
-        WolfWarning, WolfLunge, WolfFall, MothWarning, MothDive, MothFade
+        WolfWarning, WolfLunge, WolfFall, MothWarning, MothDive, MothFade, PlaneScrape, PlaneImpact, PlaneExplosion
     }
 
     internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm, FrozenPlain, Forest, Ridge }
@@ -102,6 +102,9 @@ namespace Boreatek.Audio
                 SoundCue.SledBell    => new Voice(0.38f, 1030f, 1010f, 0.32f, 0.14f, 14f, 0.38f),
                 SoundCue.PlaneTouchdown => new Voice(0.79f, 89f, 49f, 0.16f, 0.71f, 16f, 0.23f),
                 SoundCue.PlaneRefuel => new Voice(0.96f, 193f, 130f, 0.06f, 0.72f, 18f, 0.12f),
+                SoundCue.PlaneScrape => new Voice(0.44f, 1114f, 318f, 0.32f, 0.87f, 47f, 0.37f),
+                SoundCue.PlaneImpact => new Voice(0.73f, 144f, 49f, 0.64f, 0.97f, 32f, 0.23f),
+                SoundCue.PlaneExplosion => new Voice(1.56f, 85f, 22f, 0.84f, 1.05f, 13f, 0.16f),
                 SoundCue.WolfWarning => new Voice(0.67f, 102f, 82f, 0.38f, 0.89f, 19f, 0.14f),
                 SoundCue.WolfLunge   => new Voice(0.30f, 267f, 93f, 0.43f, 0.92f, 32f, 0.25f),
                 SoundCue.WolfFall    => new Voice(0.71f, 269f, 58f, 0.22f, 0.78f, 14f, 0.12f),

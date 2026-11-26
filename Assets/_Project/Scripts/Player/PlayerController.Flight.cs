@@ -9,6 +9,7 @@ namespace Boreatek.Player
         private BoreatekBushPlane _pilotingPlane;
         private Vector3 _flightCameraBoom;
         private float _flightLookYaw, _flightLookPitch;
+        internal bool DiedInPlaneExplosion { get; private set; }
 
         internal void TryMountPlane(BoreatekBushPlane plane, bool resuming = false)
         {
@@ -63,6 +64,7 @@ namespace Boreatek.Player
                 }
             }
             _pilotingPlane.Fly(Mathf.Clamp(power, -1f, 1f), Mathf.Clamp(pitch, -1f, 1f), Mathf.Clamp(steer, -1f, 1f), brake, dt);
+            if (_pilotingPlane == null) return;
             UpdateFlightSeat();
             _currentFocusedInteractable = _pilotingPlane;
             _aimHit = default;
@@ -82,9 +84,10 @@ namespace Boreatek.Player
         private bool LeavePlane(bool force = false)
         {
             BoreatekBushPlane plane = _pilotingPlane;
-            if (force && !plane.CanExit) plane.ReturnToStation();
-            if (!plane.FindExit(out Vector3 landing) && !force) return false;
+            Vector3 landing = plane.Seat.position;
+            if (!force && !plane.FindExit(out landing)) return false;
             _pilotingPlane = null;
+            _currentFocusedInteractable = null;
             plane.Release();
             transform.SetPositionAndRotation(landing, Quaternion.Euler(0f, _playerYaw, 0f));
             _characterController.enabled = true;
@@ -92,6 +95,14 @@ namespace Boreatek.Player
             _elfPose?.Reset();
             UpdateCameraPositionImmediate();
             return true;
+        }
+
+        internal void HandlePlaneExplosion(BoreatekBushPlane plane, Vector3 center)
+        {
+            if (_pilotingPlane != plane) return;
+            DiedInPlaneExplosion = true;
+            LeavePlane(force: true);
+            _temperatureSystem.ApplyCombatDamage(_temperatureSystem.MaxHealth, center);
         }
 
         private bool UpdateFlightCamera(Transform camera, float dt)
