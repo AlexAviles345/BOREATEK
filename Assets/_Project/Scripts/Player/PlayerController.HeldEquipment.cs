@@ -84,6 +84,15 @@ namespace Boreatek.Player
                     grip.z += 0.12f * action;
                     break;
             }
+            if (_swordStrike)
+            {
+                PickaxeStroke slash = MeleePose;
+                grip += new Vector3(0.092f, 0.11f, -0.08f) * slash.Raise +
+                    new Vector3(-0.27f, 0.062f, 0.14f) * slash.Contact +
+                    new Vector3(-0.31f, -0.055f, 0.055f) * slash.Follow;
+                angles += new Vector3(-13f, 31f, -57f) * slash.Raise +
+                    new Vector3(19f, -35f, 68f) * slash.Contact + new Vector3(28f, -38f, 103f) * slash.Follow;
+            }
 
             var camera = _playerCamera.transform;
             Vector3 path = camera.TransformDirection(grip + Vector3.forward * 0.13f);

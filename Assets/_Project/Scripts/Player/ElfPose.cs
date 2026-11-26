@@ -89,7 +89,7 @@ namespace Boreatek.Player
             Update(0f);
         }
 
-        internal void Update(float dt, PickaxeStroke strike = default, Vector3 aim = default)
+        internal void Update(float dt, PickaxeStroke strike = default, Vector3 aim = default, bool sword = false)
         {
             float phase = _cycle * 2f * Mathf.PI;
             float stride = Mathf.Cos(phase) * _pace;
@@ -99,6 +99,7 @@ namespace Boreatek.Player
             float action = Mathf.Sin(Mathf.PI * _gestureTime / GestureDuration);
             float landing = Mathf.Sin(Mathf.PI * (_landing / 0.22f));
             float twist = stride * 8f;
+            if (sword) twist += strike.Raise * 23f - strike.Contact * 36f - strike.Follow * 16f;
             float lean = _travel.z * _pace * Mathf.Lerp(4f, 12f, _run) + action * (_gesture == Gesture.Place ? 22f : 5f);
             lean += recoil * _hitDirection.z * 23f;
             float roll = -_travel.x * _pace * 10f - stride * 4f - recoil * _hitDirection.x * 23f;
@@ -112,17 +113,18 @@ namespace Boreatek.Player
             float armSwing = stride * Mathf.Lerp(24f, 39f, _run);
             float reach = _gesture == Gesture.Throw ? 121f : (_gesture == Gesture.Place ? 45f : _gesture == Gesture.Consume ? 101f : 81f);
             float aimTilt = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(aim.y, -1f, 1f)) * Mathf.Rad2Deg, -45f, 55f);
-            float pickaxePitch = -137f * strike.Raise + (-69f - aimTilt * 0.65f) * strike.Contact +
-                (-31f - aimTilt * 0.54f) * strike.Follow;
+            float toolPitch = sword ? -48f * strike.Raise - (77f + aimTilt * 0.52f) * strike.Contact - 51f * strike.Follow
+                : -137f * strike.Raise + (-69f - aimTilt * 0.65f) * strike.Contact + (-31f - aimTilt * 0.54f) * strike.Follow;
             _leftArm.Shoulder.localRotation = Quaternion.Euler(
                 Mathf.Lerp(armSwing, -reach - _gestureDirection.y * 25f, action) - recoil * 19f -
                 _air * 23f - strike.Contact * 22f,
                 action * _gestureDirection.x * 35f, action * 8f + recoil * 14f);
             _leftArm.Elbow.localRotation = Quaternion.Euler(-Mathf.Abs(stride) * 13f - action * 19f - recoil * 26f, 0f, 0f);
             _rightArm.Shoulder.localRotation = Quaternion.Euler(
-                (-armSwing * 0.56f - recoil * 18f - _air * 16f) * (1f - strike.Weight) + pickaxePitch,
-                strike.Raise * 13f + strike.Contact * 6f,
-                -recoil * 12f + strike.Raise * 34f + strike.Contact * 41f + strike.Follow * 12f);
+                (-armSwing * 0.56f - recoil * 18f - _air * 16f) * (1f - strike.Weight) + toolPitch,
+                sword ? strike.Raise * 36f - strike.Contact * 64f - strike.Follow * 56f : strike.Raise * 13f + strike.Contact * 6f,
+                -recoil * 12f + (sword ? strike.Raise * 63f + strike.Contact * 11f - strike.Follow * 23f :
+                    strike.Raise * 34f + strike.Contact * 41f + strike.Follow * 12f));
             _rightArm.Elbow.localRotation = Quaternion.Euler(
                 (-Mathf.Abs(stride) * 11f - recoil * 20f) * (1f - strike.Weight) -
                 strike.Raise * 55f + strike.Contact * 13f + strike.Follow * 23f, 0f, 0f);

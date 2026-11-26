@@ -571,7 +571,7 @@ namespace Boreatek.Player
             _footstepDistance = 0f;
             _snowFootprints?.ResetBoots();
             RestorePerspective(state);
-            SelectEquipment((EquipmentSlot)Mathf.Clamp(state.equipmentSlot, 0, (int)EquipmentSlot.Extractor));
+            SelectEquipment((EquipmentSlot)Mathf.Clamp(state.equipmentSlot, 0, (int)EquipmentSlot.Sword));
             if (_cameraPivot != null)
             {
                 _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, 0f, 0f);

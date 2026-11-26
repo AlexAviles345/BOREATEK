@@ -330,6 +330,9 @@ namespace Boreatek.AI
         internal void TakeBlastDamage(float damage, Vector3 center, PlayerController attacker) =>
             ApplyDamage(damage, center, 1.30f, attacker);
 
+        internal void TakeSwordDamage(PlayerController attacker) =>
+            ApplyDamage(_isFrostGolemGuardian ? 30f : 45f, attacker.transform.position, 1.18f, attacker);
+
         private void ApplyDamage(float damage, Vector3 from, float force, PlayerController attacker)
         {
             if (_currentState == AIState.Disabled || damage <= 0f) return;

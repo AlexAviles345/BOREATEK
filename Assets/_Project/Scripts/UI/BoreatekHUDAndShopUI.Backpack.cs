@@ -16,7 +16,8 @@ namespace Boreatek.UI
             ("Guirnalda", "Deja una fuente de luz y calor en el suelo.", BoreatekGlyph.Garland, new Color32(239, 208, 141, 255)),
             ("Baliza", "Calienta y derrite cofres congelados. Se recoge con E.", BoreatekGlyph.Beacon, new Color32(255, 164, 66, 255)),
             ("Petardo", "Fractura hielo y roca y alcanza enemigos cercanos.", BoreatekGlyph.Firecracker, new Color32(254, 128, 119, 255)),
-            ("Autómata", "Instala un extractor sobre una veta cercana.", BoreatekGlyph.Automaton, new Color32(106, 205, 238, 255))
+            ("Autómata", "Instala un extractor sobre una veta cercana.", BoreatekGlyph.Automaton, new Color32(106, 205, 238, 255)),
+            ("Espada", "El filo térmico de la Forja interrumpe a los robots y alcanza a los gólems.", BoreatekGlyph.Sword, new Color32(172, 231, 239, 255))
         };
         private static readonly ResourceType[] PackResources = (ResourceType[])System.Enum.GetValues(typeof(ResourceType));
         private readonly BoreatekUiButton[] _backpackSlots = new BoreatekUiButton[EquipmentDisplay.Length];
@@ -31,7 +32,7 @@ namespace Boreatek.UI
         {
             Vector2 center = Vector2.one * 0.5f;
             _backpackPanel = CreatePanelCard("Backpack", parent, center, center, center, Vector2.zero,
-                new Vector2(1010f, 605f), ColDeepSteel);
+                new Vector2(1010f, 645f), ColDeepSteel);
             ApplyMetalPanel(_backpackPanel, ColDeepSteel, ColSteelRim);
             CreateLabel(_backpackPanel, "Title", "Mochila de expedición", new Vector2(26f, -16f),
                 new Vector2(710f, 49f), 39, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
@@ -46,21 +47,21 @@ namespace Boreatek.UI
                 EquipmentSlot slot = (EquipmentSlot)i;
                 var entry = EquipmentDisplay[i];
                 RectTransform card = CreatePanelCard($"Pack_{slot}", _backpackPanel, topLeft, topLeft, topLeft,
-                    new Vector2(26f + (i % 4) * 151f, -145f - (i / 4) * 93f), new Vector2(141f, 81f), ColBlueSteel);
+                    new Vector2(26f + (i % 3) * 200f, -145f - (i / 3) * 80f), new Vector2(193f, 71f), ColBlueSteel);
                 _backpackSlots[i] = AttachMetalButton(card, ColBlueSteel, ColBrassRim);
                 _backpackSlots[i].onClick.AddListener(() => SelectBackpackItem(slot));
                 AddHudGlyph(card, "EquipmentGlyph", entry.glyph, topLeft, new Vector2(33f, -28f), 30f, entry.accent);
-                _backpackStock[i] = CreateLabel(card, "Stock", "", new Vector2(75f, -10f), new Vector2(52f, 28f),
+                _backpackStock[i] = CreateLabel(card, "Stock", "", new Vector2(123f, -10f), new Vector2(55f, 28f),
                     16, FontStyle.Bold, ColTextMuted, TextAnchor.MiddleRight);
-                CreateLabel(card, "EquipmentName", entry.label, new Vector2(12f, -49f), new Vector2(117f, 24f),
+                CreateLabel(card, "EquipmentName", entry.label, new Vector2(18f, -41f), new Vector2(157f, 24f),
                     17, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
             }
 
-            _backpackDetails = CreateLabel(_backpackPanel, "Details", "", new Vector2(28f, -350f), new Vector2(580f, 55f),
+            _backpackDetails = CreateLabel(_backpackPanel, "Details", "", new Vector2(28f, -401f), new Vector2(580f, 55f),
                 19, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
-            _wearEquipment = CreateMenuButton(_backpackPanel, "EquipItem", "Equipar", 26f, 426f, 283f,
+            _wearEquipment = CreateMenuButton(_backpackPanel, "EquipItem", "Equipar", 26f, 471f, 283f,
                 ColBlueSteel, () => session.EquipFromBackpack(_backpackSelection));
-            _consumeEquipment = CreateMenuButton(_backpackPanel, "ConsumeItem", "Consumir", 320f, 426f, 299f,
+            _consumeEquipment = CreateMenuButton(_backpackPanel, "ConsumeItem", "Consumir", 320f, 471f, 299f,
                 ColBrassGold, () =>
                 {
                     if (session.ConsumeFromBackpack(_backpackSelection))
@@ -69,11 +70,11 @@ namespace Boreatek.UI
                         RefreshBackpackContents();
                     }
                 });
-            _backpackFeedback = CreateLabel(_backpackPanel, "Feedback", "", new Vector2(28f, -503f), new Vector2(578f, 64f),
+            _backpackFeedback = CreateLabel(_backpackPanel, "Feedback", "", new Vector2(28f, -548f), new Vector2(578f, 64f),
                 17, FontStyle.Normal, ColIceCyan, TextAnchor.UpperLeft);
 
             RectTransform cargo = CreatePanelCard("Cargo", _backpackPanel, topLeft, topLeft, topLeft,
-                new Vector2(644f, -102f), new Vector2(341f, 467f), ColPanelDark);
+                new Vector2(644f, -102f), new Vector2(341f, 507f), ColPanelDark);
             ApplyMetalPanel(cargo, ColPanelDark, ColSteelRim);
             CreateLabel(cargo, "CargoTitle", "Carga de minerales", new Vector2(18f, -16f), new Vector2(306f, 31f),
                 23, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
@@ -107,7 +108,12 @@ namespace Boreatek.UI
             for (int i = 0; i < _backpackStock.Length; i++)
             {
                 int stock = _inventoryShop.GetEquipmentStock((EquipmentSlot)i);
-                _backpackStock[i].text = i == (int)EquipmentSlot.Pickaxe ? $"Nv. {_player.CurrentPickaxeTier}" : $"×{stock}";
+                _backpackStock[i].text = (EquipmentSlot)i switch
+                {
+                    EquipmentSlot.Pickaxe => $"Nv. {_player.CurrentPickaxeTier}",
+                    EquipmentSlot.Sword => "",
+                    _ => $"×{stock}"
+                };
                 _backpackStock[i].color = stock > 0 ? ColTextLight : ColTextMuted;
             }
             _capacityLabel.text = $"{_inventoryShop.CurrentBackpackCount} / {_inventoryShop.MaxBackpackSlots} espacios";

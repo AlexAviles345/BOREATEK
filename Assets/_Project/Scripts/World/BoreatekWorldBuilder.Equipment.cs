@@ -10,7 +10,7 @@ namespace Boreatek.World
     {
         private Transform[] BuildHeldEquipment(Transform hand)
         {
-            var models = new Transform[(int)EquipmentSlot.Extractor + 1];
+            var models = new Transform[(int)EquipmentSlot.Sword + 1];
             for (int i = 1; i < models.Length; i++)
             {
                 var slot = (EquipmentSlot)i;
@@ -132,8 +132,40 @@ namespace Boreatek.World
                         mesh.Box(new Vector3(0.068f * side, -0.059f, 0.031f), new Vector3(0.079f, 0.071f, 0.13f), iron);
                     }
                     break;
+                case EquipmentSlot.Sword:
+                    BuildForgeSword(mesh, brass, iron, glow);
+                    break;
             }
             return mesh;
+        }
+
+        private void BuildForgeSword(Batch mesh, Material brass, Material iron, Material glow)
+        {
+            Material steel = CharacterFinish(120, 175, 196, 0.47f, 0.49f);
+            Material edge = CharacterFinish(192, 227, 233, 0.43f, 0.30f);
+            Material grip = CharacterFinish(100, 60, 45);
+            mesh.Frustum(Vector3.down * 0.164f, Vector3.up * 0.125f, 0.033f, 0.032f, 9, grip);
+            mesh.Frustum(Vector3.down * 0.182f, Vector3.down * 0.143f, 0.048f, 0.044f, 8, brass);
+            for (int wrap = 0; wrap < 5; wrap++)
+            {
+                Vector3 at = Vector3.up * (-0.119f + wrap * 0.045f);
+                mesh.Frustum(at, at + Vector3.up * 0.017f, 0.035f, 0.036f, 8, iron);
+            }
+            mesh.Box(Vector3.up * 0.128f, new Vector3(0.264f, 0.054f, 0.083f), brass);
+            foreach (float side in new[] { -1f, 1f })
+                mesh.Frustum(new Vector3(side * 0.097f, 0.132f, 0f),
+                    new Vector3(side * 0.16f, 0.172f, 0f), 0.043f, 0.027f, 7, brass);
+            Vector3[] bevel = { new(-0.081f, 0f, 0f), new(0f, 0f, -0.031f), new(0.081f, 0f, 0f), new(0f, 0f, 0.031f) };
+            for (int i = 0; i < bevel.Length; i++)
+            {
+                Vector3 a = bevel[i], b = bevel[(i + 1) % bevel.Length];
+                Vector3 tipA = Vector3.up * 0.548f + a * 0.81f, tipB = Vector3.up * 0.548f + b * 0.81f;
+                Material face = i % 2 == 0 ? steel : edge;
+                mesh.Quad(Vector3.up * 0.144f + a, tipA, tipB, Vector3.up * 0.144f + b, face);
+                mesh.Triangle(tipA, Vector3.up * 0.665f, tipB, face);
+            }
+            foreach (float side in new[] { -1f, 1f })
+                mesh.Box(new Vector3(0f, 0.244f, side * 0.032f), new Vector3(0.013f, 0.146f, 0.012f), glow);
         }
     }
 }

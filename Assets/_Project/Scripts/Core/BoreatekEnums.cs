@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Boreatek.Core
 {
-    internal enum EquipmentSlot { Pickaxe, Chocolate, Cookie, Peppermint, Garland, Beacon, Firecracker, Extractor }
+    internal enum EquipmentSlot { Pickaxe, Chocolate, Cookie, Peppermint, Garland, Beacon, Firecracker, Extractor, Sword }
 
     /// <summary>
     /// Identificadores de los 8 recursos recolectables de Boreatek.

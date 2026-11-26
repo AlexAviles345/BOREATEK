@@ -1,5 +1,6 @@
 using Boreatek.AI;
 using Boreatek.Audio;
+using Boreatek.Core;
 using Boreatek.World;
 using UnityEngine;
 
@@ -39,6 +40,7 @@ namespace Boreatek.Player
         private const float FirstPersonPickaxeScale = 0.63f;
         private float _swingElapsed, _swingDuration;
         private bool _strikeIsInteraction, _showImpactPose;
+        private bool _swordStrike;
         private Vector3? _impactPoint;
         private HarvestableNode _strikeNode;
         private RaycastHit _aimHit;
@@ -49,13 +51,21 @@ namespace Boreatek.Player
         private void PerformPickaxeSwing(HarvestableNode interactionNode = null)
         {
             float cooldown = IsGingerbreadCookieActive ? _swingCooldownSeconds * 0.65f : _swingCooldownSeconds;
+            BeginMeleeSwing(cooldown, 0.33f, sword: false, interactionNode: interactionNode);
+        }
+
+        private void PerformSwordSwing() => BeginMeleeSwing(0.52f, 0.39f, sword: true);
+
+        private void BeginMeleeSwing(float cooldown, float duration, bool sword, HarvestableNode interactionNode = null)
+        {
             _swingCooldownTimer = Mathf.Max(0.05f, cooldown);
-            _swingDuration = Mathf.Min(0.33f, _swingCooldownTimer);
+            _swingDuration = Mathf.Min(duration, _swingCooldownTimer);
             _swingElapsed = 0f;
+            _swordStrike = sword;
             _impactPoint = null;
             _strikeNode = interactionNode;
             _strikeIsInteraction = interactionNode != null;
-            BoreatekSoundscape.Play(SoundCue.Swing, strength: 0.63f);
+            BoreatekSoundscape.Play(sword ? SoundCue.SwordSwing : SoundCue.Swing, strength: 0.63f);
         }
 
         private void AdvancePickaxeSwing(float dt)
@@ -68,12 +78,27 @@ namespace Boreatek.Player
             if (_showImpactPose)
             {
                 _impactPoint = _aimHit.collider != null ? _aimHit.point : (Vector3?)null;
-                ApplyPickaxeImpact();
+                if (_swordStrike) ApplySwordImpact();
+                else ApplyPickaxeImpact();
             }
             else if (_swingElapsed >= _swingDuration)
             {
                 CancelPickaxeSwing();
             }
+        }
+
+        private void ApplySwordImpact()
+        {
+            if (_aimHit.collider == null) return;
+            var target = _aimHit.collider.GetComponentInParent<DefectiveToyAI>();
+            if (target == null) return;
+            Vector3 handHeight = transform.position + Vector3.up * 0.92f;
+            Vector3 strike = _aimHit.point - handHeight;
+            float distance = strike.magnitude;
+            if (distance > 2.6f || distance <= 0.01f) return;
+            if (TryGetAimHit(new Ray(handHeight, strike / distance), distance + 0.06f, out RaycastHit contact) &&
+                contact.collider.GetComponentInParent<DefectiveToyAI>() == target)
+                target.TakeSwordDamage(this);
         }
 
         private void ApplyPickaxeImpact()
@@ -115,7 +140,7 @@ namespace Boreatek.Player
         private void UpdateCharacterAnimation(float dt)
         {
             float phase = _swingDuration > 0f ? _swingElapsed / _swingDuration : 0f;
-            var stroke = new PickaxeStroke(_showImpactPose ? PickaxeStroke.ImpactPhase : phase);
+            PickaxeStroke stroke = MeleePose;
             Vector3? point = phase >= PickaxeStroke.ImpactPhase
                 ? _impactPoint
                 : _aimHit.collider != null ? _aimHit.point : (Vector3?)null;
@@ -126,8 +151,8 @@ namespace Boreatek.Player
                 Vector3 target = point.Value - transform.TransformPoint(new Vector3(0f, 0.78f, 0f));
                 if (Vector3.Dot(target, view.forward) > 0.04f) aim = target.normalized;
             }
-            _elfPose?.Update(dt, stroke, transform.InverseTransformDirection(aim));
-            if (_pickaxeVisualRoot == null) return;
+            _elfPose?.Update(dt, stroke, transform.InverseTransformDirection(aim), _swordStrike);
+            if (_pickaxeVisualRoot == null || SelectedEquipment != EquipmentSlot.Pickaxe) return;
 
             if (InFirstPerson && _pickaxeGripParent != null && _playerCamera != null)
             {
@@ -160,6 +185,9 @@ namespace Boreatek.Player
             Quaternion restWorld = mount != null ? mount.rotation * _initialPickaxeLocalRot : _initialPickaxeLocalRot;
             _pickaxeVisualRoot.rotation = Quaternion.Slerp(restWorld, swung, stroke.Weight);
         }
+
+        private PickaxeStroke MeleePose => new PickaxeStroke(_showImpactPose ? PickaxeStroke.ImpactPhase :
+            _swingDuration > 0f ? _swingElapsed / _swingDuration : 0f);
 
         private void PoseFirstPersonPickaxe(PickaxeStroke stroke, Transform view, Vector3? point)
         {
@@ -209,6 +237,7 @@ namespace Boreatek.Player
         {
             _swingDuration = 0f;
             _swingElapsed = 0f;
+            _swordStrike = false;
             _strikeNode = null;
             _showImpactPose = false;
             _impactPoint = null;

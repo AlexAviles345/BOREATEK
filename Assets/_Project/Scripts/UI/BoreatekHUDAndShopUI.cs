@@ -400,7 +400,7 @@ namespace Boreatek.UI
 
             var topLeft = new Vector2(0f, 1f);
             RectTransform bar = CreatePanelCard("BottomHotbarContainer", parent, bottom, bottom, bottom,
-                new Vector2(0f, 38f), new Vector2(820f, 94f), ColDeepSteel);
+                new Vector2(0f, 38f), new Vector2(920f, 94f), ColDeepSteel);
             ApplyMetalPanel(bar, ColDeepSteel, ColSteelRim);
             bar.GetComponent<Image>().raycastTarget = false;
 
@@ -600,7 +600,7 @@ namespace Boreatek.UI
             }
 
             _shownHotbarStock[index] = amount;
-            _hotbarCountTexts[index].text = index == (int)EquipmentSlot.Pickaxe ? "" : amount.ToString();
+            _hotbarCountTexts[index].text = (EquipmentSlot)index is EquipmentSlot.Pickaxe or EquipmentSlot.Sword ? "" : amount.ToString();
             _hotbarCountTexts[index].color = amount > 0 ? ColTextLight : ColTextMuted;
             _hotbarGlyphs[index].color = amount > 0 ? EquipmentDisplay[index].accent : new Color32(105, 129, 146, 255);
         }

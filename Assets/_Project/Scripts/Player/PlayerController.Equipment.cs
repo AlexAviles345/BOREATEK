@@ -34,7 +34,7 @@ namespace Boreatek.Player
             float scroll = mouse != null ? mouse.scroll.ReadValue().y : 0f;
             var pad = Gamepad.current;
             var keyboard = Keyboard.current;
-            const int slots = (int)EquipmentSlot.Extractor + 1;
+            const int slots = (int)EquipmentSlot.Sword + 1;
             int change = scroll > 0.01f || pad?.leftShoulder.wasPressedThisFrame == true ? -1
                 : scroll < -0.01f || pad?.rightShoulder.wasPressedThisFrame == true ? 1 : 0;
             if (change != 0)
@@ -72,6 +72,11 @@ namespace Boreatek.Player
         private void UseEquipment(EquipmentSlot slot)
         {
             if (_inventoryAndShop == null || _heatPlaceIn > 0f) return;
+            if (slot == EquipmentSlot.Sword)
+            {
+                if (CanSwingPickaxe) PerformSwordSwing();
+                return;
+            }
             if (IsConsumable(slot))
             {
                 ConsumeEquipment(slot);

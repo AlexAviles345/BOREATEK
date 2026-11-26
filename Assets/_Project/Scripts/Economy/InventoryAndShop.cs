@@ -67,7 +67,7 @@ namespace Boreatek.Economy
 
         internal int GetEquipmentStock(EquipmentSlot equipment) => equipment switch
         {
-            EquipmentSlot.Pickaxe => 1,
+            EquipmentSlot.Pickaxe or EquipmentSlot.Sword => 1,
             EquipmentSlot.Chocolate => _hotChocolateThermosCount,
             EquipmentSlot.Cookie => _gingerbreadCookieCount,
             EquipmentSlot.Peppermint => _peppermintCaneCount,

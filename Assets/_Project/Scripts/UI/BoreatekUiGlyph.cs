@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace Boreatek.UI
 {
-    internal enum BoreatekGlyph { Aim, Thermos, Cookie, Candy, Garland, Beacon, Firecracker, Automaton, Pickaxe }
+    internal enum BoreatekGlyph { Aim, Thermos, Cookie, Candy, Garland, Beacon, Firecracker, Automaton, Pickaxe, Sword }
 
     [RequireComponent(typeof(CanvasRenderer))]
     public sealed class BoreatekUiGlyph : MaskableGraphic
@@ -19,7 +19,8 @@ namespace Boreatek.UI
             new[] { new[] { 8, 16, 8, 14 }, new[] { 2, 13, 4, 11 }, new[] { 14, 13, 12, 11 }, new[] { 3, 2, 13, 2, 13, 4, 11, 4, 11, 9, 9, 11, 7, 11, 5, 9, 5, 4, 3, 4, 3, 2 }, new[] { 5, 4, 11, 4 } },
             new[] { new[] { 4, 2, 10, 2, 10, 10, 4, 10, 4, 2 }, new[] { 7, 10, 7, 13, 10, 14, 12, 13 }, new[] { 13, 15, 14, 16 }, new[] { 14, 11, 15, 10 }, new[] { 4, 6, 10, 6 } },
             new[] { new[] { 3, 11, 13, 11, 13, 4, 3, 4, 3, 11 }, new[] { 8, 11, 8, 15, 11, 15 }, new[] { 5, 8, 6, 8 }, new[] { 10, 8, 11, 8 }, new[] { 1, 9, 1, 6 }, new[] { 15, 9, 15, 6 }, new[] { 5, 2, 11, 2 } },
-            new[] { new[] { 3, 2, 11, 11 }, new[] { 4, 1, 12, 10 }, new[] { 5, 14, 10, 14, 14, 11, 15, 7, 12, 10, 9, 12, 5, 14 } }
+            new[] { new[] { 3, 2, 11, 11 }, new[] { 4, 1, 12, 10 }, new[] { 5, 14, 10, 14, 14, 11, 15, 7, 12, 10, 9, 12, 5, 14 } },
+            new[] { new[] { 4, 5, 11, 14, 14, 15, 14, 11, 6, 4 }, new[] { 3, 7, 8, 3 }, new[] { 4, 5, 2, 2, 3, 1, 6, 4 } }
         };
 
         private BoreatekGlyph _glyph;
