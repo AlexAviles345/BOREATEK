@@ -83,7 +83,7 @@ namespace Boreatek.World
                 }
                 _session.Initialize(player, ui, _worldRoot, _worldSeed, surface);
                 player.GetComponent<TemperatureSystem>().SetSurfaceChunks(surface);
-                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowPalettes());
+                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowMaterial());
             }
         }
 

@@ -13,21 +13,47 @@ namespace Boreatek.World
         private static readonly Color32 Brass = new Color32(172, 107, 63, 255);
         private static readonly Color32 Furnace = new Color32(255, 131, 43, 255);
 
-        private Material[][] CreateSnowPalettes()
+        private Material CreateSnowMaterial()
         {
-            var tints = new Color32[]
-            {
-                new Color32(146, 160, 168, 255), new Color32(172, 199, 219, 255),
-                new Color32(190, 165, 202, 255), new Color32(133, 154, 176, 255)
-            };
-            var result = new Material[tints.Length][];
-            for (int biome = 0; biome < tints.Length; biome++)
-            {
-                result[biome] = new Material[4];
-                for (int band = 0; band < 4; band++)
-                    result[biome][band] = _landscape.Finish(Color.Lerp(tints[biome], Frost, band * 0.27f));
-            }
-            return result;
+            return _landscape.Own(new Material(Resources.Load<Shader>("Boreatek/ArcticSnow")) { name = "Arctic snow" });
+        }
+
+        internal static Vector4 StarterSnowWeights(float x, float z)
+        {
+            float drift = (Mathf.PerlinNoise(x * 0.062f + 14f, z * 0.049f + 7f) - 0.5f) * 18f;
+            float radius = new Vector2(x, z).magnitude;
+            float village = 1f - EaseSnow(16f, 29f, radius + drift * 0.37f);
+            float candy = EaseSnow(23f, 46f, x + drift) * (1f - village);
+            float wreckage = Mathf.Max(EaseSnow(59f, 80f, radius + drift), EaseSnow(25f, 47f, -z - drift))
+                * (1f - village - candy);
+            return new Vector4(village, 1f - village - candy - wreckage, candy, wreckage);
+        }
+
+        internal static float EaseSnow(float start, float end, float value) =>
+            Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(start, end, value));
+
+        internal static Color SnowTint(Vector4 weights, float x, float z)
+        {
+            Color snow = (Color)new Color32(146, 160, 168, 255) * weights.x
+                + (Color)new Color32(172, 199, 219, 255) * weights.y
+                + (Color)new Color32(187, 163, 198, 255) * weights.z
+                + (Color)new Color32(137, 157, 178, 255) * weights.w;
+            float detail = Mathf.PerlinNoise(x * 0.113f + 32f, z * 0.121f + 42f);
+            return Color.Lerp(snow, Frost, detail * 0.69f);
+        }
+
+        internal static BiomeType SampleSnowBiome(Vector4 weights, float sample)
+        {
+            if ((sample -= weights.x) < 0f) return BiomeType.SantaIndustrialVillage;
+            if ((sample -= weights.y) < 0f) return BiomeType.OuterTundra;
+            return sample < weights.z ? BiomeType.GiantCandyForest : BiomeType.SleighGraveyard;
+        }
+
+        internal static void PaintSnowCell(Batch terrain, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Material snow,
+            Color inkA, Color inkB, Color inkC, Color inkD)
+        {
+            terrain.PaintTriangle(a, d, b, snow, inkA, inkD, inkB);
+            terrain.PaintTriangle(b, d, c, snow, inkB, inkD, inkC);
         }
 
         internal static BiomeType StartingSurfaceBiome(float x, float z)
@@ -40,7 +66,7 @@ namespace Boreatek.World
 
         private void BuildArcticSurfaceTerrain(Transform parent)
         {
-            Material[][] snow = CreateSnowPalettes();
+            Material snow = CreateSnowMaterial();
             var terrain = new Batch();
             const int step = 4;
             for (int z = -126; z < 126; z += step)
@@ -50,17 +76,15 @@ namespace Boreatek.World
                     if (IsMineEntranceCutout(x, z)) continue;
                     Vector3 a = SurfacePoint(x, z), b = SurfacePoint(x + step, z);
                     Vector3 c = SurfacePoint(x + step, z + step), d = SurfacePoint(x, z + step);
-                    Material[] palette = snow[(int)StartingSurfaceBiome(x + 2f, z + 2f)];
-                    terrain.Triangle(a, d, b, palette[SnowBand(x + 1f, z + 1f)]);
-                    terrain.Triangle(b, d, c, palette[SnowBand(x + 3f, z + 3f)]);
+                    PaintSnowCell(terrain, a, b, c, d, snow, StarterSnowTint(a), StarterSnowTint(b),
+                        StarterSnowTint(c), StarterSnowTint(d));
                 }
             }
             _landscape.Place(parent, "ArcticSnowfields", terrain, collision: true);
             BuildArcticHorizon(parent);
         }
 
-        internal static int SnowBand(float x, float z) =>
-            Mathf.Clamp(Mathf.FloorToInt(Mathf.PerlinNoise(x * 0.113f + 32f, z * 0.121f + 42f) * 4f), 0, 3);
+        private static Color StarterSnowTint(Vector3 p) => SnowTint(StarterSnowWeights(p.x, p.z), p.x, p.z);
 
         private void DressStarterBiomeLandmarks(Transform root)
         {
@@ -72,8 +96,12 @@ namespace Boreatek.World
                 float z = (float)random.NextDouble() * 196f - 99f;
                 if (x * x + z * z < 26f * 26f || (Mathf.Abs(x) < 5f && z >= 12f && z < 38f)) continue;
                 Vector3 foot = SurfacePoint(x, z);
-                AddBiomeTerrainDetail(scenery, foot, StartingSurfaceBiome(x, z),
-                    0.64f + (float)random.NextDouble() * 0.58f, _landscape);
+                Vector4 weights = StarterSnowWeights(x, z);
+                BiomeType biome = SampleSnowBiome(weights, (float)random.NextDouble());
+                float size = 0.64f + (float)random.NextDouble() * 0.58f;
+                AddBiomeTerrainDetail(scenery, foot, biome, size, _landscape);
+                if (weights.z > 0.10f && weights.z < 0.84f && biome == BiomeType.OuterTundra && i % 4 == 0)
+                    AddFrostedPine(scenery, foot + Vector3.back * 1.1f, 2.5f + size, marked: false);
             }
             _landscape.Place(root, "Snow_Drifts_Candy_Shoots_And_Salvage", scenery);
         }

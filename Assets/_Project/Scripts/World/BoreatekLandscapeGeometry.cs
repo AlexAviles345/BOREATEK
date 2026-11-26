@@ -101,6 +101,7 @@ namespace Boreatek.World
         {
             private readonly List<Vector3> _vertices = new List<Vector3>();
             private readonly List<Vector3> _normals = new List<Vector3>();
+            private List<Color> _colors;
             private readonly List<List<int>> _triangles = new List<List<int>>();
             private readonly Dictionary<Material, int> _slots = new Dictionary<Material, int>();
             internal readonly List<Material> Materials = new List<Material>();
@@ -109,6 +110,20 @@ namespace Boreatek.World
             {
                 Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
                 AddTriangle((a, normal), (b, normal), (c, normal), GetIndices(material));
+            }
+
+            internal void PaintTriangle(Vector3 a, Vector3 b, Vector3 c, Material material, Color inkA, Color inkB, Color inkC)
+            {
+                if (_colors == null)
+                {
+                    _colors = new List<Color>();
+                    for (int i = 0; i < _vertices.Count; i++) _colors.Add(Color.white);
+                }
+                Triangle(a, b, c, material);
+                int end = _colors.Count;
+                _colors[end - 3] = inkA;
+                _colors[end - 2] = inkB;
+                _colors[end - 1] = inkC;
             }
 
             private void AddTriangle((Vector3 p, Vector3 n) a, (Vector3 p, Vector3 n) b,
@@ -121,6 +136,12 @@ namespace Boreatek.World
                 _normals.Add(a.n);
                 _normals.Add(b.n);
                 _normals.Add(c.n);
+                if (_colors != null)
+                {
+                    _colors.Add(Color.white);
+                    _colors.Add(Color.white);
+                    _colors.Add(Color.white);
+                }
                 indices.Add(index);
                 indices.Add(index + 1);
                 indices.Add(index + 2);
@@ -238,6 +259,7 @@ namespace Boreatek.World
                 if (_vertices.Count > 65535) mesh.indexFormat = IndexFormat.UInt32;
                 mesh.SetVertices(_vertices);
                 mesh.SetNormals(_normals);
+                if (_colors != null) mesh.SetColors(_colors);
                 mesh.subMeshCount = _triangles.Count;
                 for (int i = 0; i < _triangles.Count; i++) mesh.SetTriangles(_triangles[i], i, false);
                 mesh.RecalculateBounds();

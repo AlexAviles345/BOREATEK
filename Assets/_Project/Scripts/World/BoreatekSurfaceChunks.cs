@@ -20,7 +20,7 @@ namespace Boreatek.World
         private Transform _traveler;
         private BoreatekWorldBuilder _builder;
         private BoreatekLandscapeGeometry _sharedMaterials;
-        private Material[][] _snow;
+        private Material _snow;
         private Material _rock;
         private Material _candyAccent;
         private int _seed;
@@ -30,7 +30,7 @@ namespace Boreatek.World
         private bool _hasCenter;
 
         internal void Initialize(Transform traveler, BoreatekWorldBuilder builder, int seed,
-            BoreatekLandscapeGeometry materials, Material[][] snow)
+            BoreatekLandscapeGeometry materials, Material snow)
         {
             _traveler = traveler;
             _builder = builder;
@@ -113,6 +113,16 @@ namespace Boreatek.World
             root.transform.localPosition = origin;
             var owner = root.AddComponent<BoreatekLandscapeGeometry>();
             var snowfield = new Batch();
+            const int stride = ChunkSize / VertexStep + 1;
+            var colors = new Color[stride * stride];
+            for (int z = 0; z < stride; z++)
+            {
+                for (int x = 0; x < stride; x++)
+                {
+                    float wx = origin.x + x * VertexStep, wz = origin.z + z * VertexStep;
+                    colors[z * stride + x] = BoreatekWorldBuilder.SnowTint(SnowWeights(wx, wz), wx, wz);
+                }
+            }
 
             for (int z = 0; z < ChunkSize; z += VertexStep)
             {
@@ -124,11 +134,9 @@ namespace Boreatek.World
                     var b = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz), z);
                     var c = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz + VertexStep), z + VertexStep);
                     var d = new Vector3(x, VertexHeight(wx, wz + VertexStep), z + VertexStep);
-                    BiomeType biome = IsFrontier(wx + 2f, wz + 2f)
-                        ? FrontierBiome(wx + 2f, wz + 2f) : BoreatekWorldBuilder.StartingSurfaceBiome(wx + 2f, wz + 2f);
-                    Material[] palette = _snow[(int)biome];
-                    snowfield.Triangle(a, d, b, palette[BoreatekWorldBuilder.SnowBand(wx + 1f, wz + 1f)]);
-                    snowfield.Triangle(b, d, c, palette[BoreatekWorldBuilder.SnowBand(wx + 3f, wz + 3f)]);
+                    int i = z / VertexStep * stride + x / VertexStep;
+                    BoreatekWorldBuilder.PaintSnowCell(snowfield, a, b, c, d, _snow,
+                        colors[i], colors[i + 1], colors[i + stride + 1], colors[i + stride]);
                 }
             }
             owner.Place(root.transform, "ArcticSnowfield", snowfield, collision: true);
@@ -151,7 +159,7 @@ namespace Boreatek.World
                 float wx = x + origin.x, wz = z + origin.z;
                 if (!IsFrontier(wx, wz)) continue;
                 var foot = new Vector3(x, GroundHeight(wx, wz) - 0.11f, z);
-                BiomeType biome = FrontierBiome(wx, wz);
+                BiomeType biome = BoreatekWorldBuilder.SampleSnowBiome(SnowWeights(wx, wz), scale);
                 if (biome == BiomeType.GiantCandyForest && i % 3 != 0)
                 {
                     features.Frustum(foot, foot + new Vector3(-0.31f, 1f + scale * 1.35f, 0.44f),
@@ -169,6 +177,18 @@ namespace Boreatek.World
                 hasFeatures = true;
             }
             if (hasFeatures) owner.Place(root, "WindScouredPinesAndRock", features);
+        }
+
+        internal Vector4 SnowWeights(float x, float z)
+        {
+            Vector4 starter = BoreatekWorldBuilder.StarterSnowWeights(x, z);
+            float edge = Mathf.Max(Mathf.Abs(x) - 124f, Mathf.Abs(z) - 126f);
+            if (edge <= 0f) return starter;
+            float climate = FrontierClimate(x, z);
+            float candy = BoreatekWorldBuilder.EaseSnow(0.55f, 0.69f, climate);
+            float wreckage = 1f - BoreatekWorldBuilder.EaseSnow(0.28f, 0.44f, climate);
+            var frontier = new Vector4(0f, 1f - candy - wreckage, candy, wreckage);
+            return Vector4.Lerp(starter, frontier, BoreatekWorldBuilder.EaseSnow(0f, 44f, edge));
         }
 
         internal float GroundHeight(float x, float z)

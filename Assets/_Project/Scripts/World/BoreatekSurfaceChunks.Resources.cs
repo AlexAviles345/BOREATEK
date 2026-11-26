@@ -21,12 +21,14 @@ namespace Boreatek.World
 
         internal BiomeType FrontierBiome(float x, float z)
         {
-            float nx = x + _noiseOffset.x, nz = z + _noiseOffset.y;
-            float climate = Mathf.PerlinNoise(nx * 0.0068f + 47f, nz * 0.0068f + 103f);
+            float climate = FrontierClimate(x, z);
             if (climate > 0.62f) return BiomeType.GiantCandyForest;
             if (climate < 0.36f) return BiomeType.SleighGraveyard;
             return BiomeType.OuterTundra;
         }
+
+        private float FrontierClimate(float x, float z) =>
+            Mathf.PerlinNoise((x + _noiseOffset.x) * 0.0068f + 47f, (z + _noiseOffset.y) * 0.0068f + 103f);
 
         private void BuildFrontierResources(Vector2Int sector, BoreatekLandscapeGeometry owner, Transform root, Vector3 origin)
         {
