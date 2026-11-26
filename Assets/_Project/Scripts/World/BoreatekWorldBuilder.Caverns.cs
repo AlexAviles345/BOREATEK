@@ -240,7 +240,7 @@ namespace Boreatek.World
             batch.Quad(a - side, b - side, b + side, a + side, material);
         }
 
-        private void DressMineralVein(Transform vein, Color color, float emission)
+        private void DressMineralVein(Transform vein, Color color, float emission, BoreatekLandscapeGeometry owner)
         {
             var mineral = new Batch();
             Material bedrock = _landscape.Finish(new Color32(46, 57, 68, 255));
@@ -250,7 +250,7 @@ namespace Boreatek.World
             AddCrystal(mineral, new Vector3(-0.14f, 0.40f, 0.05f), new Vector3(-0.22f, 1.73f, 0.17f), 0.38f, body, tip);
             AddCrystal(mineral, new Vector3(0.19f, 0.38f, 0.02f), new Vector3(0.73f, 1.22f, -0.21f), 0.29f, body, tip);
             AddCrystal(mineral, new Vector3(-0.25f, 0.34f, -0.05f), new Vector3(-0.67f, 1.06f, -0.36f), 0.24f, body, tip);
-            _landscape.Place(vein, "Mineral_FacetedShards", mineral);
+            owner.Place(vein, "Mineral_FacetedShards", mineral);
         }
 
         private static void AddCrystal(Batch batch, Vector3 root, Vector3 tip, float width, Material core, Material point)

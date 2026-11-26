@@ -60,8 +60,8 @@ namespace Boreatek.Core
 
         internal BoreatekExplorationMap(BoreatekSurfaceChunks surface) => _surface = surface;
 
-        internal static int LayerAt(Vector3 position) => position.y < -28f ? 4
-            : position.y < -16f ? 3 : position.y < -6f ? 2 : position.y < -1.5f ? 1 : 0;
+        internal int LayerAt(Vector3 position) => _surface.IsInProceduralCave(position) ? 2
+            : position.y < -28f ? 4 : position.y < -16f ? 3 : position.y < -6f ? 2 : position.y < -1.5f ? 1 : 0;
         internal static Vector2 Planar(Vector3 point) => new Vector2(point.x, point.z);
         private static Vector3Int CellAt(Vector2 point, int layer) =>
             new Vector3Int(Mathf.FloorToInt(point.x / CellSize), Mathf.FloorToInt(point.y / CellSize), layer);

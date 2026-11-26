@@ -76,7 +76,7 @@ namespace Boreatek.World
                 var surface = surfaceRoot.AddComponent<BoreatekSurfaceChunks>();
                 var polarAtmosphere = _worldRoot.gameObject.AddComponent<BoreatekPolarAtmosphere>();
                 var clock = DayNightCycleManager.Instance ?? FindAnyObjectByType<DayNightCycleManager>();
-                polarAtmosphere.Initialize(player.transform, clock);
+                polarAtmosphere.Initialize(player.transform, clock, surface);
                 clock?.BindLightingTraveler(player.GetComponent<TemperatureSystem>());
                 if (_session == null)
                 {
@@ -612,18 +612,18 @@ namespace Boreatek.World
             return node;
         }
 
-        private void SpawnMineralVeinNode(
+        internal HarvestableNode SpawnMineralVeinNode(
             Transform parent,
             Vector3 pos,
             string configKey,
             Color crystalColor,
-            float emissionIntensity)
+            float emissionIntensity, BoreatekLandscapeGeometry owner = null)
         {
             GameObject vein = new GameObject($"Node_{configKey}");
             vein.transform.SetParent(parent, false);
             vein.transform.position = pos;
 
-            DressMineralVein(vein.transform, crystalColor, emissionIntensity);
+            DressMineralVein(vein.transform, crystalColor, emissionIntensity, owner ?? _landscape);
 
             BoxCollider col = vein.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, 0.9f, 0f);
@@ -631,6 +631,7 @@ namespace Boreatek.World
 
             HarvestableNode node = vein.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs[configKey]);
+            return node;
         }
 
         /// <summary>

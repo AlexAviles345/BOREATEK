@@ -9,6 +9,7 @@ namespace Boreatek.World
         private static readonly int Storm = Shader.PropertyToID("_Storm");
 
         private Transform _traveler;
+        private BoreatekSurfaceChunks _surface;
         private DayNightCycleManager _clock;
         private Material _previousSky;
         private Material _sky;
@@ -18,10 +19,11 @@ namespace Boreatek.World
         private float _stormWeight;
         private float _nextSnowRefresh;
 
-        internal void Initialize(Transform traveler, DayNightCycleManager clock)
+        internal void Initialize(Transform traveler, DayNightCycleManager clock, BoreatekSurfaceChunks surface)
         {
             _traveler = traveler;
             _clock = clock;
+            _surface = surface;
             Shader skyShader = Resources.Load<Shader>("Boreatek/PolarSky");
             if (skyShader != null)
             {
@@ -54,8 +56,7 @@ namespace Boreatek.World
             if (_snow == null || _traveler == null) return;
 
             Vector3 traveler = _traveler.position;
-            // Preserve a dry interior through all three subterranean levels.
-            bool outdoors = traveler.y > -1.8f;
+            bool outdoors = traveler.y > -1.8f && !_surface.IsInProceduralCave(traveler);
             if (outdoors != _snowActive)
             {
                 _snowActive = outdoors;

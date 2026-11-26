@@ -85,6 +85,7 @@ namespace Boreatek.World
                 RememberNodes(retired);
                 SetExtractorsRemote(retired);
                 _frontierNodes.Remove(retired);
+                _caves.Remove(retired);
                 _chunks.Remove(retired);
                 chunk.gameObject.SetActive(false);
                 Destroy(chunk.gameObject);
@@ -112,6 +113,7 @@ namespace Boreatek.World
             Vector3 origin = new Vector3(sector.x * (float)ChunkSize, 0f, sector.y * (float)ChunkSize + GridOffsetZ);
             root.transform.localPosition = origin;
             var owner = root.AddComponent<BoreatekLandscapeGeometry>();
+            CaveSite? cave = PlanCave(sector, origin);
             var snowfield = new Batch();
             const int stride = ChunkSize / VertexStep + 1;
             var colors = new Color[stride * stride];
@@ -129,7 +131,8 @@ namespace Boreatek.World
                 for (int x = 0; x < ChunkSize; x += VertexStep)
                 {
                     float wx = origin.x + x, wz = origin.z + z;
-                    if (BoreatekWorldBuilder.IsMineEntranceCutout(wx, wz)) continue;
+                    if (BoreatekWorldBuilder.IsMineEntranceCutout(wx, wz) ||
+                        (cave.HasValue && cave.Value.OpensTerrainAt(wx + 2f, wz + 2f))) continue;
                     var a = new Vector3(x, VertexHeight(wx, wz), z);
                     var b = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz), z);
                     var c = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz + VertexStep), z + VertexStep);
@@ -140,13 +143,14 @@ namespace Boreatek.World
                 }
             }
             owner.Place(root.transform, "ArcticSnowfield", snowfield, collision: true);
-            DressFrontier(owner, root.transform, sector, origin);
+            if (cave.HasValue) BuildCave(sector, root.transform, owner, cave.Value);
+            DressFrontier(owner, root.transform, sector, origin, cave);
             _chunks.Add(sector, root.transform);
             BuildFrontierResources(sector, owner, root.transform, origin);
             SpawnSectorInstallations(sector, root.transform);
         }
 
-        private void DressFrontier(BoreatekLandscapeGeometry owner, Transform root, Vector2Int sector, Vector3 origin)
+        private void DressFrontier(BoreatekLandscapeGeometry owner, Transform root, Vector2Int sector, Vector3 origin, CaveSite? cave)
         {
             var random = new System.Random(CellSeed(_seed, sector.x, sector.y));
             var features = new Batch();
@@ -158,6 +162,7 @@ namespace Boreatek.World
                 float scale = (float)random.NextDouble();
                 float wx = x + origin.x, wz = z + origin.z;
                 if (!IsFrontier(wx, wz)) continue;
+                if (cave.HasValue && cave.Value.BlocksDressingAt(wx, wz)) continue;
                 var foot = new Vector3(x, GroundHeight(wx, wz) - 0.11f, z);
                 BiomeType biome = BoreatekWorldBuilder.SampleSnowBiome(SnowWeights(wx, wz), scale);
                 if (biome == BiomeType.GiantCandyForest && i % 3 != 0)

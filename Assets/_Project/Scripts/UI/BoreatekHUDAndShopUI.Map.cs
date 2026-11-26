@@ -140,7 +140,7 @@ namespace Boreatek.UI
             _miniPanel.gameObject.SetActive(visible);
             if (!visible || Time.unscaledTime < _miniUpdateAt) return;
             _miniUpdateAt = Time.unscaledTime + 0.15f;
-            int layer = BoreatekExplorationMap.LayerAt(_player.transform.position);
+            int layer = _atlas.LayerAt(_player.transform.position);
             Vector2 point = BoreatekExplorationMap.Planar(_player.transform.position);
             float heading = _player.transform.eulerAngles.y;
             if (_miniVersion == _atlas.Version && _previousMiniLayer == layer &&
@@ -158,7 +158,7 @@ namespace Boreatek.UI
 
         private void FocusExplorationMap()
         {
-            _mapLayer = BoreatekExplorationMap.LayerAt(_player.transform.position);
+            _mapLayer = _atlas.LayerAt(_player.transform.position);
             FitAtlas();
         }
 
@@ -308,7 +308,7 @@ namespace Boreatek.UI
                 if (pin.layer == layer) StampMap(drawing, view, pin.point, PinMark, full ? 3 : 2);
             }
             if (full && _hasMapTarget) StampMap(drawing, view, _targetPoint, ActiveMark, 2);
-            if (BoreatekExplorationMap.LayerAt(_player.transform.position) == layer)
+            if (_atlas.LayerAt(_player.transform.position) == layer)
             {
                 Vector2 point = BoreatekExplorationMap.Planar(_player.transform.position);
                 Vector2 forward = BoreatekExplorationMap.Planar(_player.transform.forward).normalized;

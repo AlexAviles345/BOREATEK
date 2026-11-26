@@ -123,7 +123,13 @@ namespace Boreatek.Player
             float baseCooling;
             string zoneLabel;
 
-            if (pos.y < -28f)
+            if (_surfaceChunks != null && _surfaceChunks.IsInProceduralCave(pos))
+            {
+                detectedBiome = BiomeType.IceCavesLevel1;
+                baseCooling = 1.45f;
+                zoneLabel = "Cueva de cristales";
+            }
+            else if (pos.y < -28f)
             {
                 detectedBiome = BiomeType.LuminousCoreAbyssLevel3;
                 baseCooling = 3.0f;

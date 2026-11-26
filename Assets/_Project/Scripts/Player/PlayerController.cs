@@ -323,6 +323,7 @@ namespace Boreatek.Player
                     case "Entrance_Bridge": return SoundCue.StepPlanks;
                     case "ArcticSnowfield":
                     case "ArcticSnowfields": return SoundCue.StepSnow;
+                    case "Cueva_Procedural_Rampa_Y_Camara": return SoundCue.StepIce;
                     case "Tunnel_FloorRamp":
                     case "Village_ThermalPlatform":
                     case "Foundation_Walls_And_Roof":

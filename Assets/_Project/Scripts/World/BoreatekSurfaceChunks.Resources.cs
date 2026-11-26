@@ -9,7 +9,7 @@ namespace Boreatek.World
     {
         private const int LegacyResourceSlots = 4;
         private const int ScenerySlots = 13;
-        private const int NodeSlots = LegacyResourceSlots + ScenerySlots;
+        private const int NodeSlots = LegacyResourceSlots + ScenerySlots + CaveResourceSlots;
         private readonly Dictionary<Vector2Int, HarvestableNode[]> _frontierNodes = new Dictionary<Vector2Int, HarvestableNode[]>();
         private readonly Dictionary<(Vector2Int sector, int slot), HarvestableNode.SaveState> _nodeChanges =
             new Dictionary<(Vector2Int, int), HarvestableNode.SaveState>();
