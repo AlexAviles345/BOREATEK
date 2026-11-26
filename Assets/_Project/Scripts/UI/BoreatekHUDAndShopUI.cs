@@ -500,6 +500,11 @@ namespace Boreatek.UI
                     _tempBadgeText.text = $"Calor  {_tempSystem.HotChocolateRemainingSeconds:0}s";
                     _tempBadgeBg.color = new Color32(107, 61, 29, 255);
                 }
+                else if (_tempSystem.ShelterGraceRemaining > 0f)
+                {
+                    _tempBadgeText.text = $"Aislado  {Mathf.CeilToInt(_tempSystem.ShelterGraceRemaining)}s";
+                    _tempBadgeBg.color = ColBlueSteel;
+                }
                 else
                 {
                     bool critical = temperature < 30f;

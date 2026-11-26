@@ -21,6 +21,7 @@ namespace Boreatek.Player
         [SerializeField] private float _maxTemperature = 100f;
         [SerializeField] private float _currentTemperature = 100f;
         [SerializeField] private float _hypothermiaGraceSeconds = 5f;
+        [SerializeField, Min(0f)] private float _shelterGraceSeconds = 24f;
 
         [Header("Structural Health Stats")]
         [SerializeField] private float _maxHealth = 100f;
@@ -48,6 +49,7 @@ namespace Boreatek.Player
         private float _currentBiomeBaseCoolingRate;
         private float _hotChocolateBuffRemainingSeconds;
         private float _hypothermiaCountdown;
+        private float _coldExposure;
         private BoreatekSurfaceChunks _surfaceChunks;
         private string _currentZoneLabel = "Aldea Industrial de Santa";
 
@@ -64,6 +66,7 @@ namespace Boreatek.Player
         public bool IsInsideHeatBubble => _activeHeatSources.Count > 0 || _currentBiome == BiomeType.SantaIndustrialVillage;
         public bool IsHotChocolateActive => _hotChocolateBuffRemainingSeconds > 0f;
         public float HotChocolateRemainingSeconds => _hotChocolateBuffRemainingSeconds;
+        internal float ShelterGraceRemaining => Mathf.Max(0f, _shelterGraceSeconds - _coldExposure);
         public BiomeType CurrentBiome => _currentBiome;
         public string ActiveHeatSourceName { get; private set; } = "Aldea Industrial de Santa";
 
@@ -203,16 +206,21 @@ namespace Boreatek.Player
             if (highestRegen > 0f)
             {
                 _currentTemperature = Mathf.Min(_maxTemperature, _currentTemperature + highestRegen * dt);
+                if (_currentTemperature >= _maxTemperature - 0.01f) _coldExposure = 0f;
                 _hypothermiaCountdown = _hypothermiaGraceSeconds;
             }
             else if (!IsHotChocolateActive)
             {
+                float previousExposure = _coldExposure;
+                _coldExposure = Mathf.Min(_shelterGraceSeconds + 5f, _coldExposure + dt);
+                float coolingTime = Mathf.Min(dt, Mathf.Max(0f, previousExposure + dt - _shelterGraceSeconds));
+                float onset = Mathf.SmoothStep(0f, 1f, (_coldExposure - _shelterGraceSeconds) / 5f);
                 float weatherMult = DayNightCycleManager.Instance != null
                     ? DayNightCycleManager.Instance.CurrentWeatherCoolingMultiplier
                     : 1.0f;
 
                 float effectiveDrain = _currentBiomeBaseCoolingRate * weatherMult * (1f - _coatCoolingReduction);
-                _currentTemperature = Mathf.Max(0f, _currentTemperature - effectiveDrain * dt);
+                _currentTemperature = Mathf.Max(0f, _currentTemperature - effectiveDrain * coolingTime * onset);
             }
 
             if (!Mathf.Approximately(previousTemp, _currentTemperature))
@@ -337,6 +345,7 @@ namespace Boreatek.Player
             CombatHitAt = float.NegativeInfinity;
             _hypothermiaCountdown = _hypothermiaGraceSeconds;
             _hotChocolateBuffRemainingSeconds = 0f;
+            _coldExposure = 0f;
             _activeHeatSources.Clear();
 
             if (TryGetComponent(out CharacterController cc))
@@ -363,7 +372,7 @@ namespace Boreatek.Player
         [Serializable]
         internal struct SaveState
         {
-            public float temperature, health, coatReduction, chocolateSeconds, coldGrace;
+            public float temperature, health, coatReduction, chocolateSeconds, coldGrace, coldExposure;
             public int coatTier;
         }
 
@@ -374,6 +383,7 @@ namespace Boreatek.Player
             coatReduction = _coatCoolingReduction,
             chocolateSeconds = _hotChocolateBuffRemainingSeconds,
             coldGrace = _hypothermiaCountdown,
+            coldExposure = _coldExposure,
             coatTier = _thermalCoatTier
         };
 
@@ -384,6 +394,7 @@ namespace Boreatek.Player
             CombatHitAt = float.NegativeInfinity;
             _hotChocolateBuffRemainingSeconds = state.chocolateSeconds;
             _hypothermiaCountdown = state.coldGrace;
+            _coldExposure = Mathf.Clamp(state.coldExposure, 0f, _shelterGraceSeconds + 5f);
             UpgradeThermalCoat(state.coatTier, state.coatReduction);
             OnTemperatureChanged?.Invoke(_currentTemperature, _maxTemperature);
             OnHealthChanged?.Invoke(_currentHealth, _maxHealth);
