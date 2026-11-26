@@ -686,9 +686,11 @@ namespace Boreatek.World
             playerObj.transform.position = new Vector3(0f, 1.15f, -5.5f);
 
             CharacterController cc = playerObj.AddComponent<CharacterController>();
-            cc.height = 1.35f;
-            cc.radius = 0.42f;
-            cc.center = new Vector3(0f, 0.68f, 0f);
+            cc.height = ElfHeight;
+            cc.radius = 0.29f;
+            cc.center = Vector3.up * (ElfHeight * 0.5f);
+            cc.skinWidth = 0.035f;
+            cc.stepOffset = 0.26f;
 
             TemperatureSystem tempSys = playerObj.AddComponent<TemperatureSystem>();
             InventoryAndShop invShop = playerObj.AddComponent<InventoryAndShop>();
@@ -700,7 +702,7 @@ namespace Boreatek.World
             // Pivote de cámara conectado a Main Camera
             Transform camPivot = new GameObject("Player_CameraPivot").transform;
             camPivot.SetParent(playerObj.transform, false);
-            camPivot.localPosition = new Vector3(0f, 1.25f, 0f);
+            camPivot.localPosition = Vector3.up * ElfEyeHeight;
 
             Camera mainCam = Camera.main;
             if (mainCam == null)
@@ -723,7 +725,7 @@ namespace Boreatek.World
             mainCam.gameObject.SetActive(true);
             mainCam.enabled = true;
             mainCam.clearFlags = CameraClearFlags.Skybox;
-            mainCam.nearClipPlane = 0.2f;
+            mainCam.nearClipPlane = 0.08f;
             mainCam.farClipPlane = 400f;
 
             Transform respawnPoint = new GameObject("Village_SafeRespawnPoint").transform;

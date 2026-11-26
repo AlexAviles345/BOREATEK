@@ -86,9 +86,9 @@ namespace Boreatek.World
             Transform worker = CharacterPart(room, name, position);
             worker.localRotation = Quaternion.Euler(0f, yaw, 0f);
             var body = worker.gameObject.AddComponent<CapsuleCollider>();
-            body.center = Vector3.up * 0.66f;
-            body.height = 1.32f;
-            body.radius = 0.27f;
+            body.center = Vector3.up * (ElfHeight * 0.5f);
+            body.height = ElfHeight;
+            body.radius = 0.25f;
             ElfVisuals rig = BuildElfModel(worker, uniform);
             if (job == FoundryWorker.Job.Smith)
             {

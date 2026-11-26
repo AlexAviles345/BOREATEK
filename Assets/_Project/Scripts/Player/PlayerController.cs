@@ -30,7 +30,7 @@ namespace Boreatek.Player
         [SerializeField] private Camera _playerCamera;
         [SerializeField] private bool _useThirdPersonView = true;
         [SerializeField] private Vector3 _thirdPersonCameraOffset = new Vector3(0.55f, 0.65f, -3.4f);
-        [SerializeField] private Vector3 _firstPersonCameraOffset = new Vector3(0f, 0.45f, 0.15f);
+        [SerializeField] private Vector3 _firstPersonCameraOffset = new Vector3(0f, 0f, 0.13f);
 
         [Header("Elf Engineer Equipment")]
         [Tooltip("Faro LED frontal del casco minero metálico.")]

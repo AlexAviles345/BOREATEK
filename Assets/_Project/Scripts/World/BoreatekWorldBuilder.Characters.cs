@@ -6,6 +6,10 @@ namespace Boreatek.World
 {
     public partial class BoreatekWorldBuilder
     {
+        private const float ElfHeight = 1.20f;
+        private const float UnscaledElfHeight = 1.396f;
+        private const float ElfEyeHeight = 1.07f;
+
         private readonly struct ElfVisuals
         {
             internal readonly Transform Root, Pickaxe, LowerGauge, UpperGauge, RightGrip;
@@ -32,6 +36,7 @@ namespace Boreatek.World
         private ElfVisuals BuildElfModel(Transform player, Color32? workUniform = null)
         {
             Transform rig = CharacterPart(player, "ElfEngineer_ChibiModel3D", Vector3.zero);
+            rig.localScale = Vector3.one * (ElfHeight / UnscaledElfHeight);
             Material cloth = CharacterFinish(83, 94, 58);
             Material olive = CharacterFinish(105, 117, 73);
             Material leather = CharacterFinish(104, 59, 42, 0.24f);
