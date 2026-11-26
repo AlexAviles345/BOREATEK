@@ -32,6 +32,10 @@ namespace Boreatek.Player
 
     public partial class PlayerController
     {
+        private static readonly Vector3 FirstPersonPickaxeRest = new Vector3(0.30f, -0.34f, 0.64f);
+        private static readonly Quaternion FirstPersonPickaxeIdle =
+            Quaternion.LookRotation(new Vector3(-0.39f, 0.10f, 1f), Vector3.up) * PickaxeStroke.BladeForward;
+        private const float FirstPersonPickaxeScale = 0.63f;
         private float _swingElapsed, _swingDuration;
         private bool _strikeIsInteraction, _showImpactPose;
         private Vector3? _impactPoint;
@@ -119,14 +123,10 @@ namespace Boreatek.Player
             _elfPose?.Update(dt, stroke, transform.InverseTransformDirection(aim));
             if (_pickaxeVisualRoot == null) return;
 
-            if (InFirstPerson && _pickaxeGripParent != null)
+            if (InFirstPerson && _pickaxeGripParent != null && _playerCamera != null)
             {
-                Vector3 rest = new Vector3(0.31f, -0.39f, 0.65f);
-                Vector3 raised = new Vector3(0.41f, -0.15f, 0.58f);
-                Vector3 contact = new Vector3(0.21f, -0.30f, 0.81f);
-                Vector3 follow = new Vector3(0.25f, -0.46f, 0.80f);
-                _pickaxeVisualRoot.localPosition = _firstPersonCameraOffset + rest * (1f - stroke.Weight) +
-                    raised * stroke.Raise + contact * stroke.Contact + follow * stroke.Follow;
+                PoseFirstPersonPickaxe(stroke, view, point);
+                return;
             }
             if (stroke.Weight <= 0f)
             {
@@ -143,8 +143,7 @@ namespace Boreatek.Player
             Quaternion swung = facing;
             if (stroke.Raise > 0f)
             {
-                Quaternion side = InFirstPerson ? view.rotation : transform.rotation;
-                Quaternion raised = side * Quaternion.Euler(-27f, -33f, -48f);
+                Quaternion raised = transform.rotation * Quaternion.Euler(-27f, -33f, -48f);
                 swung = Quaternion.Slerp(facing, raised, stroke.Raise / stroke.Weight);
             }
             else if (stroke.Follow > 0f)
@@ -156,14 +155,48 @@ namespace Boreatek.Player
             _pickaxeVisualRoot.rotation = Quaternion.Slerp(restWorld, swung, stroke.Weight);
         }
 
+        private void PoseFirstPersonPickaxe(PickaxeStroke stroke, Transform view, Vector3? point)
+        {
+            // Author the first-person arc in screen space so the hand rises, strikes inward, then settles.
+            Vector3 grip = FirstPersonPickaxeRest * (1f - stroke.Weight) +
+                new Vector3(0.36f, -0.18f, 0.61f) * stroke.Raise +
+                new Vector3(0.16f, -0.225f, 0.83f) * stroke.Contact +
+                new Vector3(0.22f, -0.38f, 0.75f) * stroke.Follow;
+            Vector3 path = view.TransformDirection(grip + Vector3.forward * 0.19f);
+            float clearance = Mathf.Clamp(ViewClearance(view.position, path, 0.095f) / path.magnitude, 0.30f, 1f);
+            _pickaxeVisualRoot.localPosition = _firstPersonCameraOffset + grip * clearance;
+            _pickaxeVisualRoot.localScale = _pickaxeGripScale * (FirstPersonPickaxeScale * clearance);
+
+            Quaternion idle = view.rotation * FirstPersonPickaxeIdle;
+            if (stroke.Weight <= 0f)
+            {
+                _pickaxeVisualRoot.rotation = idle;
+                return;
+            }
+
+            Vector3 direction = view.forward;
+            if (point.HasValue)
+            {
+                Vector3 target = point.Value - _pickaxeVisualRoot.position;
+                if (Vector3.Dot(target, view.forward) > 0.05f) direction = target.normalized;
+            }
+            Quaternion impact = Quaternion.LookRotation(direction, view.up) * PickaxeStroke.BladeForward;
+            Quaternion raised = view.rotation * Quaternion.LookRotation(new Vector3(-0.11f, 0.61f, 0.77f), Vector3.up) *
+                PickaxeStroke.BladeForward;
+            Quaternion pose = stroke.Raise > 0f
+                ? Quaternion.Slerp(impact, raised, stroke.Raise / stroke.Weight)
+                : Quaternion.AngleAxis(55f * stroke.Follow / stroke.Weight, view.right) * impact;
+            _pickaxeVisualRoot.rotation = Quaternion.Slerp(idle, pose, stroke.Weight);
+        }
+
         private void RefreshPickaxeView()
         {
             if (_pickaxeGripParent == null || _cameraPivot == null) return;
             _pickaxeVisualRoot.SetParent(InFirstPerson ? _cameraPivot : _pickaxeGripParent, false);
-            _pickaxeVisualRoot.localScale = _pickaxeGripScale * (InFirstPerson ? 0.68f : 1f);
+            _pickaxeVisualRoot.localScale = _pickaxeGripScale * (InFirstPerson ? FirstPersonPickaxeScale : 1f);
             _pickaxeVisualRoot.localPosition = InFirstPerson
-                ? _firstPersonCameraOffset + new Vector3(0.31f, -0.39f, 0.65f) : _pickaxeGripPosition;
-            _pickaxeVisualRoot.localRotation = _initialPickaxeLocalRot;
+                ? _firstPersonCameraOffset + FirstPersonPickaxeRest : _pickaxeGripPosition;
+            _pickaxeVisualRoot.localRotation = InFirstPerson ? FirstPersonPickaxeIdle : _initialPickaxeLocalRot;
         }
 
         private void CancelPickaxeSwing()
