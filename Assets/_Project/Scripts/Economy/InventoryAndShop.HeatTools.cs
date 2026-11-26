@@ -49,7 +49,7 @@ namespace Boreatek.Economy
             BoreatekSoundscape.Play(SoundCue.Deploy, point, beacon ? 0.90f : 0.76f);
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus(beacon ? "Baliza activada. Apunta a la carcasa y pulsa E para recogerla."
-                : "Guirnalda encendida. Calienta el terreno de alrededor.");
+                : "Guirnalda encendida. Apunta a las luces y pulsa E para recogerla.");
             return true;
         }
 
@@ -61,19 +61,21 @@ namespace Boreatek.Economy
                 SpawnHeatSource(placement);
         }
 
-        internal bool RecoverBeacon(string id, GameObject beacon)
+        internal bool RecoverHeatTool(string id, GameObject installation)
         {
-            int index = _heatPlacements.FindIndex(item => item.isBeacon && item.id == id);
-            if (index < 0 || beacon == null || !beacon.activeInHierarchy) return false;
+            if (installation == null || !installation.activeInHierarchy) return false;
+            int index = _heatPlacements.FindIndex(item => item.id == id);
+            if (index < 0) return false;
             HeatPlacement item = _heatPlacements[index];
             _heatPlacements.RemoveAt(index);
             _surfaceChunks?.UnregisterFrontierHeat(item);
-            beacon.SetActive(false);
-            Destroy(beacon);
-            _thermalBeaconsStock++;
+            installation.SetActive(false);
+            Destroy(installation);
+            if (item.isBeacon) _thermalBeaconsStock++;
+            else _stringLightsStock++;
             BoreatekSoundscape.Play(SoundCue.Confirm, strength: 0.55f);
             OnInventoryOrCoinsChanged?.Invoke();
-            _playerController?.PublishStatus("Baliza recogida y guardada en la mochila.");
+            _playerController?.PublishStatus(item.isBeacon ? "Baliza guardada en la mochila." : "Guirnalda guardada en la mochila.");
             return true;
         }
 
@@ -112,7 +114,7 @@ namespace Boreatek.Economy
             var body = root.AddComponent<BoxCollider>();
             body.center = Vector3.up * (beacon ? 0.42f : 0.25f);
             body.size = beacon ? new Vector3(0.65f, 0.84f, 0.65f) : new Vector3(1.01f, 0.50f, 0.16f);
-            if (beacon) root.AddComponent<PortableThermalBeacon>().Initialize(this, placement.id);
+            root.AddComponent<PortableHeatInstallation>().Initialize(this, placement.id, beacon);
             var lamp = new GameObject("ThermalPointLight");
             lamp.transform.SetParent(root.transform, false);
             lamp.transform.localPosition = Vector3.up * (beacon ? 0.78f : 0.46f);

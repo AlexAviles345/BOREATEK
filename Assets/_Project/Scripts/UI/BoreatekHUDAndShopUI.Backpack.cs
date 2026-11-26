@@ -13,10 +13,10 @@ namespace Boreatek.UI
             ("Chocolate", "Recupera todo el calor y protege del frío durante 60 segundos.", BoreatekGlyph.Thermos, new Color32(237, 184, 106, 255)),
             ("Galleta", "Aumenta la velocidad al moverte y picar durante 45 segundos.", BoreatekGlyph.Cookie, new Color32(247, 190, 95, 255)),
             ("Menta", "Recupera hasta 50 puntos de salud.", BoreatekGlyph.Candy, new Color32(250, 129, 141, 255)),
-            ("Guirnalda", "Deja una fuente de luz y calor en el suelo.", BoreatekGlyph.Garland, new Color32(239, 208, 141, 255)),
+            ("Guirnalda", "Ilumina y calienta el suelo. Se recoge con E.", BoreatekGlyph.Garland, new Color32(239, 208, 141, 255)),
             ("Baliza", "Calienta y derrite cofres congelados. Se recoge con E.", BoreatekGlyph.Beacon, new Color32(255, 164, 66, 255)),
             ("Petardo", "Fractura hielo y roca y alcanza enemigos cercanos.", BoreatekGlyph.Firecracker, new Color32(254, 128, 119, 255)),
-            ("Autómata", "Instala un extractor sobre una veta cercana.", BoreatekGlyph.Automaton, new Color32(106, 205, 238, 255)),
+            ("Autómata", "Instala un extractor en una veta cercana. Se recoge con E.", BoreatekGlyph.Automaton, new Color32(106, 205, 238, 255)),
             ("Espada", "El filo térmico de la Forja interrumpe a los robots y alcanza a los gólems.", BoreatekGlyph.Sword, new Color32(172, 231, 239, 255))
         };
         private static readonly ResourceType[] PackResources = (ResourceType[])System.Enum.GetValues(typeof(ResourceType));

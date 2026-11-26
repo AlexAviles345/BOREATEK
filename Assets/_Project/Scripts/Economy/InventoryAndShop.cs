@@ -460,6 +460,18 @@ namespace Boreatek.Economy
             _playerController?.PublishStatus($"🤖 ¡Duende Mecánico Extractor y Cinta Transportadora instalados en {targetNode.NodeConfig.NodeDisplayName}!");
         }
 
+        internal void RecoverExtractor(MechanicalElfExtractor extractor)
+        {
+            if (extractor == null || !extractor.isActiveAndEnabled || extractor.Owner != this) return;
+            _surfaceChunks?.UnregisterFrontierExtractor(extractor);
+            extractor.gameObject.SetActive(false);
+            Destroy(extractor.gameObject);
+            _mechanicalElfExtractorsStock++;
+            BoreatekSoundscape.Play(SoundCue.Confirm, strength: 0.55f);
+            OnInventoryOrCoinsChanged?.Invoke();
+            _playerController?.PublishStatus("Autómata extractor guardado en la mochila.");
+        }
+
         [Serializable]
         internal struct ResourceStack
         {

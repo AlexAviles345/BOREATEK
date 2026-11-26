@@ -76,6 +76,18 @@ namespace Boreatek.World
             return true;
         }
 
+        internal void UnregisterFrontierExtractor(MechanicalElfExtractor instance)
+        {
+            if (instance.AttachedNode == null) return;
+            Vector2Int sector = SectorAt(instance.AttachedNode.transform.position);
+            if (!_siteExtractors.TryGetValue(sector, out List<FrontierExtractor> machines)) return;
+            int index = machines.FindIndex(machine => machine.Instance == instance);
+            if (index < 0) return;
+            _remoteExtractors.Remove(machines[index]);
+            machines.RemoveAt(index);
+            if (machines.Count == 0) _siteExtractors.Remove(sector);
+        }
+
         private void RegisterExtractor(Vector2Int sector, FrontierExtractor machine)
         {
             if (!_siteExtractors.TryGetValue(sector, out List<FrontierExtractor> machines))

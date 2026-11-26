@@ -11,7 +11,7 @@ namespace Boreatek.Automation
     /// hasta los hornos y la Tolva Central de la Aldea Industrial de Santa.
     /// Extrae recursos periódicamente y los envía automáticamente por la cinta.
     /// </summary>
-    public class MechanicalElfExtractor : MonoBehaviour
+    public class MechanicalElfExtractor : MonoBehaviour, IInteractable
     {
         [Header("Automation Settings")]
         internal const float DefaultExtractionInterval = 8f;
@@ -26,10 +26,22 @@ namespace Boreatek.Automation
         private Vector3 _conveyorEndPos;
 
         internal HarvestableNode AttachedNode => _attachedNode;
+        internal InventoryAndShop Owner => _targetVillageEconomy;
         internal float SecondsUntilExtraction
         {
             get => _extractionTimer;
             set => _extractionTimer = value;
+        }
+
+        public string GetInteractionPrompt() => "[E] Recoger autómata extractor";
+
+        public bool CanInteract(GameObject interactor) =>
+            isActiveAndEnabled && _targetVillageEconomy != null && interactor == _targetVillageEconomy.gameObject &&
+            (interactor.transform.position - transform.position).sqrMagnitude <= 3.4f * 3.4f;
+
+        public void Interact(GameObject interactor)
+        {
+            if (CanInteract(interactor)) _targetVillageEconomy.RecoverExtractor(this);
         }
 
         public void InitializeExtractor(
@@ -147,6 +159,10 @@ namespace Boreatek.Automation
                 BoreatekLandscapeGeometry.PaintStructure(packet.GetComponent<Renderer>(), sharedMaterials, node.NodeConfig.OutputResource.ThemeColor);
             }
 
+            var pickupBody = root.AddComponent<CapsuleCollider>();
+            pickupBody.center = Vector3.up * 0.73f;
+            pickupBody.height = 1.46f;
+            pickupBody.radius = 0.33f;
             MechanicalElfExtractor extractor = root.AddComponent<MechanicalElfExtractor>();
             extractor.InitializeExtractor(node, economy, arm.transform, packet.transform, startConveyor, endConveyor);
             return extractor;
