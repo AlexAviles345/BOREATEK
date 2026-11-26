@@ -86,6 +86,7 @@ namespace Boreatek.World
             {
                 Transform chunk = _chunks[retired];
                 RememberNodes(retired);
+                UnloadWildlife(retired);
                 SetExtractorsRemote(retired);
                 _frontierNodes.Remove(retired);
                 _caveLayouts.Remove(retired);
@@ -150,6 +151,7 @@ namespace Boreatek.World
             DressFrontier(owner, root.transform, sector, origin, cave);
             _chunks.Add(sector, root.transform);
             BuildFrontierResources(sector, owner, root.transform, origin);
+            SpawnSectorWildlife(sector, root.transform, owner, origin);
             SpawnSectorInstallations(sector, root.transform);
         }
 

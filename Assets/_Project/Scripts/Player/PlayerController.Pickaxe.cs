@@ -90,14 +90,14 @@ namespace Boreatek.Player
         private void ApplySwordImpact()
         {
             if (_aimHit.collider == null) return;
-            var target = _aimHit.collider.GetComponentInParent<DefectiveToyAI>();
+            var target = _aimHit.collider.GetComponentInParent<IEnemyDamageable>();
             if (target == null) return;
             Vector3 handHeight = transform.position + Vector3.up * 0.92f;
             Vector3 strike = _aimHit.point - handHeight;
             float distance = strike.magnitude;
             if (distance > 2.6f || distance <= 0.01f) return;
             if (TryGetAimHit(new Ray(handHeight, strike / distance), distance + 0.06f, out RaycastHit contact) &&
-                contact.collider.GetComponentInParent<DefectiveToyAI>() == target)
+                contact.collider.GetComponentInParent<IEnemyDamageable>() == target)
                 target.TakeSwordDamage(this);
         }
 
@@ -110,7 +110,7 @@ namespace Boreatek.Player
             {
                 node.HitWithPickaxe(_currentPickaxeTier, _pickaxeDamage, _inventoryAndShop, this);
             }
-            else if (_aimHit.collider.GetComponentInParent<DefectiveToyAI>() is DefectiveToyAI enemy)
+            else if (_aimHit.collider.GetComponentInParent<IEnemyDamageable>() is IEnemyDamageable enemy)
             {
                 enemy.TakePickaxeDamage(_pickaxeDamage * 25f, _currentPickaxeTier, this);
             }

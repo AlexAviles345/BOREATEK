@@ -7,7 +7,7 @@ namespace Boreatek.World
     {
         internal static readonly Vector2 AirfieldLocation = new(-55f, -23f);
 
-        private static bool IsAirfieldClearance(float x, float z) => x is > -120f and < -48f && z is > -35f and < -12f;
+        internal static bool IsAirfieldClearance(float x, float z) => x is > -120f and < -48f && z is > -35f and < -12f;
 
         private static float RunwayGrade(float x, float z)
         {

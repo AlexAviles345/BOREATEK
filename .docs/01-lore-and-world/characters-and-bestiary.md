@@ -50,3 +50,13 @@
 ### 3.2. Gólems de Escarcha
 * Colosos formados por bloques de hielo azul y chatarra polar que custodian los yacimientos de **La Geoda de Hielo Azul (Nivel 2)** y las entradas a **El Abismo del Núcleo Luminoso (Nivel 3)**.
 * Su coraza glacial es inmune al pico básico; requieren utilizar **Petardos Festivos** o el **Pico Industrial Nivel 2/3** para fracturar su blindaje.
+
+### 3.3. Lobos nivales
+
+Patrullan la tundra y los alrededores del Cementerio de Trineos. Antes de embestir, se agachan y gruñen. El salto sigue la dirección que eligieron al impulsarse, lo que deja tiempo para apartarse de su trayectoria.
+
+### 3.4. Polillas de escarcha
+
+Vuelan entre los árboles de caramelo, en las planicies glaciares y en algunas cuevas procedurales. Se elevan y aceleran el aleteo antes de atacar en picada. Después se apartan para recuperar altura.
+
+El pico, la espada y los petardos dañan a ambas especies. La salud de cada criatura se conserva al guardar la partida o al volver a su sector.

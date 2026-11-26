@@ -259,6 +259,7 @@ namespace Boreatek.Core
             DayNightCycleManager.Instance.RestoreSave(save.campaign);
             _temperature.RestoreSave(save.temperature);
             _surface.RestoreFrontierNodes(save.frontierNodes);
+            _surface.RestoreWildlife(save.wildlife);
             _surface.RestoreFrontierExtractors(save.frontierExtractors);
             _surface.EnsureGroundAt(save.player.position);
             if (save.sleds != null)

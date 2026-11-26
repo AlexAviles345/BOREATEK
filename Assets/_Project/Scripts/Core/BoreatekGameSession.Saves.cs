@@ -220,6 +220,7 @@ namespace Boreatek.Core
                 sleds = Array.ConvertAll(_sleds, sled => sled.CaptureSave()),
                 plane = _plane != null ? _plane.CaptureSave() : default,
                 frontierNodes = _surface.CaptureFrontierNodes(),
+                wildlife = _surface.CaptureWildlife(),
                 frontierExtractors = frontierExtractors,
                 map = _map.Capture(),
                 extractors = extractors.ToArray()
@@ -277,6 +278,7 @@ namespace Boreatek.Core
             public BoreatekVillageSled.SaveState[] sleds;
             public BoreatekBushPlane.SaveState plane;
             public BoreatekSurfaceChunks.FrontierNodeSave[] frontierNodes;
+            public BoreatekSurfaceChunks.WildlifeSave[] wildlife;
             public BoreatekSurfaceChunks.FrontierExtractorSave[] frontierExtractors;
             public BoreatekExplorationMap.SaveState map;
             public ExtractorSave[] extractors;

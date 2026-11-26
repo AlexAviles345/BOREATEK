@@ -10,7 +10,7 @@ namespace Boreatek.AI
     /// - Detecta al Duende Ingeniero a mayor distancia si éste tiene encendido el Faro Frontal LED del casco.
     /// - Ataca cuerpo a cuerpo y puede ser derrotado con el Pico Industrial de Cristal Energético o Petardos.
     /// </summary>
-    public class DefectiveToyAI : MonoBehaviour
+    public class DefectiveToyAI : MonoBehaviour, IEnemyDamageable
     {
         public enum AIState { Patrol, AlertChase, Attack, Disabled }
 
@@ -332,6 +332,11 @@ namespace Boreatek.AI
 
         internal void TakeSwordDamage(PlayerController attacker) =>
             ApplyDamage(_isFrostGolemGuardian ? 30f : 45f, attacker.transform.position, 1.18f, attacker);
+
+        void IEnemyDamageable.TakeBlastDamage(float damage, Vector3 center, PlayerController attacker) =>
+            TakeBlastDamage(damage, center, attacker);
+
+        void IEnemyDamageable.TakeSwordDamage(PlayerController attacker) => TakeSwordDamage(attacker);
 
         private void ApplyDamage(float damage, Vector3 from, float force, PlayerController attacker)
         {
