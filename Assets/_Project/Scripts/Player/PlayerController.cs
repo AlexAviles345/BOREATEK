@@ -91,6 +91,7 @@ namespace Boreatek.Player
             {
                 _playerCamera = Camera.main;
             }
+            if (_playerCamera != null) _standardFieldOfView = _playerCamera.fieldOfView;
 
             if (_pickaxeVisualRoot != null)
             {
@@ -393,6 +394,7 @@ namespace Boreatek.Player
         {
             _cameraPivot = cameraPivot;
             _playerCamera = cam;
+            if (cam != null) _standardFieldOfView = cam.fieldOfView;
             _helmetHeadlamp = headlamp;
             _pickaxeVisualRoot = pickaxeRoot;
             _pickaxeCrystalTipRenderer = pickaxeCrystalRenderer;
