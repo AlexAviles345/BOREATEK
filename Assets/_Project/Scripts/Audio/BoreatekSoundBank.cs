@@ -6,7 +6,7 @@ namespace Boreatek.Audio
     {
         Click, Confirm, StepSnow, StepPlanks, StepIce, Jump, Land, Swing, Wood, Metal, Stone, Ice, Crystal,
         Break, Blocked, Deploy, Blast, Eat, Drink, Hurt, Death, Servo, GolemStep, RobotReady, GolemReady,
-        RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot
+        RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone
     }
 
     internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm }
@@ -15,6 +15,7 @@ namespace Boreatek.Audio
     {
         private const int SampleRate = 24000;
         private const float Tau = 2f * Mathf.PI;
+        internal const int FootfallVariants = 4;
 
         private readonly struct Voice
         {
@@ -31,17 +32,70 @@ namespace Boreatek.Audio
             }
         }
 
+        internal static bool IsFootfall(SoundCue cue) => cue is SoundCue.StepSnow or SoundCue.StepPlanks
+            or SoundCue.StepIce or SoundCue.StepStone or SoundCue.Jump or SoundCue.Land or SoundCue.Servo or SoundCue.GolemStep;
+
+        internal static AudioClip MakeFootfall(SoundCue cue, int variant)
+        {
+            (float duration, float impact, float scuff, float texture, float resonance, float ring) = cue switch
+            {
+                SoundCue.StepPlanks => (0.17f, 0.72f, 0.40f, 0.17f, 138f, 0.12f),
+                SoundCue.StepStone  => (0.16f, 0.67f, 0.46f, 0.30f, 102f, 0.04f),
+                SoundCue.StepIce    => (0.19f, 0.51f, 0.72f, 0.34f,  92f, 0.03f),
+                SoundCue.Jump       => (0.14f, 0.42f, 0.57f, 0.16f,  78f, 0.03f),
+                SoundCue.Land       => (0.21f, 0.94f, 0.52f, 0.19f,  69f, 0.09f),
+                SoundCue.Servo      => (0.18f, 0.70f, 0.48f, 0.33f, 216f, 0.13f),
+                SoundCue.GolemStep  => (0.26f, 1.12f, 0.69f, 0.19f,  54f, 0.16f),
+                _                   => (0.22f, 0.54f, 0.84f, 0.21f,  81f, 0.03f)
+            };
+            uint rng = 0x50495341u + (uint)cue * 4679u + (uint)variant * 7919u;
+            duration *= 1f + Noise(ref rng) * 0.08f;
+            resonance *= 1f + Noise(ref rng) * 0.12f;
+            float toeOnset = duration * (0.29f + Noise(ref rng) * 0.075f);
+            float heelLength = duration * (0.36f + Noise(ref rng) * 0.055f);
+            var grainStarts = new float[6];
+            var grainStrengths = new float[grainStarts.Length];
+            for (int grain = 0; grain < grainStarts.Length; grain++)
+            {
+                grainStarts[grain] = duration * (0.21f + (grain + Noise(ref rng) * 0.55f) * 0.099f);
+                grainStrengths[grain] = 0.48f + Noise(ref rng) * 0.26f;
+            }
+            var samples = new float[Mathf.RoundToInt(duration * SampleRate)];
+            float low = 0f, detail = 0f;
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = i / (float)SampleRate;
+                float noise = Noise(ref rng);
+                low += (noise - low) * 0.042f;
+                detail += (noise - detail) * texture;
+                float heel = Contact(t, heelLength, 0.12f);
+                float toe = Contact(t - toeOnset, duration * 0.40f, 0.25f);
+                float grains = 0f;
+                for (int grain = 0; grain < grainStarts.Length; grain++)
+                    grains += Contact(t - grainStarts[grain], duration * 0.13f, 0.22f) * grainStrengths[grain];
+                float pressure = heel + 0.51f * toe;
+                float sole = low * impact * pressure;
+                float surface = (detail - low) * scuff * (0.30f * heel + 0.42f * toe + grains);
+                float thud = Mathf.Sin(Tau * t * resonance) * ring * heel * heel;
+                samples[i] = (sole + surface + thud) * 0.76f;
+            }
+            return Clip($"{cue} {variant + 1}", samples);
+        }
+
+        private static float Contact(float time, float duration, float rise)
+        {
+            float phase = time / duration;
+            if (phase <= 0f || phase >= 1f) return 0f;
+            float envelope = phase < rise ? phase / rise : (1f - phase) / (1f - rise);
+            return envelope * envelope * (3f - 2f * envelope);
+        }
+
         internal static AudioClip MakeCue(SoundCue cue)
         {
             Voice voice = cue switch
             {
                 SoundCue.Click       => new Voice(0.089f, 940f, 660f, 0.30f, 0.15f, 0f, 0.32f),
                 SoundCue.Confirm     => new Voice(0.40f, 495f, 742f, 0.35f, 0.05f, 3f, 0.38f),
-                SoundCue.StepSnow    => new Voice(0.19f, 100f, 58f, 0.085f, 0.70f, 28f, 0.25f),
-                SoundCue.StepPlanks  => new Voice(0.18f, 167f, 99f, 0.37f, 0.41f, 15f, 0.22f),
-                SoundCue.StepIce     => new Voice(0.16f, 570f, 287f, 0.17f, 0.55f, 31f, 0.47f),
-                SoundCue.Jump        => new Voice(0.16f, 116f, 239f, 0.19f, 0.36f, 12f, 0.22f),
-                SoundCue.Land        => new Voice(0.27f, 86f, 45f, 0.44f, 0.56f, 20f, 0.20f),
                 SoundCue.Swing       => new Voice(0.23f, 251f, 126f, 0.05f, 0.52f, 9f, 0.15f),
                 SoundCue.Wood        => new Voice(0.25f, 253f, 112f, 0.40f, 0.60f, 25f, 0.18f),
                 SoundCue.Metal       => new Voice(0.38f, 769f, 532f, 0.44f, 0.44f, 16f, 0.58f),
@@ -56,8 +110,6 @@ namespace Boreatek.Audio
                 SoundCue.Drink       => new Voice(0.46f, 203f, 153f, 0.27f, 0.51f, 7f, 0.065f),
                 SoundCue.Hurt        => new Voice(0.31f, 123f, 67f, 0.48f, 0.57f, 15f, 0.13f),
                 SoundCue.Death       => new Voice(1.18f, 282f, 73f, 0.40f, 0.24f, 4f, 0.10f),
-                SoundCue.Servo       => new Voice(0.20f, 462f, 183f, 0.31f, 0.42f, 33f, 0.27f),
-                SoundCue.GolemStep   => new Voice(0.32f, 85f, 34f, 0.44f, 0.68f, 24f, 0.15f),
                 SoundCue.RobotReady  => new Voice(0.34f, 137f, 395f, 0.36f, 0.39f, 19f, 0.25f),
                 SoundCue.GolemReady  => new Voice(0.50f, 55f, 112f, 0.47f, 0.65f, 28f, 0.15f),
                 SoundCue.RobotStrike => new Voice(0.26f, 363f, 88f, 0.34f, 0.76f, 18f, 0.29f),

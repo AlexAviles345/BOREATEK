@@ -265,7 +265,7 @@ namespace Boreatek.Player
             if (jumpPressed && isGrounded && !_isShopMenuOpen)
             {
                 _verticalVelocity.y = Mathf.Sqrt(_jumpHeight * -2f * _gravity);
-                BoreatekSoundscape.Play(SoundCue.Jump, strength: 0.70f);
+                BoreatekSoundscape.Play(SoundCue.Jump, strength: 0.28f);
             }
 
             _verticalVelocity.y += _gravity * dt;
@@ -290,20 +290,40 @@ namespace Boreatek.Player
             }
             if (!wasGrounded && _verticalVelocity.y < -1.7f)
             {
-                BoreatekSoundscape.Play(SoundCue.Land, strength: Mathf.Clamp01(-_verticalVelocity.y * 0.12f));
+                BoreatekSoundscape.Play(SoundCue.Land, strength: Mathf.Clamp(-_verticalVelocity.y * 0.045f, 0.09f, 0.38f));
                 return;
             }
             float stride = sprinting ? 1.55f : 1.20f;
             _footstepDistance += distance;
             if (_footstepDistance < stride) return;
             _footstepDistance = Mathf.Repeat(_footstepDistance, stride);
-            SoundCue footstep = _temperatureSystem.CurrentBiome switch
+            BoreatekSoundscape.Play(FootstepSurface(), strength: sprinting ? 0.22f : 0.15f);
+        }
+
+        private SoundCue FootstepSurface()
+        {
+            if (Physics.Raycast(transform.position + Vector3.up * 0.20f, Vector3.down, out RaycastHit ground,
+                0.65f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
             {
-                BiomeType.SantaIndustrialVillage or BiomeType.VentilationTunnels => SoundCue.StepPlanks,
+                switch (ground.collider.name)
+                {
+                    case "Entrance_Bridge": return SoundCue.StepPlanks;
+                    case "ArcticSnowfield":
+                    case "ArcticSnowfields": return SoundCue.StepSnow;
+                    case "Tunnel_FloorRamp":
+                    case "Village_ThermalPlatform":
+                    case "Foundation_Walls_And_Roof":
+                    case "Shell_And_Walkable_Floor":
+                    case "Walkway_To_Steam_Room":
+                    case "Mine_Entrance_Arch_And_Approach": return SoundCue.StepStone;
+                }
+            }
+            return _temperatureSystem.CurrentBiome switch
+            {
+                BiomeType.SantaIndustrialVillage or BiomeType.VentilationTunnels => SoundCue.StepStone,
                 >= BiomeType.IceCavesLevel1 => SoundCue.StepIce,
                 _ => SoundCue.StepSnow
             };
-            BoreatekSoundscape.Play(footstep, strength: sprinting ? 0.68f : 0.48f);
         }
 
         private void UpdateInteractionFocus()

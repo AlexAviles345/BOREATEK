@@ -154,7 +154,7 @@ namespace Boreatek.AI
             if (_stepDistance >= stride)
             {
                 _stepDistance = Mathf.Repeat(_stepDistance, stride);
-                BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemStep : SoundCue.Servo, transform.position, 0.43f);
+                BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemStep : SoundCue.Servo, transform.position, 0.23f);
             }
             _pose?.Animate(dt, traveled,
                 _attacking ? _attackElapsed / AttackDuration : 0f, 1f - _hurtRemaining / HurtDuration,
