@@ -15,7 +15,10 @@ namespace Boreatek.Core
     [DefaultExecutionOrder(-100)]
     public sealed partial class BoreatekGameSession : MonoBehaviour
     {
-        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead }
+        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead, ConfirmDeleteSave }
+
+        internal static bool IsTitleScreen(Screen screen) =>
+            screen is Screen.MainMenu or Screen.SaveSelection or Screen.CreateSave or Screen.ConfirmDeleteSave;
 
         private PlayerController _player;
         private TemperatureSystem _temperature;
@@ -83,6 +86,10 @@ namespace Boreatek.Core
             else if (_screen == Screen.CreateSave)
             {
                 OpenSaveSelection();
+            }
+            else if (_screen == Screen.ConfirmDeleteSave)
+            {
+                CancelDeleteSave();
             }
         }
 
@@ -227,7 +234,7 @@ namespace Boreatek.Core
         {
             _screen = screen;
             bool playing = screen == Screen.Playing;
-            _soundscape.SetScreen(screen == Screen.MainMenu || screen == Screen.SaveSelection || screen == Screen.CreateSave, playing);
+            _soundscape.SetScreen(IsTitleScreen(screen), playing);
             Time.timeScale = playing ? _gameplayTimeScale : 0f;
             _player.SetGameplayEnabled(playing);
             _ui.ShowSessionScreen(screen, message);

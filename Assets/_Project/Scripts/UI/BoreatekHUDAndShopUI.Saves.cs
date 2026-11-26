@@ -9,14 +9,14 @@ namespace Boreatek.UI
 {
     public partial class BoreatekHUDAndShopUI
     {
-        private RectTransform _saveMenu, _createSaveMenu, _saveListContent;
-        private Text _saveListMessage, _createSaveMessage;
+        private RectTransform _saveMenu, _createSaveMenu, _saveListContent, _deleteSaveMenu;
+        private Text _saveListMessage, _createSaveMessage, _deleteSaveName;
         private ScrollRect _saveListScroll;
-        private Button _loadSelectedButton, _createSaveButton;
+        private Button _loadSelectedButton, _createSaveButton, _deleteSelectedButton, _cancelDeleteSaveButton;
         private InputField _saveNameField;
         private GameObject _emptySaveList;
         private BoreatekUiButton _selectedSaveRow;
-        private string _selectedSaveId;
+        private SaveEntry _selectedSave;
         private Action<string> _loadSelectedSave;
 
         private void BuildSaveScreens(RectTransform root, BoreatekGameSession session)
@@ -33,11 +33,14 @@ namespace Boreatek.UI
 
             _saveListMessage = CreateLabel(_saveMenu, "SaveListMessage", "", new Vector2(34f, -487f),
                 new Vector2(660f, 35f), 18, FontStyle.Normal, ColTextLight, TextAnchor.MiddleLeft);
-            _loadSelectedButton = CreateMenuButton(_saveMenu, "LoadSelected", "Jugar partida", 34f, 530f, 228f,
-                ColBrassGold, () => _loadSelectedSave?.Invoke(_selectedSaveId));
-            _createSaveButton = CreateMenuButton(_saveMenu, "CreateNew", "Crear partida", 276f, 530f, 224f,
+            _loadSelectedButton = CreateMenuButton(_saveMenu, "LoadSelected", "Jugar partida", 34f, 530f, 172f,
+                ColBrassGold, () => _loadSelectedSave?.Invoke(_selectedSave.id));
+            _createSaveButton = CreateMenuButton(_saveMenu, "CreateNew", "Crear partida", 216f, 530f, 170f,
                 ColBlueSteel, session.OpenCreateSave);
-            CreateMenuButton(_saveMenu, "Back", "Volver", 514f, 530f, 182f, ColDeepSteel, session.BackToTitle);
+            _deleteSelectedButton = CreateMenuButton(_saveMenu, "DeleteSelected", "Eliminar", 396f, 530f, 148f,
+                ColCandyRed, () => session.OpenDeleteSave(_selectedSave));
+            CreateMenuButton(_saveMenu, "Back", "Volver", 554f, 530f, 142f, ColDeepSteel, session.BackToTitle);
+            BuildDeleteSaveScreen(root, session, anchor, pivot);
 
             _createSaveMenu = CreatePanelCard("CreateSave", root, anchor, anchor, pivot, Vector2.zero,
                 new Vector2(630f, 374f), ColDeepSteel);
@@ -73,6 +76,30 @@ namespace Boreatek.UI
                 session.OpenSaveSelection);
         }
 
+        private void BuildDeleteSaveScreen(RectTransform root, BoreatekGameSession session, Vector2 anchor, Vector2 pivot)
+        {
+            _deleteSaveMenu = CreatePanelCard("ConfirmDeleteSave", root, anchor, anchor, pivot, Vector2.zero,
+                new Vector2(590f, 305f), ColDeepSteel);
+            ApplyMetalPanel(_deleteSaveMenu, ColDeepSteel, ColCandyRed);
+            CreateLabel(_deleteSaveMenu, "Title", "¿Eliminar partida?", new Vector2(34f, -25f), new Vector2(522f, 50f),
+                36, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
+            CreateAccentLine(_deleteSaveMenu, "HeaderRule", new Vector2(34f, -86f), new Vector2(522f, 2f), ColCandyRed);
+            _deleteSaveName = CreateLabel(_deleteSaveMenu, "Name", "", new Vector2(34f, -102f), new Vector2(522f, 48f),
+                30, FontStyle.Bold, ColTextLight, TextAnchor.MiddleLeft);
+            _deleteSaveName.supportRichText = false;
+            _deleteSaveName.resizeTextForBestFit = true;
+            _deleteSaveName.resizeTextMinSize = 18;
+            _deleteSaveName.resizeTextMaxSize = 30;
+            CreateLabel(_deleteSaveMenu, "Consequence", "La partida se borrará de forma permanente.",
+                new Vector2(34f, -159f), new Vector2(522f, 37f), 21, FontStyle.Normal, ColTextMuted, TextAnchor.MiddleLeft);
+            _cancelDeleteSaveButton = CreateMenuButton(_deleteSaveMenu, "CancelDelete", "Cancelar", 34f, 220f, 253f,
+                ColBlueSteel, session.CancelDeleteSave);
+            CreateMenuButton(_deleteSaveMenu, "ConfirmDelete", "Sí, eliminar partida", 301f, 220f, 255f,
+                ColCandyRed, session.ConfirmDeleteSave);
+        }
+
+        internal void SetDeleteSaveName(string name) => _deleteSaveName.text = name;
+
         private void BuildSaveList(RectTransform panel)
         {
             _saveListScroll = CreateVerticalCatalog(panel, "SaveViewport", "SaveRows",
@@ -87,9 +114,10 @@ namespace Boreatek.UI
         internal void RebuildSaveList(IReadOnlyList<SaveEntry> entries, Action<string> loadSave)
         {
             _loadSelectedSave = loadSave;
-            _selectedSaveId = null;
+            _selectedSave = default;
             _selectedSaveRow = null;
             _loadSelectedButton.interactable = false;
+            _deleteSelectedButton.interactable = false;
             foreach (Transform child in _saveListContent)
             {
                 child.gameObject.SetActive(false);
@@ -111,7 +139,7 @@ namespace Boreatek.UI
                 RectTransform row = CreatePanelCard("SaveRow_" + entry.id, _saveListContent, topLeft, topLeft, topLeft,
                     new Vector2(10f, -10f - i * rowSpacing), new Vector2(620f, rowHeight), ColBlueSteel);
                 var rowButton = AttachMetalButton(row, ColBlueSteel, ColIceCyan);
-                rowButton.onClick.AddListener(() => SelectSave(entry.id, rowButton));
+                rowButton.onClick.AddListener(() => SelectSave(entry, rowButton));
                 rowButton.Focused += () => RevealCatalogItem(_saveListScroll, row);
 
                 Text name = CreateLabel(row, "SaveTitle", entry.name, new Vector2(18f, -9f), new Vector2(580f, 30f),
@@ -130,21 +158,22 @@ namespace Boreatek.UI
 
                 if (i == 0)
                 {
-                    SelectSave(entry.id, rowButton);
+                    SelectSave(entry, rowButton);
                 }
             }
         }
 
-        private void SelectSave(string id, BoreatekUiButton row)
+        private void SelectSave(SaveEntry entry, BoreatekUiButton row)
         {
             if (_selectedSaveRow != null)
             {
                 _selectedSaveRow.SetLatched(false);
             }
-            _selectedSaveId = id;
+            _selectedSave = entry;
             _selectedSaveRow = row;
             _selectedSaveRow.SetLatched(true);
             _loadSelectedButton.interactable = true;
+            _deleteSelectedButton.interactable = true;
         }
     }
 }

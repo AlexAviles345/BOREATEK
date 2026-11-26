@@ -19,6 +19,7 @@ namespace Boreatek.Core
 
         private string _activeSaveId;
         private string _activeSaveName;
+        private string _pendingDeleteId;
         private static string SaveDirectory => Path.Combine(Application.persistentDataPath, "Partidas");
 
         internal readonly struct SaveEntry
@@ -79,11 +80,65 @@ namespace Boreatek.Core
         private static string GetSaveName(SaveData save) =>
             string.IsNullOrWhiteSpace(save.name) ? "Partida anterior" : save.name;
 
+        internal void OpenDeleteSave(SaveEntry entry)
+        {
+            if (_screen != Screen.SaveSelection || !IsSaveId(entry.id)) return;
+            _pendingDeleteId = entry.id;
+            _ui.SetDeleteSaveName(entry.name);
+            SetScreen(Screen.ConfirmDeleteSave);
+        }
+
+        internal void CancelDeleteSave()
+        {
+            if (_screen != Screen.ConfirmDeleteSave) return;
+            _pendingDeleteId = null;
+            SetScreen(Screen.SaveSelection);
+        }
+
+        internal void ConfirmDeleteSave()
+        {
+            if (_screen != Screen.ConfirmDeleteSave || _pendingDeleteId == null) return;
+            string id = _pendingDeleteId;
+            _pendingDeleteId = null;
+            bool deleted = TryDeleteSave(SaveDirectory, id);
+            _ui.RebuildSaveList(ReadSaveEntries(), LoadGame);
+            SetScreen(Screen.SaveSelection, deleted ? "Partida eliminada." : "No se pudo eliminar la partida.");
+        }
+
+        private static bool TryDeleteSave(string directory, string id)
+        {
+            if (!IsSaveId(id)) return false;
+            try
+            {
+                try
+                {
+                    File.Delete(Path.Combine(directory, id + ".json"));
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    // An already-removed directory has no copy on disk.
+                }
+                if (id == LegacySaveId && PlayerPrefs.HasKey(LegacySaveKey))
+                {
+                    PlayerPrefs.DeleteKey(LegacySaveKey);
+                    PlayerPrefs.Save();
+                }
+                return true;
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is PlayerPrefsException)
+            {
+                Debug.LogWarning($"No se pudo eliminar una partida de BOREATEK: {e.Message}");
+                return false;
+            }
+        }
+
+        private static bool IsSaveId(string id) => id == LegacySaveId || Guid.TryParseExact(id, "N", out _);
+
         private bool TryReadSave(string id, out SaveData save)
         {
             save = null;
             bool isLegacy = id == LegacySaveId;
-            if (!isLegacy && !Guid.TryParseExact(id, "N", out _))
+            if (!IsSaveId(id))
             {
                 return false;
             }

@@ -88,8 +88,7 @@ namespace Boreatek.UI
         internal void ShowSessionScreen(SessionScreen screen, string message)
         {
             bool menuOpen = screen != SessionScreen.Playing;
-            bool titleOpen = screen == SessionScreen.MainMenu || screen == SessionScreen.SaveSelection ||
-                screen == SessionScreen.CreateSave;
+            bool titleOpen = BoreatekGameSession.IsTitleScreen(screen);
             _hudCanvas.enabled = !menuOpen;
             _hudCanvas.GetComponent<GraphicRaycaster>().enabled = !menuOpen;
             _sessionCanvas.SetActive(menuOpen);
@@ -98,6 +97,7 @@ namespace Boreatek.UI
             _mainMenu.gameObject.SetActive(screen == SessionScreen.MainMenu);
             _saveMenu.gameObject.SetActive(screen == SessionScreen.SaveSelection);
             _createSaveMenu.gameObject.SetActive(screen == SessionScreen.CreateSave);
+            _deleteSaveMenu.gameObject.SetActive(screen == SessionScreen.ConfirmDeleteSave);
             _gameplayMenuCard.gameObject.SetActive(screen == SessionScreen.Paused || screen == SessionScreen.Dead);
             _pauseMenu.gameObject.SetActive(screen == SessionScreen.Paused);
             _deathMenu.gameObject.SetActive(screen == SessionScreen.Dead);
@@ -127,6 +127,7 @@ namespace Boreatek.UI
             {
                 SessionScreen.MainMenu => _playButton,
                 SessionScreen.SaveSelection => _loadSelectedButton.interactable ? _loadSelectedButton : _createSaveButton,
+                SessionScreen.ConfirmDeleteSave => _cancelDeleteSaveButton,
                 SessionScreen.Paused => _resumeButton,
                 SessionScreen.Dead => _respawnButton,
                 _ => null
