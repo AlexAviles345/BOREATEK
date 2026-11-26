@@ -11,7 +11,7 @@ namespace Boreatek.Core
         internal const int LayerCount = 5;
         internal const int NameLimit = 28;
         private const int MarkerLimit = 128;
-        internal static readonly string[] Layers = { "Superficie", "Túneles", "Cuevas de hielo", "Geoda azul", "Abismo" };
+        internal static readonly string[] Layers = { "Superficie", "Túneles", "Cuevas", "Profundidad II", "Profundidad III" };
         internal static readonly (string name, Vector2 point, int layer)[] Landmarks =
         {
             ("Forja Central", new Vector2(0f, 5f), 0),
@@ -60,8 +60,12 @@ namespace Boreatek.Core
 
         internal BoreatekExplorationMap(BoreatekSurfaceChunks surface) => _surface = surface;
 
-        internal int LayerAt(Vector3 position) => _surface.IsInProceduralCave(position) ? 2
-            : position.y < -28f ? 4 : position.y < -16f ? 3 : position.y < -6f ? 2 : position.y < -1.5f ? 1 : 0;
+        internal int LayerAt(Vector3 position)
+        {
+            int layer = _surface.ProceduralCaveLayer(position);
+            return layer != 0 ? layer : position.y < -28f ? 4 : position.y < -16f ? 3 :
+                position.y < -6f ? 2 : position.y < -1.5f ? 1 : 0;
+        }
         internal static Vector2 Planar(Vector3 point) => new Vector2(point.x, point.z);
         private static Vector3Int CellAt(Vector2 point, int layer) =>
             new Vector3Int(Mathf.FloorToInt(point.x / CellSize), Mathf.FloorToInt(point.y / CellSize), layer);

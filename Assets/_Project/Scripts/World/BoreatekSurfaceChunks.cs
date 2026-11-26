@@ -88,7 +88,7 @@ namespace Boreatek.World
                 RememberNodes(retired);
                 SetExtractorsRemote(retired);
                 _frontierNodes.Remove(retired);
-                _caves.Remove(retired);
+                _caveLayouts.Remove(retired);
                 _chunks.Remove(retired);
                 chunk.gameObject.SetActive(false);
                 Destroy(chunk.gameObject);
