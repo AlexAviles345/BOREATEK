@@ -95,28 +95,44 @@ namespace Boreatek.World
                 float x = (float)random.NextDouble() * 203f - 101f;
                 float z = (float)random.NextDouble() * 196f - 99f;
                 if (IsVillageGround(x, z) || x * x + z * z < 26f * 26f || (Mathf.Abs(x) < 5f && z >= 12f && z < 38f)) continue;
-                Vector3 foot = SurfacePoint(x, z);
+                Vector3 foot = StarterMeshFoot(x, z);
                 Vector4 weights = StarterSnowWeights(x, z);
                 BiomeType biome = SampleSnowBiome(weights, (float)random.NextDouble());
                 float size = 0.64f + (float)random.NextDouble() * 0.58f;
                 AddBiomeTerrainDetail(scenery, foot, biome, size, _landscape);
                 if (weights.z > 0.10f && weights.z < 0.84f && biome == BiomeType.OuterTundra && i % 4 == 0)
-                    SpawnSceneryPine(root, foot + Vector3.back * 1.1f, 2.5f + size, $"edge:{i}");
+                    SpawnSceneryPine(root, StarterMeshFoot(x, z - 1.1f), 2.5f + size, $"edge:{i}");
             }
             _landscape.Place(root, "Snow_Drifts_Candy_Shoots_And_Salvage", scenery, collision: true);
         }
 
-        internal void AddBiomeTerrainDetail(Batch scenery, Vector3 foot, BiomeType biome, float size,
-            BoreatekLandscapeGeometry materials)
+        private static Vector3 StarterMeshFoot(float x, float z)
         {
+            const float step = 4f;
+            float tx = Mathf.Floor(x / step) * step;
+            float tz = Mathf.Floor((z + 2f) / step) * step - 2f;
+            float u = (x - tx) / step, v = (z - tz) / step;
+            float b = SurfacePoint(tx + step, tz).y, d = SurfacePoint(tx, tz + step).y;
+            float y = u + v <= 1f
+                ? (1f - u - v) * SurfacePoint(tx, tz).y + u * b + v * d
+                : (u + v - 1f) * SurfacePoint(tx + step, tz + step).y + (1f - v) * b + (1f - u) * d;
+            return new Vector3(x, y, z);
+        }
+
+        internal void AddBiomeTerrainDetail(Batch scenery, Vector3 foot, BiomeType biome, float size,
+            BoreatekLandscapeGeometry materials, Vector3? groundNormal = null)
+        {
+            Quaternion slope = groundNormal.HasValue ? Quaternion.FromToRotation(Vector3.up, groundNormal.Value) : Quaternion.identity;
+            foot -= Vector3.up * (groundNormal.HasValue ? 0.13f : 0f);
             if (biome == BiomeType.GiantCandyForest)
             {
                 Material pinkIce = materials.Finish(new Color32(159, 52, 89, 255), 0.12f, 0.4f);
                 Material sugar = materials.Finish(new Color32(235, 141, 184, 255), 0.18f);
                 Material pale = materials.Finish(new Color32(185, 155, 203, 255));
-                scenery.Frustum(foot - Vector3.up * 0.055f, foot + Vector3.up * 0.07f, size * 0.66f, size * 0.45f, 7, pale);
-                AddCrystal(scenery, foot, foot + new Vector3(-0.29f, 0.77f, 0.16f) * size, size * 0.17f, pinkIce, sugar);
-                AddCrystal(scenery, foot + Vector3.right * size * 0.20f, foot + new Vector3(0.47f, 0.54f, 0.05f) * size,
+                scenery.Frustum(foot - slope * Vector3.up * 0.12f, foot + slope * Vector3.up * 0.07f,
+                    size * 0.66f, size * 0.45f, 7, pale);
+                AddCrystal(scenery, foot, foot + slope * new Vector3(-0.29f, 0.77f, 0.16f) * size, size * 0.17f, pinkIce, sugar);
+                AddCrystal(scenery, foot + slope * Vector3.right * size * 0.20f, foot + slope * new Vector3(0.47f, 0.54f, 0.05f) * size,
                     size * 0.14f, pinkIce, sugar);
             }
             else if (biome == BiomeType.SleighGraveyard)
@@ -124,20 +140,20 @@ namespace Boreatek.World
                 Material timber = materials.Finish(new Color32(87, 67, 69, 255));
                 Material rust = materials.Finish(new Color32(143, 66, 53, 255));
                 Material snow = materials.Finish(new Color32(151, 173, 190, 255));
-                scenery.Frustum(foot - Vector3.up * 0.16f, foot + new Vector3(0.22f, 0.22f, -0.1f) * size,
+                scenery.Frustum(foot - slope * Vector3.up * 0.16f, foot + slope * new Vector3(0.22f, 0.22f, -0.1f) * size,
                     size * 0.75f, size * 0.43f, 6, snow);
-                scenery.Box(foot + new Vector3(-0.04f, 0.22f, 0.04f) * size, new Vector3(1.04f, 0.15f, 0.18f) * size,
-                    timber, Quaternion.Euler(17f, -35f, 16f));
-                scenery.Box(foot + new Vector3(0.37f, 0.31f, 0.22f) * size, new Vector3(0.20f, 0.09f, 0.22f) * size,
-                    rust, Quaternion.Euler(17f, -35f, 16f));
+                scenery.Box(foot + slope * new Vector3(-0.04f, 0.22f, 0.04f) * size, new Vector3(1.04f, 0.15f, 0.18f) * size,
+                    timber, slope * Quaternion.Euler(17f, -35f, 16f));
+                scenery.Box(foot + slope * new Vector3(0.37f, 0.31f, 0.22f) * size, new Vector3(0.20f, 0.09f, 0.22f) * size,
+                    rust, slope * Quaternion.Euler(17f, -35f, 16f));
             }
             else
             {
                 Material ice = materials.Finish(new Color32(81, 149, 185, 255), smoothness: 0.30f);
                 Material snow = materials.Finish(new Color32(183, 216, 232, 255));
-                scenery.Frustum(foot - Vector3.up * 0.12f, foot + new Vector3(size * 0.38f, 0.22f, 0.16f),
+                scenery.Frustum(foot - slope * Vector3.up * 0.12f, foot + slope * new Vector3(size * 0.38f, 0.22f, 0.16f),
                     size * 0.82f, size * 0.31f, 7, snow);
-                AddCrystal(scenery, foot + Vector3.right * size * 0.24f, foot + new Vector3(0.62f, 0.63f, 0.18f) * size,
+                AddCrystal(scenery, foot + slope * Vector3.right * size * 0.24f, foot + slope * new Vector3(0.62f, 0.63f, 0.18f) * size,
                     size * 0.16f, ice, snow);
             }
         }

@@ -166,19 +166,54 @@ namespace Boreatek.World
                 float wx = x + origin.x, wz = z + origin.z;
                 if (!IsFrontier(wx, wz)) continue;
                 if (cave.HasValue && cave.Value.BlocksDressingAt(wx, wz)) continue;
-                var foot = new Vector3(x, GroundHeight(wx, wz) - 0.11f, z);
+                float ground = GroundHeight(wx, wz);
+                var foot = new Vector3(x, ground, z);
                 BiomeType biome = DressingBiome(wx, wz, scale);
                 if (CanGrowTree(biome, i))
                 {
-                    var pine = _builder.SpawnSceneryPine(root, origin + foot + Vector3.up * 0.11f, 3.4f + scale * 3.5f,
+                    var pine = _builder.SpawnSceneryPine(root, origin + foot - Vector3.up * FootingDrop(wx, wz, 0.42f),
+                        3.4f + scale * 3.5f,
                         birch: biome == BiomeType.FrostBirchForest);
                     AttachResource(sector, LegacyResourceSlots + i, pine);
                 }
-                else AddNorthernFormation(features, foot, biome, scale, i);
-                _builder.AddBiomeTerrainDetail(features, foot + Vector3.right * 1.4f, biome, 0.64f + scale * 0.62f, _sharedMaterials);
+                else
+                {
+                    float drop = FootingDrop(wx, wz, biome is BiomeType.GlacialFlats or BiomeType.SnowDunes ? 3.4f : 2.4f);
+                    if (drop < 1.45f)
+                        AddNorthernFormation(features, foot - Vector3.up * (0.14f + drop), biome, scale, i);
+                }
+
+                float detailX = wx + 1.4f;
+                if (!cave.HasValue || !cave.Value.BlocksDressingAt(detailX, wz))
+                {
+                    float size = 0.64f + scale * 0.62f;
+                    var detail = new Vector3(x + 1.4f, GroundHeight(detailX, wz), z);
+                    Vector3 normal = GroundNormal(detailX, wz);
+                    if (normal.y > 0.62f)
+                        _builder.AddBiomeTerrainDetail(features, detail, biome, size, _sharedMaterials, normal);
+                }
                 hasFeatures = true;
             }
             if (hasFeatures) owner.Place(root, "WindScouredRockAndSnow", features, collision: true);
+        }
+
+        private float FootingDrop(float x, float z, float radius)
+        {
+            float center = GroundHeight(x, z);
+            float lowest = center;
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i * Mathf.PI / 4f;
+                lowest = Mathf.Min(lowest, GroundHeight(x + Mathf.Cos(angle) * radius, z + Mathf.Sin(angle) * radius));
+            }
+            return center - lowest;
+        }
+
+        private Vector3 GroundNormal(float x, float z)
+        {
+            const float sample = 0.36f;
+            return new Vector3(GroundHeight(x - sample, z) - GroundHeight(x + sample, z), sample * 2f,
+                GroundHeight(x, z - sample) - GroundHeight(x, z + sample)).normalized;
         }
 
         internal float GroundHeight(float x, float z)

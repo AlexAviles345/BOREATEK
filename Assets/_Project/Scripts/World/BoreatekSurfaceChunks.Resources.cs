@@ -43,10 +43,23 @@ namespace Boreatek.World
                 float yaw = (float)random.NextDouble() * 360f;
                 if (!IsFrontier(x, z)) continue;
 
-                Vector3 foot = new Vector3(x, GroundHeight(x, z), z);
-                HarvestableNode node = _builder.CreateFrontierResource(root, owner, foot, LegacyFrontierBiome(x, z), type, yaw);
+                BiomeType biome = LegacyFrontierBiome(x, z);
+                float radius = biome == BiomeType.GiantCandyForest ? 1.1f : biome == BiomeType.SleighGraveyard || type > 0.85f ? 1.5f : 0.48f;
+                float drop = FootingDrop(x, z, radius);
+                Vector3 foot = new Vector3(x, GroundHeight(x, z) - Mathf.Min(drop, 0.62f), z);
+                HarvestableNode node = _builder.CreateFrontierResource(root, owner, foot, biome, type, yaw);
+                if (drop > 0.62f) AddResourceFoundation(root, owner, foot, radius, drop - 0.62f);
                 AttachResource(sector, slot, node);
             }
+        }
+
+        private void AddResourceFoundation(Transform root, BoreatekLandscapeGeometry owner, Vector3 foot, float radius, float drop)
+        {
+            var stone = new BoreatekLandscapeGeometry.Batch();
+            Vector3 local = foot - root.position;
+            stone.Frustum(local - Vector3.up * (drop + 0.22f), local + Vector3.up * 0.12f,
+                radius * 1.13f, radius, 8, _rock);
+            owner.Place(root, "Afloramiento_Bajo_Recurso", stone, collision: true);
         }
 
         private System.Random LegacyResourceRandom(Vector2Int sector) =>
