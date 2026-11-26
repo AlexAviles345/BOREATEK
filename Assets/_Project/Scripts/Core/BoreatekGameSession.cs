@@ -28,6 +28,7 @@ namespace Boreatek.Core
         private HarvestableNode[] _nodes;
         private readonly Dictionary<string, HarvestableNode> _sceneryNodes = new();
         private DefectiveToyAI[] _enemies;
+        private BoreatekVillageSled[] _sleds;
         private BoreatekSurfaceChunks _surface;
         private BoreatekExplorationMap _map;
         private BoreatekSoundscape _soundscape;
@@ -69,6 +70,7 @@ namespace Boreatek.Core
             }
             _nodes = campaignNodes.ToArray();
             _enemies = worldRoot.GetComponentsInChildren<DefectiveToyAI>(true);
+            _sleds = worldRoot.GetComponentsInChildren<BoreatekVillageSled>(true);
             _temperature.OnDied += ShowDeath;
             _initialized = true;
             _ui.BuildSessionMenu(this, _map);
@@ -257,6 +259,12 @@ namespace Boreatek.Core
             _surface.RestoreFrontierNodes(save.frontierNodes);
             _surface.RestoreFrontierExtractors(save.frontierExtractors);
             _surface.EnsureGroundAt(save.player.position);
+            if (save.sleds != null)
+            {
+                foreach (BoreatekVillageSled sled in _sleds)
+                    foreach (BoreatekVillageSled.SaveState state in save.sleds)
+                        sled.RestoreSave(state);
+            }
             _player.RestoreSave(save.player);
             _map.Restore(save.map);
             _map.Reveal(_player.transform.position);

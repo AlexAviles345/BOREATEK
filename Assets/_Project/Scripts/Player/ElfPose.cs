@@ -81,6 +81,21 @@ namespace Boreatek.Player
             _hit = HitDuration;
         }
 
+        internal void SitOnSled()
+        {
+            _waist.localPosition = _waistRest - Vector3.up * 0.11f;
+            _waist.localRotation = Quaternion.Euler(8f, 0f, 0f);
+            _neck.localRotation = Quaternion.Euler(-6f, 0f, 0f);
+            _leftLeg.Hip.localPosition = _leftLeg.Rest - Vector3.up * 0.18f;
+            _rightLeg.Hip.localPosition = _rightLeg.Rest - Vector3.up * 0.18f;
+            _leftLeg.Hip.localRotation = Quaternion.Euler(-72f, 0f, -8f);
+            _rightLeg.Hip.localRotation = Quaternion.Euler(-72f, 0f, 8f);
+            _leftLeg.Ankle.localRotation = _rightLeg.Ankle.localRotation = Quaternion.Euler(46f, 0f, 0f);
+            _leftArm.Shoulder.localRotation = Quaternion.Euler(-46f, 8f, 0f);
+            _rightArm.Shoulder.localRotation = Quaternion.Euler(-46f, -8f, 0f);
+            _leftArm.Elbow.localRotation = _rightArm.Elbow.localRotation = Quaternion.Euler(-23f, 0f, 0f);
+        }
+
         internal void Reset()
         {
             _travel = Vector3.zero;

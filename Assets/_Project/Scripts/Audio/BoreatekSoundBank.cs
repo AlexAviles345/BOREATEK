@@ -6,7 +6,7 @@ namespace Boreatek.Audio
     {
         Click, Confirm, StepSnow, StepPlanks, StepIce, Jump, Land, Swing, Wood, Metal, Stone, Ice, Crystal,
         Break, Blocked, Deploy, Blast, Eat, Drink, Hurt, Death, Servo, GolemStep, RobotReady, GolemReady,
-        RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone, SwordSwing
+        RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone, SwordSwing, SledBell
     }
 
     internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm, FrozenPlain, Forest, Ridge }
@@ -98,6 +98,7 @@ namespace Boreatek.Audio
                 SoundCue.Confirm     => new Voice(0.40f, 495f, 742f, 0.35f, 0.05f, 3f, 0.38f),
                 SoundCue.Swing       => new Voice(0.23f, 251f, 126f, 0.05f, 0.52f, 9f, 0.15f),
                 SoundCue.SwordSwing  => new Voice(0.20f, 650f, 244f, 0.10f, 0.44f, 6f, 0.25f),
+                SoundCue.SledBell    => new Voice(0.38f, 1030f, 1010f, 0.32f, 0.14f, 14f, 0.38f),
                 SoundCue.Wood        => new Voice(0.25f, 253f, 112f, 0.40f, 0.60f, 25f, 0.18f),
                 SoundCue.Metal       => new Voice(0.38f, 769f, 532f, 0.44f, 0.44f, 16f, 0.58f),
                 SoundCue.Stone       => new Voice(0.27f, 150f, 71f, 0.24f, 0.78f, 28f, 0.24f),
