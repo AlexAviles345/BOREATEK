@@ -74,15 +74,16 @@ namespace Boreatek.World
                 surfaceRoot.transform.SetParent(_worldRoot, false);
                 var surface = surfaceRoot.AddComponent<BoreatekSurfaceChunks>();
                 var polarAtmosphere = _worldRoot.gameObject.AddComponent<BoreatekPolarAtmosphere>();
-                polarAtmosphere.Initialize(player.transform,
-                    DayNightCycleManager.Instance ?? FindAnyObjectByType<DayNightCycleManager>());
+                var clock = DayNightCycleManager.Instance ?? FindAnyObjectByType<DayNightCycleManager>();
+                polarAtmosphere.Initialize(player.transform, clock);
+                clock?.BindLightingTraveler(player.GetComponent<TemperatureSystem>());
                 if (_session == null)
                 {
                     _session = gameObject.AddComponent<BoreatekGameSession>();
                 }
                 _session.Initialize(player, ui, _worldRoot, _worldSeed, surface);
                 player.GetComponent<TemperatureSystem>().SetSurfaceChunks(surface);
-                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowPalette());
+                surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowPalettes());
             }
         }
 
@@ -217,6 +218,7 @@ namespace Boreatek.World
             BuildProceduralOuterTundra(worldRoot);
             BuildProceduralGiantCandyForest(worldRoot);
             BuildProceduralSleighGraveyard(worldRoot);
+            DressStarterBiomeLandmarks(worldRoot);
             BuildUndergroundExcavationNetwork(worldRoot);
         }
 

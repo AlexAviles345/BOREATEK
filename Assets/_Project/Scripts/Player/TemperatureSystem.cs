@@ -158,23 +158,15 @@ namespace Boreatek.Player
                     _ => (1.0f, "Tundra de la Frontera")
                 };
             }
-            else if (pos.x > 32f)
-            {
-                detectedBiome = BiomeType.GiantCandyForest;
-                baseCooling = 1.5f;
-                zoneLabel = "Bosque de Caramelos Gigantes";
-            }
-            else if (pos.z < -35f || horizontalDistFromVillage > 68f)
-            {
-                detectedBiome = BiomeType.SleighGraveyard;
-                baseCooling = 2.5f;
-                zoneLabel = "El Cementerio de Trineos";
-            }
             else
             {
-                detectedBiome = BiomeType.OuterTundra;
-                baseCooling = 1.0f;
-                zoneLabel = "Tundra Exterior Inicial";
+                detectedBiome = BoreatekWorldBuilder.StartingSurfaceBiome(pos.x, pos.z);
+                (baseCooling, zoneLabel) = detectedBiome switch
+                {
+                    BiomeType.GiantCandyForest => (1.5f, "Bosque de Caramelos Gigantes"),
+                    BiomeType.SleighGraveyard => (2.5f, "El Cementerio de Trineos"),
+                    _ => (1.0f, "Tundra Exterior Inicial")
+                };
             }
 
             _currentBiomeBaseCoolingRate = baseCooling;

@@ -13,17 +13,34 @@ namespace Boreatek.World
         private static readonly Color32 Brass = new Color32(172, 107, 63, 255);
         private static readonly Color32 Furnace = new Color32(255, 131, 43, 255);
 
-        private Material[] CreateSnowPalette() => new Material[]
+        private Material[][] CreateSnowPalettes()
         {
-                _landscape.Finish(new Color32(172, 202, 221, 255)),
-                _landscape.Finish(new Color32(187, 215, 232, 255)),
-                _landscape.Finish(Frost),
-                _landscape.Finish(new Color32(219, 239, 247, 255))
-        };
+            var tints = new Color32[]
+            {
+                new Color32(146, 160, 168, 255), new Color32(172, 199, 219, 255),
+                new Color32(190, 165, 202, 255), new Color32(133, 154, 176, 255)
+            };
+            var result = new Material[tints.Length][];
+            for (int biome = 0; biome < tints.Length; biome++)
+            {
+                result[biome] = new Material[4];
+                for (int band = 0; band < 4; band++)
+                    result[biome][band] = _landscape.Finish(Color.Lerp(tints[biome], Frost, band * 0.27f));
+            }
+            return result;
+        }
+
+        internal static BiomeType StartingSurfaceBiome(float x, float z)
+        {
+            float radiusSquared = x * x + z * z;
+            if (radiusSquared <= 400f) return BiomeType.SantaIndustrialVillage;
+            if (x > 32f) return BiomeType.GiantCandyForest;
+            return z < -35f || radiusSquared > 68f * 68f ? BiomeType.SleighGraveyard : BiomeType.OuterTundra;
+        }
 
         private void BuildArcticSurfaceTerrain(Transform parent)
         {
-            Material[] snow = CreateSnowPalette();
+            Material[][] snow = CreateSnowPalettes();
             var terrain = new Batch();
             const int step = 4;
             for (int z = -126; z < 126; z += step)
@@ -33,8 +50,9 @@ namespace Boreatek.World
                     if (IsMineEntranceCutout(x, z)) continue;
                     Vector3 a = SurfacePoint(x, z), b = SurfacePoint(x + step, z);
                     Vector3 c = SurfacePoint(x + step, z + step), d = SurfacePoint(x, z + step);
-                    terrain.Triangle(a, d, b, snow[SnowBand(x + 1f, z + 1f)]);
-                    terrain.Triangle(b, d, c, snow[SnowBand(x + 3f, z + 3f)]);
+                    Material[] palette = snow[(int)StartingSurfaceBiome(x + 2f, z + 2f)];
+                    terrain.Triangle(a, d, b, palette[SnowBand(x + 1f, z + 1f)]);
+                    terrain.Triangle(b, d, c, palette[SnowBand(x + 3f, z + 3f)]);
                 }
             }
             _landscape.Place(parent, "ArcticSnowfields", terrain, collision: true);
@@ -43,6 +61,58 @@ namespace Boreatek.World
 
         internal static int SnowBand(float x, float z) =>
             Mathf.Clamp(Mathf.FloorToInt(Mathf.PerlinNoise(x * 0.113f + 32f, z * 0.121f + 42f) * 4f), 0, 3);
+
+        private void DressStarterBiomeLandmarks(Transform root)
+        {
+            var random = new System.Random(_worldSeed ^ 7639);
+            var scenery = new Batch();
+            for (int i = 0; i < 128; i++)
+            {
+                float x = (float)random.NextDouble() * 203f - 101f;
+                float z = (float)random.NextDouble() * 196f - 99f;
+                if (x * x + z * z < 26f * 26f || (Mathf.Abs(x) < 5f && z >= 12f && z < 38f)) continue;
+                Vector3 foot = SurfacePoint(x, z);
+                AddBiomeTerrainDetail(scenery, foot, StartingSurfaceBiome(x, z),
+                    0.64f + (float)random.NextDouble() * 0.58f, _landscape);
+            }
+            _landscape.Place(root, "Snow_Drifts_Candy_Shoots_And_Salvage", scenery);
+        }
+
+        internal void AddBiomeTerrainDetail(Batch scenery, Vector3 foot, BiomeType biome, float size,
+            BoreatekLandscapeGeometry materials)
+        {
+            if (biome == BiomeType.GiantCandyForest)
+            {
+                Material pinkIce = materials.Finish(new Color32(159, 52, 89, 255), 0.12f, 0.4f);
+                Material sugar = materials.Finish(new Color32(235, 141, 184, 255), 0.18f);
+                Material pale = materials.Finish(new Color32(185, 155, 203, 255));
+                scenery.Frustum(foot - Vector3.up * 0.055f, foot + Vector3.up * 0.07f, size * 0.66f, size * 0.45f, 7, pale);
+                AddCrystal(scenery, foot, foot + new Vector3(-0.29f, 0.77f, 0.16f) * size, size * 0.17f, pinkIce, sugar);
+                AddCrystal(scenery, foot + Vector3.right * size * 0.20f, foot + new Vector3(0.47f, 0.54f, 0.05f) * size,
+                    size * 0.14f, pinkIce, sugar);
+            }
+            else if (biome == BiomeType.SleighGraveyard)
+            {
+                Material timber = materials.Finish(new Color32(87, 67, 69, 255));
+                Material rust = materials.Finish(new Color32(143, 66, 53, 255));
+                Material snow = materials.Finish(new Color32(151, 173, 190, 255));
+                scenery.Frustum(foot - Vector3.up * 0.16f, foot + new Vector3(0.22f, 0.22f, -0.1f) * size,
+                    size * 0.75f, size * 0.43f, 6, snow);
+                scenery.Box(foot + new Vector3(-0.04f, 0.22f, 0.04f) * size, new Vector3(1.04f, 0.15f, 0.18f) * size,
+                    timber, Quaternion.Euler(17f, -35f, 16f));
+                scenery.Box(foot + new Vector3(0.37f, 0.31f, 0.22f) * size, new Vector3(0.20f, 0.09f, 0.22f) * size,
+                    rust, Quaternion.Euler(17f, -35f, 16f));
+            }
+            else
+            {
+                Material ice = materials.Finish(new Color32(81, 149, 185, 255), smoothness: 0.30f);
+                Material snow = materials.Finish(new Color32(183, 216, 232, 255));
+                scenery.Frustum(foot - Vector3.up * 0.12f, foot + new Vector3(size * 0.38f, 0.22f, 0.16f),
+                    size * 0.82f, size * 0.31f, 7, snow);
+                AddCrystal(scenery, foot + Vector3.right * size * 0.24f, foot + new Vector3(0.62f, 0.63f, 0.18f) * size,
+                    size * 0.16f, ice, snow);
+            }
+        }
 
         internal static Vector3 SurfacePoint(float x, float z)
         {

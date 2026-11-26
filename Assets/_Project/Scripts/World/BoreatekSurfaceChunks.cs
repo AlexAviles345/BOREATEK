@@ -20,7 +20,7 @@ namespace Boreatek.World
         private Transform _traveler;
         private BoreatekWorldBuilder _builder;
         private BoreatekLandscapeGeometry _sharedMaterials;
-        private Material[] _snow;
+        private Material[][] _snow;
         private Material _rock;
         private Material _candyAccent;
         private int _seed;
@@ -30,7 +30,7 @@ namespace Boreatek.World
         private bool _hasCenter;
 
         internal void Initialize(Transform traveler, BoreatekWorldBuilder builder, int seed,
-            BoreatekLandscapeGeometry materials, Material[] snow)
+            BoreatekLandscapeGeometry materials, Material[][] snow)
         {
             _traveler = traveler;
             _builder = builder;
@@ -124,8 +124,11 @@ namespace Boreatek.World
                     var b = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz), z);
                     var c = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz + VertexStep), z + VertexStep);
                     var d = new Vector3(x, VertexHeight(wx, wz + VertexStep), z + VertexStep);
-                    snowfield.Triangle(a, d, b, _snow[BoreatekWorldBuilder.SnowBand(wx + 1f, wz + 1f)]);
-                    snowfield.Triangle(b, d, c, _snow[BoreatekWorldBuilder.SnowBand(wx + 3f, wz + 3f)]);
+                    BiomeType biome = IsFrontier(wx + 2f, wz + 2f)
+                        ? FrontierBiome(wx + 2f, wz + 2f) : BoreatekWorldBuilder.StartingSurfaceBiome(wx + 2f, wz + 2f);
+                    Material[] palette = _snow[(int)biome];
+                    snowfield.Triangle(a, d, b, palette[BoreatekWorldBuilder.SnowBand(wx + 1f, wz + 1f)]);
+                    snowfield.Triangle(b, d, c, palette[BoreatekWorldBuilder.SnowBand(wx + 3f, wz + 3f)]);
                 }
             }
             owner.Place(root.transform, "ArcticSnowfield", snowfield, collision: true);
@@ -162,6 +165,7 @@ namespace Boreatek.World
                 {
                     _builder.AddFrostedPine(features, foot, 3.4f + scale * 3.5f, marked: false);
                 }
+                _builder.AddBiomeTerrainDetail(features, foot + Vector3.right * 1.4f, biome, 0.64f + scale * 0.62f, owner);
                 hasFeatures = true;
             }
             if (hasFeatures) owner.Place(root, "WindScouredPinesAndRock", features);

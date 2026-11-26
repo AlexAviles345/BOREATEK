@@ -238,6 +238,8 @@ namespace Boreatek.Core
         {
             float cycleProgress = NormalizedCycleTime;
             float night = NightSkyWeight;
+            BiomeType biome = _lightingTraveler != null ? _lightingTraveler.CurrentBiome : BiomeType.OuterTundra;
+            bool underground = biome >= BiomeType.VentilationTunnels;
 
             if (_directionalLight != null)
             {
@@ -253,7 +255,7 @@ namespace Boreatek.Core
                     ? Color.Lerp(_nightLightColor, _christmasEveAuroraColor, 0.55f)
                     : Color.Lerp(_dayLightColor, _nightLightColor, night);
 
-                float targetIntensity = Mathf.Lerp(_dayLightIntensity, _nightLightIntensity, night);
+                float targetIntensity = underground ? 0.16f : Mathf.Lerp(_dayLightIntensity, _nightLightIntensity, night);
                 if (_isBlindBlizzardActive)
                 {
                     targetIntensity *= 0.6f;
@@ -266,7 +268,18 @@ namespace Boreatek.Core
             float targetFogDensity = Mathf.Lerp(_clearFogDensity, _nightFogDensity, night);
             Color targetFogColor = Color.Lerp(_clearDayFogColor, _polarNightFogColor, night);
 
-            if (_isChristmasEveClimax || _isBlindBlizzardActive)
+            if (underground)
+            {
+                targetFogColor = biome switch
+                {
+                    BiomeType.VentilationTunnels => new Color(0.24f, 0.21f, 0.20f),
+                    BiomeType.IceCavesLevel1 => new Color(0.10f, 0.25f, 0.32f),
+                    BiomeType.BlueIceGeodeLevel2 => new Color(0.14f, 0.32f, 0.44f),
+                    _ => new Color(0.25f, 0.11f, 0.14f)
+                };
+                targetFogDensity = 0.023f;
+            }
+            else if (_isChristmasEveClimax || _isBlindBlizzardActive)
             {
                 targetFogDensity = _blindBlizzardFogDensity;
                 targetFogColor = _blizzardFogColor;
@@ -274,12 +287,17 @@ namespace Boreatek.Core
             RenderSettings.fogDensity = Mathf.Lerp(RenderSettings.fogDensity, targetFogDensity, unscaledDt * 1.5f);
             RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor, targetFogColor, unscaledDt * 1.5f);
             Color sky = Color.Lerp(new Color(0.52f, 0.67f, 0.78f), new Color(0.12f, 0.23f, 0.34f), night);
-            if (_isBlindBlizzardActive) sky = Color.Lerp(sky, _blizzardFogColor, 0.48f);
+            if (underground) sky = Color.Lerp(targetFogColor * 1.2f, new Color(0.19f, 0.20f, 0.24f), 0.36f);
+            else if (_isBlindBlizzardActive) sky = Color.Lerp(sky, _blizzardFogColor, 0.48f);
             float ambientBlend = unscaledDt * 2f;
             RenderSettings.ambientSkyColor = Color.Lerp(RenderSettings.ambientSkyColor, sky, ambientBlend);
             RenderSettings.ambientEquatorColor = Color.Lerp(RenderSettings.ambientEquatorColor, sky * 0.68f, ambientBlend);
             RenderSettings.ambientGroundColor = Color.Lerp(RenderSettings.ambientGroundColor, sky * 0.42f, ambientBlend);
         }
+
+        private Player.TemperatureSystem _lightingTraveler;
+
+        internal void BindLightingTraveler(Player.TemperatureSystem traveler) => _lightingTraveler = traveler;
 
         /// <summary>
         /// Activa o desactiva manualmente el evento climático Ventisca Ciega.
