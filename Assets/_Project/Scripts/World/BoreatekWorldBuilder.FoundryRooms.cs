@@ -74,13 +74,13 @@ namespace Boreatek.World
         }
 
         private Transform BuildFoundryWing(Transform campus, string name, Vector3 position, float width, float depth,
-            int side, FoundryMaterials m, string sign = null)
+            int side, FoundryMaterials m, string sign = null, bool lightInterior = true, bool industrial = false)
         {
             Transform room = CharacterPart(campus, name, position);
             var shell = new Batch();
             var trim = new Batch();
             float x = width * 0.5f, z = depth * 0.5f;
-            const float eave = 3.47f;
+            float eave = industrial ? 5.8f : 3.47f;
             shell.Box(new Vector3(0f, FoundryFloor - 0.28f, 0f), new Vector3(width, 0.56f, depth), m.Stone);
             shell.Quad(new Vector3(-1.08f, 0.045f, -z - 1.06f), new Vector3(-1.08f, FoundryFloor, -z + 0.01f),
                 new Vector3(1.08f, FoundryFloor, -z + 0.01f), new Vector3(1.08f, 0.045f, -z - 1.06f), m.Stone);
@@ -108,7 +108,7 @@ namespace Boreatek.World
                     trim.Box(new Vector3(inner, (FoundryFloor + 2.53f) * 0.5f, jamb),
                         new Vector3(0.36f, 2.53f - FoundryFloor, 0.13f), m.Timber);
             }
-            AddGable(shell, trim, x, -z, z, eave, 1.62f, m);
+            AddGable(shell, trim, x, -z, z, eave, industrial ? 2.7f : 1.62f, m);
             for (int i = 0; i < 3; i++)
             {
                 float windowZ = Mathf.Lerp(-z * 0.66f, z * 0.66f, i * 0.5f);
@@ -122,7 +122,7 @@ namespace Boreatek.World
                 AddFoundryLantern(trim, foot + new Vector3(dir * 0.16f, 1.94f, -0.13f), 0.78f, m);
             }
             AddFoundryLantern(trim, new Vector3(side * (x - 0.46f), 2.76f, 0.45f), 0.86f, m);
-            AddFoundryLight(room, new Vector3(0f, 2.62f, 0.13f), 2.5f, 6.0f);
+            if (lightInterior) AddFoundryLight(room, new Vector3(0f, 2.62f, 0.13f), 2.5f, 6.0f);
             string label = sign ?? (name == "Herreria" ? "HERRERÍA" : name == "Almacen" ? "ALMACÉN" : "SALA DE VAPOR");
             AddFoundrySign(room, label, new Vector3(0f, 2.99f, -z - 0.24f));
             _landscape.Place(room, "Shell_And_Walkable_Floor", shell, collision: true);

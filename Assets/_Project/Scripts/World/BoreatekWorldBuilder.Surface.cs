@@ -59,7 +59,7 @@ namespace Boreatek.World
         internal static BiomeType StartingSurfaceBiome(float x, float z)
         {
             float radiusSquared = x * x + z * z;
-            if (radiusSquared <= 400f) return BiomeType.SantaIndustrialVillage;
+            if (IsVillageGround(x, z)) return BiomeType.SantaIndustrialVillage;
             if (x > 32f) return BiomeType.GiantCandyForest;
             return z < -35f || radiusSquared > 68f * 68f ? BiomeType.SleighGraveyard : BiomeType.OuterTundra;
         }
@@ -94,7 +94,7 @@ namespace Boreatek.World
             {
                 float x = (float)random.NextDouble() * 203f - 101f;
                 float z = (float)random.NextDouble() * 196f - 99f;
-                if (x * x + z * z < 26f * 26f || (Mathf.Abs(x) < 5f && z >= 12f && z < 38f)) continue;
+                if (IsVillageGround(x, z) || x * x + z * z < 26f * 26f || (Mathf.Abs(x) < 5f && z >= 12f && z < 38f)) continue;
                 Vector3 foot = SurfacePoint(x, z);
                 Vector4 weights = StarterSnowWeights(x, z);
                 BiomeType biome = SampleSnowBiome(weights, (float)random.NextDouble());
@@ -193,6 +193,7 @@ namespace Boreatek.World
 
         internal HarvestableNode SpawnSceneryPine(Transform parent, Vector3 position, float height, string sceneryId = null)
         {
+            position = KeepClearOfVillageBuildings(position);
             var tree = new GameObject("Pino_Nevado");
             tree.transform.SetParent(parent, false);
             tree.transform.position = position;
@@ -260,7 +261,7 @@ namespace Boreatek.World
                 }
                 for (int i = 0; i < 5; i++)
                 {
-                    Vector3 foot = SurfacePoint(side * (12.5f + i * 1.45f), -6.5f + i * 3.2f);
+                    Vector3 foot = SurfacePoint(side * (15.8f + i * 2.1f), -15.4f - i % 2 * 3.1f);
                     SpawnSceneryPine(village, foot, 3.7f + 0.42f * (i % 3), $"plaza:{side}:{i}");
                 }
             }

@@ -11,7 +11,7 @@ namespace Boreatek.World
 
         internal void Build(Transform village)
         {
-            var bounds = new Bounds(village.position + Vector3.up * 1.6f, new Vector3(58f, 10f, 53f));
+            var bounds = new Bounds(village.position + new Vector3(0f, 1.6f, -7f), new Vector3(126f, 12f, 116f));
             Physics.SyncTransforms();
             var sources = new List<NavMeshBuildSource>();
             NavMeshBuilder.CollectSources(bounds, Physics.DefaultRaycastLayers, NavMeshCollectGeometry.PhysicsColliders,
@@ -25,7 +25,7 @@ namespace Boreatek.World
             type.agentClimb = 0.34f;
             type.agentSlope = 43f;
             type.overrideVoxelSize = true;
-            type.voxelSize = 0.09f;
+            type.voxelSize = 0.12f;
             type.minRegionArea = 1.5f;
             _data = NavMeshBuilder.BuildNavMeshData(type, sources, bounds, Vector3.zero, Quaternion.identity);
             if (_data == null) return;

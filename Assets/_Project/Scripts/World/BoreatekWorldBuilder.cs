@@ -538,6 +538,7 @@ namespace Boreatek.World
 
         private HarvestableNode SpawnCrystallizedPineNode(Transform parent, Vector3 pos, BoreatekLandscapeGeometry owner = null)
         {
+            pos = KeepClearOfVillageBuildings(pos);
             GameObject pine = new GameObject("Node_CrystallizedPine");
             pine.transform.SetParent(parent, false);
             pine.transform.position = pos;
@@ -554,6 +555,7 @@ namespace Boreatek.World
 
         private HarvestableNode SpawnGiantCandyCrystalTreeNode(Transform parent, Vector3 pos, BoreatekLandscapeGeometry owner = null)
         {
+            pos = KeepClearOfVillageBuildings(pos);
             GameObject tree = new GameObject("Node_GiantCandyCrystalTree");
             tree.transform.SetParent(parent, false);
             tree.transform.position = pos;
@@ -568,6 +570,7 @@ namespace Boreatek.World
         private HarvestableNode SpawnCrashedSleighScrapNode(Transform parent, Vector3 pos,
             BoreatekLandscapeGeometry owner = null, Quaternion? orientation = null)
         {
+            pos = KeepClearOfVillageBuildings(pos);
             GameObject sleigh = new GameObject("Node_CrashedCargoSleigh");
             sleigh.transform.SetParent(parent, false);
             sleigh.transform.position = pos;
@@ -587,6 +590,7 @@ namespace Boreatek.World
 
         private HarvestableNode SpawnFrozenChestNode(Transform parent, Vector3 pos)
         {
+            pos = KeepClearOfVillageBuildings(pos);
             GameObject chestRoot = new GameObject("Node_FrozenChest");
             chestRoot.transform.SetParent(parent, false);
             chestRoot.transform.position = pos;

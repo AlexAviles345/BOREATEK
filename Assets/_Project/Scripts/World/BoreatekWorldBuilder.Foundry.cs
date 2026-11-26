@@ -11,11 +11,17 @@ namespace Boreatek.World
         {
             internal readonly Material Stone, Timber, Roof, Snow, Iron, Copper, Hearth, Window, Ice, Banner, Stitch;
 
-            internal FoundryMaterials(BoreatekLandscapeGeometry geometry)
+            internal FoundryMaterials(BoreatekLandscapeGeometry geometry, int houseStyle = 0)
             {
                 Stone = geometry.Finish(new Color32(71, 87, 105, 255));
-                Timber = geometry.Finish(new Color32(113, 66, 47, 255));
-                Roof = geometry.Finish(new Color32(39, 57, 79, 255));
+                Timber = geometry.Finish(houseStyle switch
+                {
+                    1 => new Color32(115, 88, 67, 255),
+                    2 => new Color32(78, 104, 100, 255),
+                    3 => new Color32(132, 69, 60, 255),
+                    _ => new Color32(113, 66, 47, 255)
+                });
+                Roof = geometry.Finish(houseStyle == 2 ? new Color32(49, 69, 87, 255) : new Color32(39, 57, 79, 255));
                 Snow = geometry.Finish(Frost);
                 Iron = geometry.Finish(new Color32(51, 62, 76, 255), smoothness: 0.26f, metallic: 0.15f);
                 Copper = geometry.Finish(Brass, smoothness: 0.34f, metallic: 0.22f);
@@ -65,6 +71,7 @@ namespace Boreatek.World
             BuildFoundryIceOutcrops(campus, m);
             AddFoundryStations(campus, m);
             BuildVillageNeighborhood(campus, m);
+            BuildVillageDistricts(campus, m);
         }
 
         private void BuildFoundryApproach(Transform campus, FoundryMaterials m)
@@ -119,8 +126,8 @@ namespace Boreatek.World
             {
                 for (int i = 0; i < 5; i++)
                 {
-                    float x = side * (25.6f + i * 0.65f);
-                    float z = 5.9f + i * 2.17f;
+                    float x = side * (26.9f + i * 0.71f);
+                    float z = 33f + i * 2.17f;
                     Vector3 foot = SurfacePoint(x, z) - Vector3.up * 0.35f;
                     Vector3 ridge = foot + new Vector3(side * 0.82f, 1.9f + i * 0.55f, 0.21f);
                     cliff.Frustum(foot, ridge, 1.54f + i * 0.12f, 0.72f, 6, i % 2 == 0 ? m.Ice : m.Stone);

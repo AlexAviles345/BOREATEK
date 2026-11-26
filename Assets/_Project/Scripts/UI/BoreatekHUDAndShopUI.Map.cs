@@ -1,4 +1,5 @@
 using Boreatek.Core;
+using Boreatek.World;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -295,6 +296,7 @@ namespace Boreatek.UI
             {
                 foreach (Rect lane in VillageLanes) PaintMapArea(drawing, view, lane, false);
                 foreach (Rect roof in VillageRoofs) PaintMapArea(drawing, view, roof, true);
+                foreach (Rect roof in BoreatekWorldBuilder.ExpandedVillageFootprints) PaintMapArea(drawing, view, roof, true);
             }
             foreach (var landmark in BoreatekExplorationMap.Landmarks)
             {

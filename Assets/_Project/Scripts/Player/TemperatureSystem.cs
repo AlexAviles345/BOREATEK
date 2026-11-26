@@ -118,7 +118,6 @@ namespace Boreatek.Player
         private void EvaluateBiomeByPosition()
         {
             Vector3 pos = transform.position;
-            float horizontalDistFromVillage = new Vector2(pos.x, pos.z).magnitude;
 
             BiomeType detectedBiome;
             float baseCooling;
@@ -148,7 +147,7 @@ namespace Boreatek.Player
                 baseCooling = 1.0f;
                 zoneLabel = "Túneles de Ventilación / Transición";
             }
-            else if (horizontalDistFromVillage <= 20f)
+            else if (BoreatekWorldBuilder.IsVillageGround(pos.x, pos.z))
             {
                 detectedBiome = BiomeType.SantaIndustrialVillage;
                 baseCooling = 0f;
