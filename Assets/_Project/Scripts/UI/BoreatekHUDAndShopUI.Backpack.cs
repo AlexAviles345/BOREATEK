@@ -22,6 +22,7 @@ namespace Boreatek.UI
         private static readonly ResourceType[] PackResources = (ResourceType[])System.Enum.GetValues(typeof(ResourceType));
         private readonly BoreatekUiButton[] _backpackSlots = new BoreatekUiButton[EquipmentDisplay.Length];
         private readonly Text[] _backpackStock = new Text[EquipmentDisplay.Length];
+        private readonly GameObject[] _backpackContents = new GameObject[EquipmentDisplay.Length];
         private readonly Text[] _resourceLines = new Text[PackResources.Length];
         private RectTransform _backpackPanel;
         private Text _capacityLabel, _backpackDetails, _backpackFeedback;
@@ -50,10 +51,13 @@ namespace Boreatek.UI
                     new Vector2(26f + (i % 3) * 200f, -145f - (i / 3) * 80f), new Vector2(193f, 71f), ColBlueSteel);
                 _backpackSlots[i] = AttachMetalButton(card, ColBlueSteel, ColBrassRim);
                 _backpackSlots[i].onClick.AddListener(() => SelectBackpackItem(slot));
-                AddHudGlyph(card, "EquipmentGlyph", entry.glyph, topLeft, new Vector2(33f, -28f), 30f, entry.accent);
-                _backpackStock[i] = CreateLabel(card, "Stock", "", new Vector2(123f, -10f), new Vector2(55f, 28f),
-                    16, FontStyle.Bold, ColTextMuted, TextAnchor.MiddleRight);
-                CreateLabel(card, "EquipmentName", entry.label, new Vector2(18f, -41f), new Vector2(157f, 24f),
+                var contents = (RectTransform)CreateUIObject("Contents", card).transform;
+                StretchFull(contents);
+                _backpackContents[i] = contents.gameObject;
+                AddHudGlyph(contents, "EquipmentGlyph", entry.glyph, topLeft, new Vector2(33f, -28f), 30f, entry.accent);
+                _backpackStock[i] = CreateLabel(contents, "Stock", "", new Vector2(123f, -10f), new Vector2(55f, 28f),
+                    16, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
+                CreateLabel(contents, "EquipmentName", entry.label, new Vector2(18f, -41f), new Vector2(157f, 24f),
                     17, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
             }
 
@@ -98,7 +102,6 @@ namespace Boreatek.UI
             _backpackSlots[(int)_backpackSelection].SetLatched(false);
             _backpackSelection = slot;
             _backpackSlots[(int)slot].SetLatched(true);
-            _backpackDetails.text = EquipmentDisplay[(int)slot].detail;
             _backpackFeedback.text = "";
             RefreshBackpackContents();
         }
@@ -108,13 +111,13 @@ namespace Boreatek.UI
             for (int i = 0; i < _backpackStock.Length; i++)
             {
                 int stock = _inventoryShop.GetEquipmentStock((EquipmentSlot)i);
+                _backpackContents[i].SetActive(stock > 0);
                 _backpackStock[i].text = (EquipmentSlot)i switch
                 {
                     EquipmentSlot.Pickaxe => $"Nv. {_player.CurrentPickaxeTier}",
                     EquipmentSlot.Sword => "",
                     _ => $"×{stock}"
                 };
-                _backpackStock[i].color = stock > 0 ? ColTextLight : ColTextMuted;
             }
             _capacityLabel.text = $"{_inventoryShop.CurrentBackpackCount} / {_inventoryShop.MaxBackpackSlots} espacios · Bidones {_inventoryShop.AviationCanisters}/3";
             for (int i = 0; i < PackResources.Length; i++)
@@ -126,9 +129,9 @@ namespace Boreatek.UI
                 _resourceLines[i].color = count > 0 ? ColTextLight : ColTextMuted;
             }
             bool hasItem = _inventoryShop.GetEquipmentStock(_backpackSelection) > 0;
+            _backpackDetails.text = hasItem ? EquipmentDisplay[(int)_backpackSelection].detail : "Ranura vacía";
             _wearEquipment.interactable = hasItem;
-            _consumeEquipment.gameObject.SetActive(PlayerController.IsConsumable(_backpackSelection));
-            _consumeEquipment.interactable = hasItem;
+            _consumeEquipment.gameObject.SetActive(hasItem && PlayerController.IsConsumable(_backpackSelection));
         }
     }
 }

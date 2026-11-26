@@ -70,7 +70,7 @@ namespace Boreatek.UI
         private float _nextTelemetryRefresh;
 
         private readonly List<Text> _hotbarCountTexts = new List<Text>();
-        private readonly List<BoreatekUiGlyph> _hotbarGlyphs = new List<BoreatekUiGlyph>();
+        private readonly List<GameObject> _hotbarContents = new List<GameObject>();
         private readonly List<BoreatekUiButton> _hotbarSlots = new List<BoreatekUiButton>();
         private readonly int[] _shownHotbarStock = new int[EquipmentDisplay.Length];
         private int _shownEquipmentSlot = -1;
@@ -405,7 +405,7 @@ namespace Boreatek.UI
             bar.GetComponent<Image>().raycastTarget = false;
 
             _hotbarCountTexts.Clear();
-            _hotbarGlyphs.Clear();
+            _hotbarContents.Clear();
             _hotbarSlots.Clear();
             _shownEquipmentSlot = -1;
 
@@ -418,19 +418,22 @@ namespace Boreatek.UI
                 var button = AttachMetalButton(slot, ColBlueSteel, ColBrassRim);
                 button.navigation = new Navigation { mode = Navigation.Mode.None };
                 button.onClick.AddListener(() => _player?.SelectEquipment(equipment));
-                CreateLabel(slot, "KeyTxt", (i + 1).ToString(), new Vector2(9f, -7f), new Vector2(22f, 22f),
+                var contents = (RectTransform)CreateUIObject("Contents", slot).transform;
+                StretchFull(contents);
+                CreateLabel(contents, "KeyTxt", (i + 1).ToString(), new Vector2(9f, -7f), new Vector2(22f, 22f),
                     14, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
-                Text count = CreateLabel(slot, "CountTxt", "", new Vector2(59f, -7f), new Vector2(29f, 22f),
+                Text count = CreateLabel(contents, "CountTxt", "", new Vector2(59f, -7f), new Vector2(29f, 22f),
                     15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
-                BoreatekUiGlyph glyph = AddHudGlyph(slot, "ItemGlyph", entry.glyph, new Vector2(0.5f, 1f),
+                AddHudGlyph(contents, "ItemGlyph", entry.glyph, new Vector2(0.5f, 1f),
                     new Vector2(0f, -28f), 29f, entry.accent);
-                CreateLabel(slot, "ItemNameTxt", entry.label, new Vector2(4f, -51f), new Vector2(88f, 21f),
+                CreateLabel(contents, "ItemNameTxt", entry.label, new Vector2(4f, -51f), new Vector2(88f, 21f),
                     14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
 
                 _hotbarCountTexts.Add(count);
-                _hotbarGlyphs.Add(glyph);
+                _hotbarContents.Add(contents.gameObject);
                 _hotbarSlots.Add(button);
                 _shownHotbarStock[i] = -1;
+                SetHotbarStock(i, _inventoryShop?.GetEquipmentStock(equipment) ?? 0);
             }
 
             Text controls = CreateLabel(parent, "ControlsTxt",
@@ -600,9 +603,9 @@ namespace Boreatek.UI
             }
 
             _shownHotbarStock[index] = amount;
-            _hotbarCountTexts[index].text = (EquipmentSlot)index is EquipmentSlot.Pickaxe or EquipmentSlot.Sword ? "" : amount.ToString();
-            _hotbarCountTexts[index].color = amount > 0 ? ColTextLight : ColTextMuted;
-            _hotbarGlyphs[index].color = amount > 0 ? EquipmentDisplay[index].accent : new Color32(105, 129, 146, 255);
+            _hotbarContents[index].SetActive(amount > 0);
+            _hotbarCountTexts[index].text = amount <= 0 || (EquipmentSlot)index is EquipmentSlot.Pickaxe or EquipmentSlot.Sword
+                ? "" : amount.ToString();
         }
 
         private static string RemoveMessageGlyphPrefix(string text)

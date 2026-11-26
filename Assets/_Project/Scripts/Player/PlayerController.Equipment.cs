@@ -72,6 +72,8 @@ namespace Boreatek.Player
         private void UseEquipment(EquipmentSlot slot)
         {
             if (_inventoryAndShop == null || _heatPlaceIn > 0f) return;
+            int stock = _inventoryAndShop.GetEquipmentStock(slot);
+            if (stock <= 0) return;
             if (slot == EquipmentSlot.Sword)
             {
                 if (CanSwingPickaxe) PerformSwordSwing();
@@ -87,13 +89,12 @@ namespace Boreatek.Player
                 StartHeatPlacement(slot);
                 return;
             }
-            int stock = _inventoryAndShop.GetEquipmentStock(slot);
             if (slot == EquipmentSlot.Firecracker)
             {
                 Vector3 landing = _aimHit.collider != null && Vector3.Distance(transform.position, _aimHit.point) < 3.3f
                     ? _aimHit.point : transform.position + transform.forward * 2.5f;
                 _inventoryAndShop.TryDetonateFestiveFirecracker(landing);
-                if (stock > 0) PlayInteraction(ElfPose.Gesture.Throw, AimFrame.forward);
+                PlayInteraction(ElfPose.Gesture.Throw, AimFrame.forward);
             }
             else if (slot == EquipmentSlot.Extractor)
             {
