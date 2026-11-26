@@ -71,7 +71,7 @@ namespace Boreatek.World
             AddFoundrySign(tunnel, "ACCESO MINERO", new Vector3(0f, 3.37f, 14.84f));
             _landscape.Place(tunnel, "Snow_Over_Ventilation_Tunnel", cover, collision: true);
             _landscape.Place(tunnel, "Mine_Entrance_Arch_And_Approach", portal, collision: true);
-            _landscape.Place(tunnel, "Mine_Entrance_Beams_And_Lanterns", fittings);
+            _landscape.Place(tunnel, "Mine_Entrance_Beams_And_Lanterns", fittings, collision: true);
         }
 
         private static Vector3 RampVaultEdge(float x, Vector3 start, Quaternion rotation)

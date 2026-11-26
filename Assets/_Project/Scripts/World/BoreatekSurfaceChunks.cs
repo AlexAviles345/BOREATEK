@@ -151,7 +151,7 @@ namespace Boreatek.World
             var random = new System.Random(CellSeed(_seed, sector.x, sector.y));
             var features = new Batch();
             bool hasFeatures = false;
-            for (int i = 0; i < 13; i++)
+            for (int i = 0; i < ScenerySlots; i++)
             {
                 float x = (float)random.NextDouble() * 60f + 2f;
                 float z = (float)random.NextDouble() * 60f + 2f;
@@ -171,12 +171,13 @@ namespace Boreatek.World
                 }
                 else
                 {
-                    _builder.AddFrostedPine(features, foot, 3.4f + scale * 3.5f, marked: false);
+                    var pine = _builder.SpawnSceneryPine(root, origin + foot + Vector3.up * 0.11f, 3.4f + scale * 3.5f);
+                    AttachResource(sector, LegacyResourceSlots + i, pine);
                 }
                 _builder.AddBiomeTerrainDetail(features, foot + Vector3.right * 1.4f, biome, 0.64f + scale * 0.62f, _sharedMaterials);
                 hasFeatures = true;
             }
-            if (hasFeatures) owner.Place(root, "WindScouredPinesAndRock", features);
+            if (hasFeatures) owner.Place(root, "WindScouredRockAndSnow", features, collision: true);
         }
 
         internal Vector4 SnowWeights(float x, float z)

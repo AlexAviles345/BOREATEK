@@ -7,7 +7,9 @@ namespace Boreatek.World
 {
     public sealed partial class BoreatekSurfaceChunks
     {
-        private const int NodeSlots = 4;
+        private const int LegacyResourceSlots = 4;
+        private const int ScenerySlots = 13;
+        private const int NodeSlots = LegacyResourceSlots + ScenerySlots;
         private readonly Dictionary<Vector2Int, HarvestableNode[]> _frontierNodes = new Dictionary<Vector2Int, HarvestableNode[]>();
         private readonly Dictionary<(Vector2Int sector, int slot), HarvestableNode.SaveState> _nodeChanges =
             new Dictionary<(Vector2Int, int), HarvestableNode.SaveState>();
@@ -19,7 +21,7 @@ namespace Boreatek.World
             public HarvestableNode.SaveState state;
         }
 
-        internal BiomeType FrontierBiome(float x, float z)
+        private BiomeType FrontierBiome(float x, float z)
         {
             float climate = FrontierClimate(x, z);
             if (climate > 0.62f) return BiomeType.GiantCandyForest;
@@ -32,26 +34,38 @@ namespace Boreatek.World
 
         private void BuildFrontierResources(Vector2Int sector, BoreatekLandscapeGeometry owner, Transform root, Vector3 origin)
         {
-            var random = new System.Random(CellSeed(_seed ^ 632779, sector.x, sector.y));
-            HarvestableNode[] nodes = null;
-            for (int slot = 0; slot < NodeSlots; slot++)
+            var random = LegacyResourceRandom(sector);
+            for (int slot = 0; slot < LegacyResourceSlots; slot++)
             {
-                float x = origin.x + (slot % 2) * 32f + 5f + (float)random.NextDouble() * 22f;
-                float z = origin.z + (slot / 2) * 32f + 5f + (float)random.NextDouble() * 22f;
+                Vector3 point = LegacyResourcePoint(origin, slot, random);
+                float x = point.x, z = point.z;
                 float type = (float)random.NextDouble();
                 float yaw = (float)random.NextDouble() * 360f;
                 if (!IsFrontier(x, z)) continue;
 
-                nodes ??= new HarvestableNode[NodeSlots];
                 Vector3 foot = new Vector3(x, GroundHeight(x, z), z);
                 HarvestableNode node = _builder.CreateFrontierResource(root, owner, foot, FrontierBiome(x, z), type, yaw);
-                if (_nodeChanges.TryGetValue((sector, slot), out HarvestableNode.SaveState state))
-                {
-                    node.RestoreSave(state);
-                }
-                nodes[slot] = node;
+                AttachResource(sector, slot, node);
             }
-            if (nodes != null) _frontierNodes.Add(sector, nodes);
+        }
+
+        private System.Random LegacyResourceRandom(Vector2Int sector) =>
+            new System.Random(CellSeed(_seed ^ 632779, sector.x, sector.y));
+
+        private static Vector3 LegacyResourcePoint(Vector3 origin, int slot, System.Random random) =>
+            new Vector3(origin.x + (slot % 2) * 32f + 5f + (float)random.NextDouble() * 22f, 0f,
+                origin.z + (slot / 2) * 32f + 5f + (float)random.NextDouble() * 22f);
+
+        private void AttachResource(Vector2Int sector, int slot, HarvestableNode node)
+        {
+            if (!_frontierNodes.TryGetValue(sector, out HarvestableNode[] nodes))
+            {
+                nodes = new HarvestableNode[NodeSlots];
+                _frontierNodes.Add(sector, nodes);
+            }
+            nodes[slot] = node;
+            if (_nodeChanges.TryGetValue((sector, slot), out HarvestableNode.SaveState state))
+                node.RestoreSave(state);
         }
 
         private void RememberNodes(Vector2Int sector)

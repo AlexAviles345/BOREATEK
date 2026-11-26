@@ -19,6 +19,7 @@ namespace Boreatek.World
     /// </summary>
     public class HarvestableNode : MonoBehaviour, IInteractable
     {
+        internal string SceneryId { get; set; }
         [Header("Node Configuration")]
         [SerializeField] private HarvestableNodeConfigSO _nodeConfig;
         [SerializeField] private Transform _visualMeshContainer;

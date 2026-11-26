@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Boreatek.AI;
 using Boreatek.Audio;
 using Boreatek.Automation;
@@ -25,6 +26,7 @@ namespace Boreatek.Core
         private InventoryAndShop _inventory;
         private BoreatekHUDAndShopUI _ui;
         private HarvestableNode[] _nodes;
+        private readonly Dictionary<string, HarvestableNode> _sceneryNodes = new();
         private DefectiveToyAI[] _enemies;
         private BoreatekSurfaceChunks _surface;
         private BoreatekExplorationMap _map;
@@ -58,7 +60,14 @@ namespace Boreatek.Core
             _inventory.SetSurfaceChunks(_surface);
             _worldSeed = worldSeed;
             // The seeded world builder creates nodes and enemies in a deterministic hierarchy order.
-            _nodes = worldRoot.GetComponentsInChildren<HarvestableNode>(true);
+            _sceneryNodes.Clear();
+            var campaignNodes = new List<HarvestableNode>();
+            foreach (HarvestableNode node in worldRoot.GetComponentsInChildren<HarvestableNode>(true))
+            {
+                if (node.SceneryId == null) campaignNodes.Add(node);
+                else _sceneryNodes.Add(node.SceneryId, node);
+            }
+            _nodes = campaignNodes.ToArray();
             _enemies = worldRoot.GetComponentsInChildren<DefectiveToyAI>(true);
             _temperature.OnDied += ShowDeath;
             _initialized = true;
@@ -189,6 +198,14 @@ namespace Boreatek.Core
             {
                 _nodes[i].RestoreSave(save.nodes[i]);
             }
+            if (save.sceneryNodes != null)
+            {
+                foreach (ScenerySave item in save.sceneryNodes)
+                {
+                    if (item.id != null && _sceneryNodes.TryGetValue(item.id, out HarvestableNode node))
+                        node.RestoreSave(item.state);
+                }
+            }
             for (int i = 0; i < _enemies.Length; i++)
             {
                 _enemies[i].RestoreSave(save.enemies[i]);
@@ -196,7 +213,9 @@ namespace Boreatek.Core
             _inventory.RestoreSave(save.inventory);
             foreach (ExtractorSave item in save.extractors)
             {
-                var extractor = MechanicalElfExtractor.CreateAutomatedExtractorOnNode(_nodes[item.nodeIndex], _inventory);
+                HarvestableNode node = string.IsNullOrEmpty(item.sceneryId)
+                    ? _nodes[item.nodeIndex] : _sceneryNodes[item.sceneryId];
+                var extractor = MechanicalElfExtractor.CreateAutomatedExtractorOnNode(node, _inventory);
                 extractor.SecondsUntilExtraction = item.secondsUntilExtraction;
             }
             DayNightCycleManager.Instance.RestoreSave(save.campaign);

@@ -32,7 +32,7 @@ namespace Boreatek.World
             }
             AddCrate(yard, new Vector3(20.8f, 0.08f, -8.3f), 0.62f, m);
             AddCrate(yard, new Vector3(21.46f, 0.08f, -8.0f), 0.51f, m);
-            _landscape.Place(neighborhood, "Street_Lanterns_And_Delivery_Crates", yard);
+            _landscape.Place(neighborhood, "Street_Lanterns_And_Delivery_Crates", yard, collision: true);
 
             var kitchen = new Batch();
             AddWorkbench(kitchen, new Vector3(0.0f, FoundryFloor, 1.02f), 2.4f, m);

@@ -101,9 +101,9 @@ namespace Boreatek.World
                 float size = 0.64f + (float)random.NextDouble() * 0.58f;
                 AddBiomeTerrainDetail(scenery, foot, biome, size, _landscape);
                 if (weights.z > 0.10f && weights.z < 0.84f && biome == BiomeType.OuterTundra && i % 4 == 0)
-                    AddFrostedPine(scenery, foot + Vector3.back * 1.1f, 2.5f + size, marked: false);
+                    SpawnSceneryPine(root, foot + Vector3.back * 1.1f, 2.5f + size, $"edge:{i}");
             }
-            _landscape.Place(root, "Snow_Drifts_Candy_Shoots_And_Salvage", scenery);
+            _landscape.Place(root, "Snow_Drifts_Candy_Shoots_And_Salvage", scenery, collision: true);
         }
 
         internal void AddBiomeTerrainDetail(Batch scenery, Vector3 foot, BiomeType biome, float size,
@@ -181,16 +181,32 @@ namespace Boreatek.World
             var art = new System.Random(_worldSeed ^ 53107);
             for (int belt = 0; belt < 4; belt++)
             {
-                var trees = new Batch();
                 for (int i = 0; i < 18; i++)
                 {
                     float z = -105f + (float)art.NextDouble() * 206f;
                     float x = -48f - belt * 12f - (float)art.NextDouble() * 13f;
                     float height = 3.8f + (float)art.NextDouble() * 4.5f;
-                    AddFrostedPine(trees, SurfacePoint(x, z) - Vector3.up * 0.12f, height, marked: false);
+                    SpawnSceneryPine(parent, SurfacePoint(x, z), height, $"belt:{belt}:{i}");
                 }
-                _landscape.Place(parent, $"SnowPineBelt_{belt + 1}", trees);
             }
+        }
+
+        internal HarvestableNode SpawnSceneryPine(Transform parent, Vector3 position, float height, string sceneryId = null)
+        {
+            var tree = new GameObject("Pino_Nevado");
+            tree.transform.SetParent(parent, false);
+            tree.transform.position = position;
+            int size = Mathf.Clamp(Mathf.RoundToInt(height * 2f), 5, 17);
+            _landscape.PlaceShared(tree.transform, $"FrostedPine_{size}", () =>
+            {
+                var mesh = new Batch();
+                AddFrostedPine(mesh, Vector3.down * 0.07f, size * 0.5f, marked: false);
+                return mesh;
+            }, collision: true);
+            var node = tree.AddComponent<HarvestableNode>();
+            node.SceneryId = sceneryId;
+            node.InitializeRuntime(_nodeConfigs["pine"]);
+            return node;
         }
 
         internal void AddFrostedPine(Batch trees, Vector3 foot, float height, bool marked)
@@ -245,10 +261,10 @@ namespace Boreatek.World
                 for (int i = 0; i < 5; i++)
                 {
                     Vector3 foot = SurfacePoint(side * (12.5f + i * 1.45f), -6.5f + i * 3.2f);
-                    AddFrostedPine(plaza, foot, 3.7f + 0.42f * (i % 3), marked: false);
+                    SpawnSceneryPine(village, foot, 3.7f + 0.42f * (i % 3), $"plaza:{side}:{i}");
                 }
             }
-            _landscape.Place(village, "ForgeApproach_TracksAndLanterns", plaza);
+            _landscape.Place(village, "ForgeApproach_TracksAndLanterns", plaza, collision: true);
         }
 
         private void BuildForgeMachinery(Transform root)
@@ -324,7 +340,7 @@ namespace Boreatek.World
                     canopy.Frustum(facet, branchEnd, 0.32f * growth, 0f, 5, (branch == 0 ? pink : ruby));
                 }
             }
-            owner.Place(tree, "CandyTree_BranchesAndCrystals", canopy);
+            owner.Place(tree, "CandyTree_BranchesAndCrystals", canopy, collision: true);
         }
 
         private void DressSleigh(Transform sleigh, BoreatekLandscapeGeometry owner)
@@ -370,7 +386,7 @@ namespace Boreatek.World
                 Vector3 drift = foot + new Vector3(0.7f, -0.6f, -1.8f);
                 ruins.Frustum(drift, drift + Vector3.up * 0.88f, 2.1f, 0.4f, 6, ice);
             }
-            _landscape.Place(parent, "Graveyard_FrozenShelters", ruins);
+            _landscape.Place(parent, "Graveyard_FrozenShelters", ruins, collision: true);
         }
     }
 }

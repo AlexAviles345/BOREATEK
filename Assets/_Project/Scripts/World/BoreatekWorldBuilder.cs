@@ -545,11 +545,7 @@ namespace Boreatek.World
             var silhouette = new BoreatekLandscapeGeometry.Batch();
             float height = 4.5f + 1.25f * Mathf.PerlinNoise(pos.x * 0.38f, pos.z * 0.33f);
             AddFrostedPine(silhouette, Vector3.zero, height, marked: true);
-            (owner ?? _landscape).Place(pine.transform, "CrystallizedPine", silhouette);
-
-            BoxCollider col = pine.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 2.2f, 0f);
-            col.size = new Vector3(2.0f, 4.4f, 2.0f);
+            (owner ?? _landscape).Place(pine.transform, "CrystallizedPine", silhouette, collision: true);
 
             HarvestableNode node = pine.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs["pine"]);
@@ -563,10 +559,6 @@ namespace Boreatek.World
             tree.transform.position = pos;
 
             DressCandyTree(tree.transform, pos, owner ?? _landscape);
-
-            BoxCollider col = tree.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, 2.4f, 0f);
-            col.size = new Vector3(2.4f, 4.8f, 2.4f);
 
             HarvestableNode node = tree.AddComponent<HarvestableNode>();
             node.InitializeRuntime(_nodeConfigs["candy_tree"]);

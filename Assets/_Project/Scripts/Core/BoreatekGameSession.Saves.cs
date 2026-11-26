@@ -180,7 +180,9 @@ namespace Boreatek.Core
                 save.nodes?.Length == _nodes.Length && save.enemies?.Length == _enemies.Length &&
                 save.inventory.resources != null && save.inventory.heatSources != null &&
                 save.extractors != null && Array.TrueForAll(save.extractors,
-                    item => item.nodeIndex >= 0 && item.nodeIndex < _nodes.Length);
+                    item => !string.IsNullOrEmpty(item.sceneryId)
+                        ? _sceneryNodes.ContainsKey(item.sceneryId)
+                        : item.nodeIndex >= 0 && item.nodeIndex < _nodes.Length);
         }
 
         private bool WriteSave(string id, string name)
@@ -190,11 +192,12 @@ namespace Boreatek.Core
             foreach (var extractor in FindObjectsByType<MechanicalElfExtractor>())
             {
                 int nodeIndex = Array.IndexOf(_nodes, extractor.AttachedNode);
-                if (nodeIndex >= 0)
+                string sceneryId = extractor.AttachedNode != null ? extractor.AttachedNode.SceneryId : null;
+                if (nodeIndex >= 0 || sceneryId != null)
                 {
                     extractors.Add(new ExtractorSave
                     {
-                        nodeIndex = nodeIndex, secondsUntilExtraction = extractor.SecondsUntilExtraction
+                        nodeIndex = nodeIndex, sceneryId = sceneryId, secondsUntilExtraction = extractor.SecondsUntilExtraction
                     });
                 }
             }
@@ -207,6 +210,7 @@ namespace Boreatek.Core
                 inventory = _inventory.CaptureSave(),
                 campaign = DayNightCycleManager.Instance.CaptureSave(),
                 nodes = Array.ConvertAll(_nodes, node => node.CaptureSave()),
+                sceneryNodes = CaptureSceneryNodes(),
                 enemies = Array.ConvertAll(_enemies, enemy => enemy.CaptureSave()),
                 frontierNodes = _surface.CaptureFrontierNodes(),
                 frontierExtractors = frontierExtractors,
@@ -240,6 +244,18 @@ namespace Boreatek.Core
 
         private static string GetSavePath(string id) => Path.Combine(SaveDirectory, id + ".json");
 
+        private ScenerySave[] CaptureSceneryNodes()
+        {
+            var saved = new List<ScenerySave>();
+            foreach (var entry in _sceneryNodes)
+            {
+                HarvestableNode.SaveState state = entry.Value.CaptureSave();
+                if (state.depleted || state.hitPoints != entry.Value.NodeConfig.MaxHitPoints)
+                    saved.Add(new ScenerySave { id = entry.Key, state = state });
+            }
+            return saved.ToArray();
+        }
+
         [Serializable]
         private class SaveData
         {
@@ -251,6 +267,7 @@ namespace Boreatek.Core
             public InventoryAndShop.SaveState inventory;
             public DayNightCycleManager.SaveState campaign;
             public HarvestableNode.SaveState[] nodes;
+            public ScenerySave[] sceneryNodes;
             public DefectiveToyAI.SaveState[] enemies;
             public BoreatekSurfaceChunks.FrontierNodeSave[] frontierNodes;
             public BoreatekSurfaceChunks.FrontierExtractorSave[] frontierExtractors;
@@ -262,7 +279,15 @@ namespace Boreatek.Core
         private struct ExtractorSave
         {
             public int nodeIndex;
+            public string sceneryId;
             public float secondsUntilExtraction;
+        }
+
+        [Serializable]
+        private struct ScenerySave
+        {
+            public string id;
+            public HarvestableNode.SaveState state;
         }
     }
 }
