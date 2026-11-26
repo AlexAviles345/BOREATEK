@@ -66,7 +66,7 @@ namespace Boreatek.World
             return PlaceMesh(parent, name, mesh, batch.Materials.ToArray(), collision);
         }
 
-        internal void PlaceShared(Transform parent, string name, System.Func<Batch> build)
+        internal GameObject PlaceShared(Transform parent, string name, System.Func<Batch> build)
         {
             if (!_sharedMeshes.TryGetValue(name, out var model))
             {
@@ -74,7 +74,7 @@ namespace Boreatek.World
                 model = (Own(batch.Build("SM_" + name)), batch.Materials.ToArray());
                 _sharedMeshes.Add(name, model);
             }
-            PlaceMesh(parent, name, model.mesh, model.materials, collision: false);
+            return PlaceMesh(parent, name, model.mesh, model.materials, collision: false);
         }
 
         private static GameObject PlaceMesh(Transform parent, string name, Mesh mesh, Material[] materials, bool collision)

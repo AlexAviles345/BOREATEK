@@ -642,7 +642,7 @@ namespace Boreatek.World
             enemy.transform.SetParent(parent, false);
             enemy.transform.position = pos;
 
-            _landscape.PlaceShared(enemy.transform, "Soldier_PatinaAndClockwork", BuildLeadSoldierModel);
+            EnemyPose pose = BuildEnemyRig(enemy.transform, golem: false);
 
             CapsuleCollider col = enemy.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, 1.1f, 0f);
@@ -651,6 +651,7 @@ namespace Boreatek.World
 
             DefectiveToyAI ai = enemy.AddComponent<DefectiveToyAI>();
             ai.InitializeRuntime("Soldado de Juguete Defectuoso", isFrostGolem: false, maxHp: 75f, speed: 4.4f);
+            ai.BindPose(pose);
         }
 
         private void SpawnFrostGolemEnemy(Transform parent, Vector3 pos)
@@ -659,7 +660,7 @@ namespace Boreatek.World
             golem.transform.SetParent(parent, false);
             golem.transform.position = pos;
 
-            _landscape.PlaceShared(golem.transform, "Golem_FacetedIceAndScrap", BuildFrostGolemModel);
+            EnemyPose pose = BuildEnemyRig(golem.transform, golem: true);
 
             CapsuleCollider col = golem.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, 1.6f, 0f);
@@ -668,6 +669,7 @@ namespace Boreatek.World
 
             DefectiveToyAI ai = golem.AddComponent<DefectiveToyAI>();
             ai.InitializeRuntime("Gólem de Escarcha Guardián", isFrostGolem: true, maxHp: 180f, speed: 3.2f);
+            ai.BindPose(pose);
         }
 
         /// <summary>
