@@ -163,7 +163,7 @@ namespace Boreatek.World
             {
                 BoreatekSoundscape.Play(SoundCue.Blocked, transform.position);
                 int pct = Mathf.RoundToInt(NormalizedMeltProgress * 100f);
-                player?.PublishStatus($"❄️ [{_nodeConfig.NodeDisplayName}] Congelado ({pct}%). Coloca una Baliza Térmica [H] o Guirnalda [G] junto a él.");
+                player?.PublishStatus($"❄️ [{_nodeConfig.NodeDisplayName}] Congelado ({pct}%). Equipa una baliza o guirnalda y colócala cerca.");
                 return;
             }
 
@@ -290,7 +290,7 @@ namespace Boreatek.World
             if (IsFrozenLocked)
             {
                 int pct = Mathf.RoundToInt(NormalizedMeltProgress * 100f);
-                return $"❄️ {_nodeConfig.NodeDisplayName} [Bloqueado por Hielo: {pct}% deshielo - Usa Baliza Térmica (H)]";
+                return $"❄️ {_nodeConfig.NodeDisplayName} · {pct}% deshielo · Coloca calor cerca";
             }
 
             return $"⛏️ {_nodeConfig.NodeDisplayName} -> {_nodeConfig.OutputResource.DisplayName} (Pico Nv.{_nodeConfig.RequiredPickaxeTier} | Clic Izq o [E])";

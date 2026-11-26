@@ -136,8 +136,10 @@ namespace Boreatek.Player
 
             if (!_isShopMenuOpen && !hudPointer)
             {
+                HandleEquipmentSelection();
                 HandleActionInputs();
             }
+            UpdatePlacementGuide(!_isShopMenuOpen && !hudPointer);
 
             UpdateCharacterAnimation(dt);
         }
@@ -167,8 +169,7 @@ namespace Boreatek.Player
                 return;
             }
 
-            // Tab o B: Abrir / Cerrar Tienda del Taller
-            if (kb.tabKey.wasPressedThisFrame || kb.bKey.wasPressedThisFrame)
+            if (kb.tabKey.wasPressedThisFrame)
             {
                 ToggleShopMenu();
             }
@@ -365,79 +366,34 @@ namespace Boreatek.Player
             Keyboard kb = Keyboard.current;
             Mouse mouse = Mouse.current;
 
-            // Clic Izquierdo: Golpear con el Pico Industrial de Cristal Energético Rojo
-            bool attackPressed = (mouse != null && mouse.leftButton.isPressed) ||
-                                 (kb != null && kb.enterKey.wasPressedThisFrame) ||
-                                 (Gamepad.current != null && Gamepad.current.rightTrigger.wasPressedThisFrame);
-
-            if (attackPressed && CanSwingPickaxe)
-            {
-                if (!_isCursorLocked)
-                {
-                    SetCursorLock(true);
-                }
-                else
-                {
-                    PerformPickaxeSwing();
-                }
-            }
-
-            if (kb == null || _inventoryAndShop == null)
-            {
-                return;
-            }
-
-            // E: Interactuar con el objeto apuntado (Tolva Central, Cofre Congelado, Veta, Tienda)
-            if (kb.eKey.wasPressedThisFrame && _currentFocusedInteractable != null)
+            if (kb?.eKey.wasPressedThisFrame == true && _currentFocusedInteractable != null &&
+                _currentFocusedInteractable.CanInteract(gameObject))
             {
                 if (_currentFocusedInteractable is HarvestableNode node)
                 {
-                    if (CanSwingPickaxe && node.CanInteract(gameObject)) PerformPickaxeSwing(node);
+                    SelectEquipment(EquipmentSlot.Pickaxe);
+                    if (CanSwingPickaxe) PerformPickaxeSwing(node);
                 }
                 else
                 {
-                    if (_currentFocusedInteractable.CanInteract(gameObject))
-                    {
-                        PlayInteraction(ElfPose.Gesture.Reach, AimFrame.forward);
-                    }
+                    PlayInteraction(ElfPose.Gesture.Reach, AimFrame.forward);
                     _currentFocusedInteractable.Interact(gameObject);
                 }
+                return;
             }
 
-            if (kb.gKey.wasPressedThisFrame) UseEquipment(EquipmentSlot.Garland);
-            if (kb.hKey.wasPressedThisFrame) UseEquipment(EquipmentSlot.Beacon);
-
-            // Q: Lanzar Petardo Festivo (Explosivo contra roca/hielo duro y Gólems)
-            if (kb.qKey.wasPressedThisFrame)
+            bool usePressed = mouse?.rightButton.wasPressedThisFrame == true || kb?.enterKey.wasPressedThisFrame == true ||
+                Gamepad.current?.rightTrigger.wasPressedThisFrame == true;
+            if (SelectedEquipment == EquipmentSlot.Pickaxe)
             {
-                if (_inventoryAndShop.FestiveFirecrackersStock > 0) PlayInteraction(ElfPose.Gesture.Throw, transform.forward);
-                _inventoryAndShop.TryDetonateFestiveFirecracker(transform.position + transform.forward * 2.5f);
+                if ((mouse?.leftButton.isPressed == true || usePressed) && CanSwingPickaxe) PerformPickaxeSwing();
             }
+            else if (mouse?.leftButton.wasPressedThisFrame == true || usePressed) UseEquipment(SelectedEquipment);
 
-            // R: Instalar Duende Mecánico Extractor sobre una veta cercana
-            if (kb.rKey.wasPressedThisFrame)
-            {
-                int stock = _inventoryAndShop.MechanicalElfExtractorsStock;
-                _inventoryAndShop.TryDeployMechanicalElfExtractor(transform.position);
-                if (_inventoryAndShop.MechanicalElfExtractorsStock < stock)
-                    PlayInteraction(ElfPose.Gesture.Place, transform.forward);
-            }
-
-            // 1, 2, 3: Consumibles Rápidos (Chocolate Caliente, Galleta de Jengibre, Bastón de Menta)
-            if (kb.digit1Key.wasPressedThisFrame)
-            {
-                _inventoryAndShop.TryUseHotChocolateThermos();
-            }
-
-            if (kb.digit2Key.wasPressedThisFrame)
-            {
-                _inventoryAndShop.TryUseGingerbreadCookie();
-            }
-
-            if (kb.digit3Key.wasPressedThisFrame)
-            {
-                _inventoryAndShop.TryUsePeppermintCane();
-            }
+            if (kb?.gKey.wasPressedThisFrame == true) UseEquipment(EquipmentSlot.Garland);
+            if (kb?.hKey.wasPressedThisFrame == true) UseEquipment(EquipmentSlot.Beacon);
+            if (kb?.qKey.wasPressedThisFrame == true) UseEquipment(EquipmentSlot.Firecracker);
+            if (kb?.rKey.wasPressedThisFrame == true) UseEquipment(EquipmentSlot.Extractor);
         }
 
         public void ConfigureRigReferences(
@@ -556,7 +512,7 @@ namespace Boreatek.Player
             CancelPickaxeSwing();
             _elfPose?.Reset();
             _characterController.enabled = present;
-            if (_pickaxeVisualRoot != null) _pickaxeVisualRoot.gameObject.SetActive(present);
+            if (_pickaxeVisualRoot != null) _pickaxeVisualRoot.gameObject.SetActive(present && SelectedEquipment == EquipmentSlot.Pickaxe);
             if (_characterVisual != null)
             {
                 _characterVisual.gameObject.SetActive(present);
@@ -571,6 +527,7 @@ namespace Boreatek.Player
             public float yaw, pitch, cookieSeconds, swingCooldown;
             public int pickaxeTier, pickaxeDamage;
             public int cameraPerspective;
+            public int equipmentSlot;
             public bool thirdPerson, headlamp;
         }
 
@@ -586,6 +543,7 @@ namespace Boreatek.Player
             pickaxeDamage = _pickaxeDamage,
             thirdPerson = !InFirstPerson,
             cameraPerspective = (int)CurrentPerspective,
+            equipmentSlot = (int)SelectedEquipment,
             headlamp = IsHeadlampEnabled
         };
 
@@ -603,6 +561,7 @@ namespace Boreatek.Player
             _footstepDistance = 0f;
             _snowFootprints?.ResetBoots();
             RestorePerspective(state);
+            SelectEquipment((EquipmentSlot)Mathf.Clamp(state.equipmentSlot, 0, (int)EquipmentSlot.Extractor));
             if (_cameraPivot != null)
             {
                 _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, 0f, 0f);

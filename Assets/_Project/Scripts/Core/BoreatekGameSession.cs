@@ -16,7 +16,7 @@ namespace Boreatek.Core
     [DefaultExecutionOrder(-100)]
     public sealed partial class BoreatekGameSession : MonoBehaviour
     {
-        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead, ConfirmDeleteSave, Map }
+        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead, ConfirmDeleteSave, Map, Backpack }
 
         internal static bool IsTitleScreen(Screen screen) =>
             screen is Screen.MainMenu or Screen.SaveSelection or Screen.CreateSave or Screen.ConfirmDeleteSave;
@@ -85,11 +85,21 @@ namespace Boreatek.Core
             if (_screen == Screen.Playing)
             {
                 _map.Reveal(_player.transform.position);
+                if (keyboard?.bKey.wasPressedThisFrame == true && !_player.IsShopMenuOpen)
+                {
+                    OpenBackpack();
+                    return;
+                }
                 if (keyboard?.mKey.wasPressedThisFrame == true && !_player.IsShopMenuOpen)
                 {
                     OpenMap();
                     return;
                 }
+            }
+            if (_screen == Screen.Backpack && keyboard?.bKey.wasPressedThisFrame == true)
+            {
+                CloseBackpack();
+                return;
             }
             if (keyboard?.escapeKey.wasPressedThisFrame != true) return;
 
@@ -117,7 +127,31 @@ namespace Boreatek.Core
             {
                 CloseMap();
             }
+            else if (_screen == Screen.Backpack)
+            {
+                CloseBackpack();
+            }
         }
+
+        internal void OpenBackpack()
+        {
+            if (_screen == Screen.Playing && !_player.IsShopMenuOpen) SetScreen(Screen.Backpack);
+        }
+
+        internal void CloseBackpack()
+        {
+            if (_screen == Screen.Backpack) SetScreen(Screen.Playing);
+        }
+
+        internal void EquipFromBackpack(EquipmentSlot slot)
+        {
+            if (_screen != Screen.Backpack || _inventory.GetEquipmentStock(slot) <= 0) return;
+            _player.SelectEquipment(slot);
+            CloseBackpack();
+        }
+
+        internal bool ConsumeFromBackpack(EquipmentSlot slot) =>
+            _screen == Screen.Backpack && _player.ConsumeEquipment(slot);
 
         internal void OpenMap()
         {

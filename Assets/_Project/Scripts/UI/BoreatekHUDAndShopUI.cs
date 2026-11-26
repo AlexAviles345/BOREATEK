@@ -14,7 +14,7 @@ namespace Boreatek.UI
     /// Interfaz gráfica estilizada y responsiva en uGUI (Canvas 1920x1080 con CanvasScaler):
     /// - Tarjeta superior izquierda: Barras animadas de Temperatura Corporal (°T), Salud (HP) y Presión del Tanque-Mochila.
     /// - Tarjeta superior derecha: Reloj de Campaña de 20 Horas (Ciclo de 20m), Clima en español, Nivel de Equipo y Radar.
-    /// - Hotbar inferior central de 7 casillas estilizadas ([1] a [3], [G], [H], [Q], [R]) + Banner de Notificaciones.
+    /// - Barra de herramientas, mochila y avisos de juego.
     /// - Retícula central minimalista + Tarjeta flotante contextual al apuntar a un nodo, cofre congelado o tolva.
     /// - Viñeta perimetral de escarcha cuando la temperatura cae de 35 °T.
     /// - Ventana Modal de la Tienda del Taller ([Tab]) con tarjetas, filtros y descarga en Tolva Central.
@@ -69,11 +69,11 @@ namespace Boreatek.UI
         private float _nextRadarRefresh;
         private float _nextTelemetryRefresh;
 
-        // Referencias del Hotbar de 7 Casillas
         private readonly List<Text> _hotbarCountTexts = new List<Text>();
         private readonly List<BoreatekUiGlyph> _hotbarGlyphs = new List<BoreatekUiGlyph>();
-        private readonly List<Color> _hotbarAccents = new List<Color>();
-        private readonly int[] _shownHotbarStock = new int[7];
+        private readonly List<BoreatekUiButton> _hotbarSlots = new List<BoreatekUiButton>();
+        private readonly int[] _shownHotbarStock = new int[EquipmentDisplay.Length];
+        private int _shownEquipmentSlot = -1;
 
         // Paleta cromática oficial Boreatek UI
         private static readonly Color ColPanelDark = new Color(0.05f, 0.10f, 0.16f, 0.90f);
@@ -404,39 +404,37 @@ namespace Boreatek.UI
             ApplyMetalPanel(bar, ColDeepSteel, ColSteelRim);
             bar.GetComponent<Image>().raycastTarget = false;
 
-            string[] keys = { "1", "2", "3", "G", "H", "Q", "R" };
-            string[] names = { "Chocolate", "Galleta", "Menta", "Guirnalda", "Baliza", "Petardo", "Autómata" };
-            BoreatekGlyph[] glyphs = { BoreatekGlyph.Thermos, BoreatekGlyph.Cookie, BoreatekGlyph.Candy,
-                BoreatekGlyph.Garland, BoreatekGlyph.Beacon, BoreatekGlyph.Firecracker, BoreatekGlyph.Automaton };
-            Color[] accents = { ColBrassRim, ColBrassGold, new Color32(250, 129, 141, 255), ColBrassRim,
-                ColWarmAmber, new Color32(254, 128, 119, 255), ColIceCyan };
             _hotbarCountTexts.Clear();
             _hotbarGlyphs.Clear();
-            _hotbarAccents.Clear();
+            _hotbarSlots.Clear();
+            _shownEquipmentSlot = -1;
 
-            for (int i = 0; i < keys.Length; i++)
+            for (int i = 0; i < EquipmentDisplay.Length; i++)
             {
-                RectTransform slot = CreatePanelCard($"HotbarSlot_{keys[i]}", bar, topLeft, topLeft, topLeft,
-                    new Vector2(11f + 115f * i, -9f), new Vector2(108f, 76f), ColBlueSteel);
-                ApplyMetalPanel(slot, ColBlueSteel, ColSteelRim);
-                slot.GetComponent<Image>().raycastTarget = false;
-                CreateLabel(slot, "KeyTxt", keys[i], new Vector2(9f, -7f), new Vector2(22f, 22f),
-                    15, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
-                Text count = CreateLabel(slot, "CountTxt", "", new Vector2(69f, -7f), new Vector2(29f, 22f),
+                var entry = EquipmentDisplay[i];
+                var equipment = (EquipmentSlot)i;
+                RectTransform slot = CreatePanelCard($"HotbarSlot_{equipment}", bar, topLeft, topLeft, topLeft,
+                    new Vector2(11f + 100f * i, -9f), new Vector2(96f, 76f), ColBlueSteel);
+                var button = AttachMetalButton(slot, ColBlueSteel, ColBrassRim);
+                button.navigation = new Navigation { mode = Navigation.Mode.None };
+                button.onClick.AddListener(() => _player?.SelectEquipment(equipment));
+                CreateLabel(slot, "KeyTxt", (i + 1).ToString(), new Vector2(9f, -7f), new Vector2(22f, 22f),
+                    14, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
+                Text count = CreateLabel(slot, "CountTxt", "", new Vector2(59f, -7f), new Vector2(29f, 22f),
                     15, FontStyle.Bold, ColTextLight, TextAnchor.MiddleRight);
-                BoreatekUiGlyph glyph = AddHudGlyph(slot, "ItemGlyph", glyphs[i], new Vector2(0.5f, 1f),
-                    new Vector2(0f, -28f), 29f, accents[i]);
-                CreateLabel(slot, "ItemNameTxt", names[i], new Vector2(4f, -51f), new Vector2(100f, 21f),
+                BoreatekUiGlyph glyph = AddHudGlyph(slot, "ItemGlyph", entry.glyph, new Vector2(0.5f, 1f),
+                    new Vector2(0f, -28f), 29f, entry.accent);
+                CreateLabel(slot, "ItemNameTxt", entry.label, new Vector2(4f, -51f), new Vector2(88f, 21f),
                     14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
 
                 _hotbarCountTexts.Add(count);
                 _hotbarGlyphs.Add(glyph);
-                _hotbarAccents.Add(accents[i]);
+                _hotbarSlots.Add(button);
                 _shownHotbarStock[i] = -1;
             }
 
             Text controls = CreateLabel(parent, "ControlsTxt",
-                "[WASD] Mover   ·   [Shift] Correr   ·   [Clic izq.] Picar   ·   [E] Interactuar   ·   [F5] Cámara   ·   [Esc] Pausa",
+                "Rueda  Elegir  ·  Clic  Usar  ·  [B] Mochila  ·  [E] Interactuar  ·  [F5] Cámara  ·  [Esc] Pausa",
                 Vector2.zero, new Vector2(960f, 23f), 14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
             RectTransform footer = controls.rectTransform;
             footer.anchorMin = footer.anchorMax = footer.pivot = bottom;
@@ -585,13 +583,13 @@ namespace Boreatek.UI
                 return;
             }
 
-            SetHotbarStock(0, _inventoryShop.HotChocolateThermosCount);
-            SetHotbarStock(1, _inventoryShop.GingerbreadCookieCount);
-            SetHotbarStock(2, _inventoryShop.PeppermintCaneCount);
-            SetHotbarStock(3, _inventoryShop.StringLightsStock);
-            SetHotbarStock(4, _inventoryShop.ThermalBeaconsStock);
-            SetHotbarStock(5, _inventoryShop.FestiveFirecrackersStock);
-            SetHotbarStock(6, _inventoryShop.MechanicalElfExtractorsStock);
+            for (int i = 0; i < _hotbarSlots.Count; i++)
+                SetHotbarStock(i, _inventoryShop.GetEquipmentStock((EquipmentSlot)i));
+            int selected = (int)_player.SelectedEquipment;
+            if (selected == _shownEquipmentSlot || selected >= _hotbarSlots.Count) return;
+            if (_shownEquipmentSlot >= 0) _hotbarSlots[_shownEquipmentSlot].SetLatched(false);
+            _hotbarSlots[selected].SetLatched(true);
+            _shownEquipmentSlot = selected;
         }
 
         private void SetHotbarStock(int index, int amount)
@@ -602,9 +600,9 @@ namespace Boreatek.UI
             }
 
             _shownHotbarStock[index] = amount;
-            _hotbarCountTexts[index].text = amount.ToString();
+            _hotbarCountTexts[index].text = index == (int)EquipmentSlot.Pickaxe ? "" : amount.ToString();
             _hotbarCountTexts[index].color = amount > 0 ? ColTextLight : ColTextMuted;
-            _hotbarGlyphs[index].color = amount > 0 ? _hotbarAccents[index] : new Color32(105, 129, 146, 255);
+            _hotbarGlyphs[index].color = amount > 0 ? EquipmentDisplay[index].accent : new Color32(105, 129, 146, 255);
         }
 
         private static string RemoveMessageGlyphPrefix(string text)

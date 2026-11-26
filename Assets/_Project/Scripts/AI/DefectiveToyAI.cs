@@ -287,7 +287,7 @@ namespace Boreatek.AI
             if (Physics.Linecast(origin, target, out RaycastHit hit, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) &&
                 hit.collider.GetComponentInParent<PlayerController>() != _targetPlayer) return;
             _targetPlayerTemp.ApplyCombatDamage(_attackDamage, transform.position);
-            _targetPlayer.PublishStatus($"⚠️ ¡{_enemyDisplayName} te atacó (-{_attackDamage} HP)! Usa tu Pico [Clic Izq] o Bastón de Menta [3].");
+            _targetPlayer.PublishStatus($"⚠️ ¡{_enemyDisplayName} te atacó (-{_attackDamage} HP)! Abre la mochila [B] para usar menta.");
         }
 
         private void AdvanceCollapse(float dt)

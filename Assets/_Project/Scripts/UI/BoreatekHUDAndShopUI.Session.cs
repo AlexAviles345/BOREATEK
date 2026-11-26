@@ -39,6 +39,7 @@ namespace Boreatek.UI
             BuildTitleScreen(root, session);
             BuildSaveScreens(root, session);
             BuildMapPanels(root, session, map);
+            BuildBackpackScreen(root, session);
 
             var center = new Vector2(0.5f, 0.5f);
             _gameplayMenuCard = CreatePanelCard("SessionCard", root,
@@ -103,6 +104,8 @@ namespace Boreatek.UI
             _pauseMenu.gameObject.SetActive(screen == SessionScreen.Paused);
             _deathMenu.gameObject.SetActive(screen == SessionScreen.Dead);
             _atlasPanel.gameObject.SetActive(screen == SessionScreen.Map);
+            _backpackPanel.gameObject.SetActive(screen == SessionScreen.Backpack);
+            if (screen == SessionScreen.Backpack) OpenBackpackScreen();
             if (screen == SessionScreen.Map) FocusExplorationMap();
             _sessionBackdrop.color = screen switch
             {
@@ -133,6 +136,7 @@ namespace Boreatek.UI
                 SessionScreen.ConfirmDeleteSave => _cancelDeleteSaveButton,
                 SessionScreen.Paused => _resumeButton,
                 SessionScreen.Dead => _respawnButton,
+                SessionScreen.Backpack => _backpackSlots[(int)_backpackSelection],
                 _ => null
             };
             if (EventSystem.current != null)
