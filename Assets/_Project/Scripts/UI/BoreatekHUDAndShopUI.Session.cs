@@ -19,7 +19,7 @@ namespace Boreatek.UI
         private RectTransform _mainMenu, _pauseMenu, _deathMenu;
         private Button _playButton, _resumeButton, _respawnButton;
 
-        internal void BuildSessionMenu(BoreatekGameSession session)
+        internal void BuildSessionMenu(BoreatekGameSession session, BoreatekExplorationMap map)
         {
             if (_sessionCanvas != null)
             {
@@ -38,6 +38,7 @@ namespace Boreatek.UI
             RectTransform root = (RectTransform)_sessionCanvas.transform;
             BuildTitleScreen(root, session);
             BuildSaveScreens(root, session);
+            BuildMapPanels(root, session, map);
 
             var center = new Vector2(0.5f, 0.5f);
             _gameplayMenuCard = CreatePanelCard("SessionCard", root,
@@ -101,6 +102,8 @@ namespace Boreatek.UI
             _gameplayMenuCard.gameObject.SetActive(screen == SessionScreen.Paused || screen == SessionScreen.Dead);
             _pauseMenu.gameObject.SetActive(screen == SessionScreen.Paused);
             _deathMenu.gameObject.SetActive(screen == SessionScreen.Dead);
+            _atlasPanel.gameObject.SetActive(screen == SessionScreen.Map);
+            if (screen == SessionScreen.Map) FocusExplorationMap();
             _sessionBackdrop.color = screen switch
             {
                 SessionScreen.Dead => new Color(0.13f, 0.025f, 0.04f, 0.83f),
@@ -150,6 +153,7 @@ namespace Boreatek.UI
                 Destroy(_sessionCanvas);
             }
             ReleaseThemeGraphics();
+            ReleaseMapGraphics();
         }
 
         private RectTransform CreateSessionPanel(RectTransform card, string name, string title, Color titleColor)

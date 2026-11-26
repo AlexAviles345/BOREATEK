@@ -157,6 +157,7 @@ namespace Boreatek.UI
             UpdateFrostWarningVignette();
             UpdateDamageFeedback();
             UpdateShopModalVisibility();
+            UpdateMinimap();
         }
 
         private void EnsureEventSystem()

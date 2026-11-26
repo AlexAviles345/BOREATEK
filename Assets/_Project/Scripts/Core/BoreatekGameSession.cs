@@ -15,7 +15,7 @@ namespace Boreatek.Core
     [DefaultExecutionOrder(-100)]
     public sealed partial class BoreatekGameSession : MonoBehaviour
     {
-        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead, ConfirmDeleteSave }
+        internal enum Screen { MainMenu, SaveSelection, CreateSave, Playing, Paused, Dead, ConfirmDeleteSave, Map }
 
         internal static bool IsTitleScreen(Screen screen) =>
             screen is Screen.MainMenu or Screen.SaveSelection or Screen.CreateSave or Screen.ConfirmDeleteSave;
@@ -27,6 +27,7 @@ namespace Boreatek.Core
         private HarvestableNode[] _nodes;
         private DefectiveToyAI[] _enemies;
         private BoreatekSurfaceChunks _surface;
+        private BoreatekExplorationMap _map;
         private BoreatekSoundscape _soundscape;
         private int _worldSeed;
         private Screen _screen;
@@ -51,6 +52,7 @@ namespace Boreatek.Core
             _inventory = player.GetComponent<InventoryAndShop>();
             _ui = ui;
             _surface = surface;
+            _map = new BoreatekExplorationMap(surface);
             _soundscape = BoreatekSoundscape.Install(worldRoot, _temperature);
             _surface.BindEconomy(_inventory);
             _inventory.SetSurfaceChunks(_surface);
@@ -60,16 +62,27 @@ namespace Boreatek.Core
             _enemies = worldRoot.GetComponentsInChildren<DefectiveToyAI>(true);
             _temperature.OnDied += ShowDeath;
             _initialized = true;
-            _ui.BuildSessionMenu(this);
+            _ui.BuildSessionMenu(this, _map);
             SetScreen(Screen.MainMenu);
         }
 
         private void Update()
         {
-            if (!_initialized || _leavingScene || Keyboard.current?.escapeKey.wasPressedThisFrame != true)
+            if (!_initialized || _leavingScene)
             {
                 return;
             }
+            var keyboard = Keyboard.current;
+            if (_screen == Screen.Playing)
+            {
+                _map.Reveal(_player.transform.position);
+                if (keyboard?.mKey.wasPressedThisFrame == true && !_player.IsShopMenuOpen)
+                {
+                    OpenMap();
+                    return;
+                }
+            }
+            if (keyboard?.escapeKey.wasPressedThisFrame != true) return;
 
             if (_screen == Screen.Playing)
             {
@@ -91,6 +104,22 @@ namespace Boreatek.Core
             {
                 CancelDeleteSave();
             }
+            else if (_screen == Screen.Map)
+            {
+                CloseMap();
+            }
+        }
+
+        internal void OpenMap()
+        {
+            if (_screen != Screen.Playing || _player.IsShopMenuOpen) return;
+            _map.Reveal(_player.transform.position);
+            SetScreen(Screen.Map);
+        }
+
+        internal void CloseMap()
+        {
+            if (_screen == Screen.Map) SetScreen(Screen.Playing);
         }
 
         internal void BackToTitle()
@@ -132,6 +161,7 @@ namespace Boreatek.Core
             }
 
             string id = Guid.NewGuid().ToString("N");
+            _map.Reveal(_player.transform.position);
             if (WriteSave(id, name))
             {
                 _activeSaveId = id;
@@ -175,6 +205,8 @@ namespace Boreatek.Core
             _surface.RestoreFrontierExtractors(save.frontierExtractors);
             _surface.EnsureGroundAt(save.player.position);
             _player.RestoreSave(save.player);
+            _map.Restore(save.map);
+            _map.Reveal(_player.transform.position);
             SetScreen(Screen.Playing);
         }
 

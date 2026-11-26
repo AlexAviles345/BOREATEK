@@ -210,6 +210,7 @@ namespace Boreatek.Core
                 enemies = Array.ConvertAll(_enemies, enemy => enemy.CaptureSave()),
                 frontierNodes = _surface.CaptureFrontierNodes(),
                 frontierExtractors = frontierExtractors,
+                map = _map.Capture(),
                 extractors = extractors.ToArray()
             };
 
@@ -253,6 +254,7 @@ namespace Boreatek.Core
             public DefectiveToyAI.SaveState[] enemies;
             public BoreatekSurfaceChunks.FrontierNodeSave[] frontierNodes;
             public BoreatekSurfaceChunks.FrontierExtractorSave[] frontierExtractors;
+            public BoreatekExplorationMap.SaveState map;
             public ExtractorSave[] extractors;
         }
 

@@ -119,6 +119,9 @@ namespace Boreatek.Player
             float dt = Time.deltaTime;
             UpdateTimers(dt);
             HandleUtilityShortcuts();
+            bool hudPointer = Keyboard.current?.leftAltKey.isPressed == true ||
+                Keyboard.current?.rightAltKey.isPressed == true;
+            if (!_isShopMenuOpen && _isCursorLocked == hudPointer) SetCursorLock(!hudPointer);
 
             if (!_isShopMenuOpen && _isCursorLocked)
             {
@@ -130,7 +133,7 @@ namespace Boreatek.Player
             UpdateInteractionFocus();
             AdvancePickaxeSwing(dt);
 
-            if (!_isShopMenuOpen)
+            if (!_isShopMenuOpen && !hudPointer)
             {
                 HandleActionInputs();
             }
