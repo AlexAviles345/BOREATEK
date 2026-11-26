@@ -6,8 +6,6 @@ namespace Boreatek.Player
     {
         private enum Perspective { Legacy, FirstPerson, Behind, Front, Shoulder }
         private static readonly Vector3 ShoulderOffset = new Vector3(0.70f, 0.11f, -1.94f);
-        private static readonly Vector3 FrontOffset = new Vector3(0f, 0.22f, 2.60f);
-        private static readonly float[] FrontFallbackAngles = { -42f, 42f, -68f, 68f };
         private readonly RaycastHit[] _viewObstructions = new RaycastHit[12];
         private Perspective _perspective;
         private float _standardFieldOfView = 60f;
@@ -60,15 +58,19 @@ namespace Boreatek.Player
                     case Perspective.FirstPerson:
                         camera.SetLocalPositionAndRotation(_firstPersonCameraOffset, Quaternion.identity);
                         break;
-                    case Perspective.Front:
-                        showHead = PositionFrontCamera(camera);
-                        break;
                     default:
                     {
-                        Vector3 offset = CurrentPerspective == Perspective.Shoulder ? ShoulderOffset : _thirdPersonCameraOffset;
+                        bool front = CurrentPerspective == Perspective.Front;
+                        Vector3 offset = CurrentPerspective switch
+                        {
+                            Perspective.Front => new Vector3(0f, 0.08f, -_thirdPersonCameraOffset.z),
+                            Perspective.Shoulder => ShoulderOffset,
+                            _ => _thirdPersonCameraOffset
+                        };
                         Vector3 displacement = _cameraPivot.TransformDirection(offset);
                         float clear = ViewClearance(_cameraPivot.position, displacement, 0.16f);
-                        camera.SetLocalPositionAndRotation(offset.normalized * clear, Quaternion.identity);
+                        camera.SetLocalPositionAndRotation(offset.normalized * clear,
+                            front ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.identity);
                         showHead = clear > 0.57f;
                         break;
                     }
@@ -76,28 +78,6 @@ namespace Boreatek.Player
             }
             if (_thirdPersonHead != null) _thirdPersonHead.enabled = showHead;
             RefreshHeadlampLens();
-        }
-
-        private bool PositionFrontCamera(Transform camera)
-        {
-            // The front portrait follows character yaw. Looking up or down only steers the gameplay aim.
-            Vector3 target = transform.position + Vector3.up * 0.70f;
-            Vector3 offset = transform.TransformDirection(FrontOffset);
-            float clear = ViewClearance(target, offset, 0.16f);
-            if (clear < 1.45f)
-            {
-                foreach (float angle in FrontFallbackAngles)
-                {
-                    Vector3 candidate = Quaternion.AngleAxis(angle, Vector3.up) * transform.TransformDirection(FrontOffset);
-                    float distance = ViewClearance(target, candidate, 0.16f);
-                    if (distance <= clear + 0.14f) continue;
-                    offset = candidate;
-                    clear = distance;
-                }
-            }
-            Vector3 direction = offset.normalized;
-            camera.SetPositionAndRotation(target + direction * clear, Quaternion.LookRotation(-direction, Vector3.up));
-            return clear > 0.51f;
         }
 
         private float ViewClearance(Vector3 origin, Vector3 displacement, float radius)
