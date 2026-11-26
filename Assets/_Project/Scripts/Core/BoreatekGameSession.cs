@@ -226,7 +226,12 @@ namespace Boreatek.Core
             _player.RestoreSave(save.player);
             _map.Restore(save.map);
             _map.Reveal(_player.transform.position);
-            SetScreen(Screen.Playing);
+            if (_temperature.IsDead)
+            {
+                _player.SetCharacterPresent(false);
+                SetScreen(Screen.Dead, DeathMessage(_temperature.DiedOfCold));
+            }
+            else SetScreen(Screen.Playing);
         }
 
         internal void Resume()
@@ -259,6 +264,7 @@ namespace Boreatek.Core
                 return;
             }
 
+            if (!WriteSave(_activeSaveId, _activeSaveName)) return;
             _leavingScene = true;
             SceneManager.LoadScene(sceneIndex);
         }
@@ -266,9 +272,11 @@ namespace Boreatek.Core
         private void ShowDeath(bool fromCold)
         {
             _player.SetCharacterPresent(false);
-            SetScreen(Screen.Dead, fromCold ? "La hipotermia acabó con tu expedición." :
-                "Has caído en combate.");
+            SetScreen(Screen.Dead, DeathMessage(fromCold));
         }
+
+        private static string DeathMessage(bool fromCold) =>
+            fromCold ? "La hipotermia acabó con tu expedición." : "Has caído en combate.";
 
         internal void Respawn()
         {

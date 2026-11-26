@@ -68,6 +68,8 @@ namespace Boreatek.Player
         public float HotChocolateRemainingSeconds => _hotChocolateBuffRemainingSeconds;
         internal float ShelterGraceRemaining => Mathf.Max(0f, _shelterGraceSeconds - _coldExposure);
         public BiomeType CurrentBiome => _currentBiome;
+        internal bool IsDead => _isDead;
+        internal bool DiedOfCold => _diedOfCold;
         public string ActiveHeatSourceName { get; private set; } = "Aldea Industrial de Santa";
 
         public event Action<float, float> OnTemperatureChanged;
@@ -386,6 +388,7 @@ namespace Boreatek.Player
         {
             public float temperature, health, coatReduction, chocolateSeconds, coldGrace, coldExposure;
             public int coatTier;
+            public bool dead, diedOfCold;
         }
 
         internal SaveState CaptureSave() => new SaveState
@@ -396,13 +399,16 @@ namespace Boreatek.Player
             chocolateSeconds = _hotChocolateBuffRemainingSeconds,
             coldGrace = _hypothermiaCountdown,
             coldExposure = _coldExposure,
+            dead = _isDead, diedOfCold = _diedOfCold,
             coatTier = _thermalCoatTier
         };
 
         internal void RestoreSave(SaveState state)
         {
             _currentTemperature = Mathf.Clamp(state.temperature, 0f, _maxTemperature);
-            _currentHealth = Mathf.Clamp(state.health, 1f, _maxHealth);
+            _isDead = state.dead;
+            _diedOfCold = state.diedOfCold;
+            _currentHealth = _isDead ? 0f : Mathf.Clamp(state.health, 1f, _maxHealth);
             CombatHitAt = float.NegativeInfinity;
             _hotChocolateBuffRemainingSeconds = state.chocolateSeconds;
             _hypothermiaCountdown = state.coldGrace;

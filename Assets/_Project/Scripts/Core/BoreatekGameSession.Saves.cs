@@ -187,6 +187,11 @@ namespace Boreatek.Core
 
         private bool WriteSave(string id, string name)
         {
+            if (!IsSaveId(id))
+            {
+                _ui.SetSessionMessage("No hay una partida activa para guardar.");
+                return false;
+            }
             var frontierExtractors = _surface.CaptureFrontierExtractors();
             var extractors = new List<ExtractorSave>();
             foreach (var extractor in FindObjectsByType<MechanicalElfExtractor>())
@@ -220,18 +225,7 @@ namespace Boreatek.Core
 
             try
             {
-                Directory.CreateDirectory(SaveDirectory);
-                string path = GetSavePath(id);
-                string pending = path + ".tmp";
-                File.WriteAllText(pending, JsonUtility.ToJson(save));
-                if (File.Exists(path))
-                {
-                    File.Replace(pending, path, null);
-                }
-                else
-                {
-                    File.Move(pending, path);
-                }
+                WriteSaveFile(GetSavePath(id), JsonUtility.ToJson(save));
                 return true;
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
@@ -240,6 +234,15 @@ namespace Boreatek.Core
                 _ui.SetSessionMessage("No se pudo guardar la partida.");
                 return false;
             }
+        }
+
+        private static void WriteSaveFile(string path, string contents)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            string pending = path + ".tmp";
+            File.WriteAllText(pending, contents);
+            if (File.Exists(path)) File.Replace(pending, path, null);
+            else File.Move(pending, path);
         }
 
         private static string GetSavePath(string id) => Path.Combine(SaveDirectory, id + ".json");
