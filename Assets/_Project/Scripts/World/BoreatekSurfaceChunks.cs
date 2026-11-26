@@ -165,7 +165,7 @@ namespace Boreatek.World
                 {
                     _builder.AddFrostedPine(features, foot, 3.4f + scale * 3.5f, marked: false);
                 }
-                _builder.AddBiomeTerrainDetail(features, foot + Vector3.right * 1.4f, biome, 0.64f + scale * 0.62f, owner);
+                _builder.AddBiomeTerrainDetail(features, foot + Vector3.right * 1.4f, biome, 0.64f + scale * 0.62f, _sharedMaterials);
                 hasFeatures = true;
             }
             if (hasFeatures) owner.Place(root, "WindScouredPinesAndRock", features);
