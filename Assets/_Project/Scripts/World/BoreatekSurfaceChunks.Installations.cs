@@ -39,9 +39,8 @@ namespace Boreatek.World
         internal bool RegisterFrontierHeat(InventoryAndShop.HeatPlacement placement)
         {
             Vector3 position = placement.position;
-            if (position.y < -1.8f || !IsFrontier(position.x, position.z)) return false;
-
             Vector2Int sector = SectorAt(position);
+            if ((position.y < -1.8f || !IsFrontier(position.x, position.z)) && !IsCaveHeatPlacement(position, sector)) return false;
             if (!_siteHeat.TryGetValue(sector, out List<InventoryAndShop.HeatPlacement> sites))
             {
                 sites = new List<InventoryAndShop.HeatPlacement>();
@@ -53,6 +52,14 @@ namespace Boreatek.World
                 _economy.SpawnHeatSource(placement, root, _sharedMaterials);
             }
             return true;
+        }
+
+        internal void UnregisterFrontierHeat(InventoryAndShop.HeatPlacement placement)
+        {
+            Vector2Int sector = SectorAt(placement.position);
+            if (!_siteHeat.TryGetValue(sector, out List<InventoryAndShop.HeatPlacement> sites)) return;
+            sites.RemoveAll(item => item.id == placement.id);
+            if (sites.Count == 0) _siteHeat.Remove(sector);
         }
 
         internal bool TryPlaceFrontierExtractor(HarvestableNode node)

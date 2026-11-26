@@ -15,7 +15,7 @@ namespace Boreatek.Economy
     /// la conversión de recursos en la Tolva Central a Monedas de Jengibre / Fichas del Taller,
     /// el inventario de consumibles/herramientas tácticas y el catálogo de mejoras y autómatas.
     /// </summary>
-    public class InventoryAndShop : MonoBehaviour
+    public partial class InventoryAndShop : MonoBehaviour
     {
         [Header("Brass Tank-Backpack Capacity")]
         [SerializeField] private int _backpackTier = 1;
@@ -64,6 +64,19 @@ namespace Boreatek.Economy
 
         public IReadOnlyDictionary<ResourceType, int> BackpackContents => _backpackContents;
         public IReadOnlyList<ShopItemSO> ShopCatalog => _shopCatalog;
+
+        internal int GetEquipmentStock(EquipmentSlot equipment) => equipment switch
+        {
+            EquipmentSlot.Pickaxe => 1,
+            EquipmentSlot.Chocolate => _hotChocolateThermosCount,
+            EquipmentSlot.Cookie => _gingerbreadCookieCount,
+            EquipmentSlot.Peppermint => _peppermintCaneCount,
+            EquipmentSlot.Garland => _stringLightsStock,
+            EquipmentSlot.Beacon => _thermalBeaconsStock,
+            EquipmentSlot.Firecracker => _festiveFirecrackersStock,
+            EquipmentSlot.Extractor => _mechanicalElfExtractorsStock,
+            _ => 0
+        };
 
         public event Action OnInventoryOrCoinsChanged;
 
@@ -372,44 +385,6 @@ namespace Boreatek.Economy
         }
 
         /// <summary>
-        /// Despliega una Guirnalda Luminosa Navideña en el mundo 3D (Tecla G).
-        /// </summary>
-        public void TryDeployStringLight(Vector3 worldPos)
-        {
-            if (_stringLightsStock <= 0)
-            {
-                _playerController?.PublishStatus("❌ Sin Guirnaldas Luminosas disponibles. Adquiérelas en la tienda [Tab].");
-                return;
-            }
-
-            _stringLightsStock--;
-            BoreatekSoundscape.Play(SoundCue.Deploy, worldPos);
-            PlaceHeatSource(worldPos, isBeacon: false, snapToGround: true);
-
-            OnInventoryOrCoinsChanged?.Invoke();
-            _playerController?.PublishStatus("💡 Guirnalda Luminosa desplegada: Burbuja de calor (+5.5 °T/s, radio 6.5m) activa.");
-        }
-
-        /// <summary>
-        /// Despliega una Baliza Térmica Portátil de alta potencia capaz de derretir Cofres Congelados (Tecla H).
-        /// </summary>
-        public void TryDeployThermalBeacon(Vector3 worldPos)
-        {
-            if (_thermalBeaconsStock <= 0)
-            {
-                _playerController?.PublishStatus("❌ Sin Balizas Térmicas Portátiles. Adquiérelas en la tienda [Tab].");
-                return;
-            }
-
-            _thermalBeaconsStock--;
-            BoreatekSoundscape.Play(SoundCue.Deploy, worldPos, 0.90f);
-            PlaceHeatSource(worldPos, isBeacon: true, snapToGround: true);
-
-            OnInventoryOrCoinsChanged?.Invoke();
-            _playerController?.PublishStatus("🔥 Baliza Térmica Portátil activada (+13 °T/s, radio 10.5m). Derritiendo Cofres Congelados cercanos...");
-        }
-
-        /// <summary>
         /// Detona un Petardo Festivo para fracturar vetas duras, bloqueos de hielo y Gólems (Tecla Q).
         /// </summary>
         public void TryDetonateFestiveFirecracker(Vector3 blastCenter)
@@ -484,74 +459,6 @@ namespace Boreatek.Economy
             _playerController?.PublishStatus($"🤖 ¡Duende Mecánico Extractor y Cinta Transportadora instalados en {targetNode.NodeConfig.NodeDisplayName}!");
         }
 
-        private void PlaceHeatSource(Vector3 pos, bool isBeacon, bool snapToGround)
-        {
-            if (snapToGround && Physics.Raycast(pos + Vector3.up * 2f, Vector3.down, out RaycastHit hit, 6f))
-            {
-                pos = hit.point;
-            }
-
-            var placement = new HeatPlacement { position = pos, isBeacon = isBeacon };
-            _heatPlacements.Add(placement);
-            if (_surfaceChunks == null || !_surfaceChunks.RegisterFrontierHeat(placement))
-            {
-                SpawnHeatSource(placement);
-            }
-        }
-
-        internal void SpawnHeatSource(HeatPlacement placement, Transform sector = null, BoreatekLandscapeGeometry sharedMaterials = null)
-        {
-            bool isBeacon = placement.isBeacon;
-            string label = isBeacon ? "Baliza Térmica Portátil" : "Guirnalda Luminosa Navideña";
-            float heatRegen = isBeacon ? 13f : 5.5f;
-            float radius = isBeacon ? 10.5f : 6.5f;
-            Color lightColor = isBeacon ? new Color(1f, 0.45f, 0.10f) : new Color(1f, 0.72f, 0.25f);
-            GameObject root = new GameObject($"Deployed_{label}");
-            if (sector != null) root.transform.SetParent(sector, false);
-            root.transform.position = placement.position;
-
-            // Poste low-poly de latón/cobre
-            GameObject post = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            post.transform.SetParent(root.transform, false);
-            post.transform.localPosition = new Vector3(0f, isBeacon ? 0.65f : 0.45f, 0f);
-            post.transform.localScale = isBeacon ? new Vector3(0.35f, 0.65f, 0.35f) : new Vector3(0.14f, 0.45f, 0.14f);
-            Destroy(post.GetComponent<Collider>());
-            BoreatekLandscapeGeometry.PaintStructure(post.GetComponent<Renderer>(), sharedMaterials, new Color(0.69f, 0.49f, 0.31f));
-
-            // Foco / Núcleo térmico emisivo
-            GameObject bulb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            bulb.transform.SetParent(root.transform, false);
-            bulb.transform.localPosition = new Vector3(0f, isBeacon ? 1.4f : 1.0f, 0f);
-            bulb.transform.localScale = isBeacon ? Vector3.one * 0.48f : Vector3.one * 0.28f;
-            Destroy(bulb.GetComponent<Collider>());
-            BoreatekLandscapeGeometry.PaintStructure(bulb.GetComponent<Renderer>(), sharedMaterials, lightColor, 2.5f);
-
-            // Luz puntual URP sin sombras para alto rendimiento
-            GameObject lightObj = new GameObject("ThermalPointLight");
-            lightObj.transform.SetParent(root.transform, false);
-            lightObj.transform.localPosition = new Vector3(0f, isBeacon ? 1.55f : 1.15f, 0f);
-            Light pointLight = lightObj.AddComponent<Light>();
-            pointLight.type = LightType.Point;
-            pointLight.color = lightColor;
-            pointLight.intensity = isBeacon ? 4.2f : 2.6f;
-            pointLight.range = radius * 1.4f;
-            pointLight.shadows = LightShadows.None;
-
-            SphereCollider trigger = root.AddComponent<SphereCollider>();
-            trigger.isTrigger = true;
-            trigger.radius = radius;
-
-            HeatSourceNode heatNode = root.AddComponent<HeatSourceNode>();
-            heatNode.ConfigureRuntime(label, heatRegen, radius, canMeltChests: true);
-        }
-
-        [Serializable]
-        internal struct HeatPlacement
-        {
-            public Vector3 position;
-            public bool isBeacon;
-        }
-
         [Serializable]
         internal struct ResourceStack
         {
@@ -613,7 +520,7 @@ namespace Boreatek.Economy
             }
             foreach (HeatPlacement item in state.heatSources)
             {
-                PlaceHeatSource(item.position, item.isBeacon, snapToGround: false);
+                RegisterHeatPlacement(item);
             }
             RecalculateBackpackCount();
             OnInventoryOrCoinsChanged?.Invoke();
@@ -666,19 +573,19 @@ namespace Boreatek.Economy
 
             // 1. Comida y Bebidas (Consumibles)
             AddRuntimeShopItem("thermos_choco", "Termo de Chocolate Caliente", ShopCategory.Consumable,
-                ShopActionType.HotChocolateThermos, "Restaura calor al 100% y frena el congelamiento por 60s [Tecla 1].", 30, 1, 60f);
+                ShopActionType.HotChocolateThermos, "Restaura el calor al 100% y frena el congelamiento por 60s.", 30, 1, 60f);
             AddRuntimeShopItem("cookie_ginger", "Galleta de Jengibre Energética", ShopCategory.Consumable,
-                ShopActionType.GingerbreadCookie, "+30% velocidad en nieve y +40% velocidad de picado por 45s [Tecla 2].", 25, 1, 45f);
+                ShopActionType.GingerbreadCookie, "Aumenta la velocidad de carrera y de picado por 45s.", 25, 1, 45f);
             AddRuntimeShopItem("cane_mint", "Bastón de Menta Curativo", ShopCategory.Consumable,
-                ShopActionType.PeppermintCane, "Recupera +50 HP tras combates contra Juguetes Defectuosos [Tecla 3].", 35, 1, 50f);
+                ShopActionType.PeppermintCane, "Recupera hasta 50 HP.", 35, 1, 50f);
 
             // 2. Herramientas Tácticas
             AddRuntimeShopItem("string_lights_5", "Guirnaldas Luminosas (x5)", ShopCategory.TacticalTool,
-                ShopActionType.FestiveStringLights, "Puntos de luz y burbuja de calor portátil en nieve y túneles [Tecla G].", 40, 5, 6.5f);
+                ShopActionType.FestiveStringLights, "Puntos de luz y calor portátil en nieve y túneles.", 40, 5, 6.5f);
             AddRuntimeShopItem("thermal_beacon", "Baliza Térmica Portátil", ShopCategory.TacticalTool,
-                ShopActionType.ThermalBeacon, "Calefactor de alta potencia que derrite Cofres Congelados [Tecla H].", 90, 1, 10.5f);
+                ShopActionType.ThermalBeacon, "Calefactor recuperable que derrite cofres congelados.", 90, 1, 10.5f);
             AddRuntimeShopItem("firecrackers_3", "Petardos Festivos (x3)", ShopCategory.TacticalTool,
-                ShopActionType.FestiveFirecrackers, "Explosivos térmicos para fracturar Hielo Azul y Gólems [Tecla Q].", 75, 3, 5.5f);
+                ShopActionType.FestiveFirecrackers, "Petardos térmicos para fracturar hielo azul y dañar gólems.", 75, 3, 5.5f);
             AddRuntimeShopItem("gift_radar", "Radar de Regalos", ShopCategory.TacticalTool,
                 ShopActionType.GiftRadar, "Detecta la distancia al Cofre Congelado o Trineo más cercano en el HUD.", 150, 1, 1f);
 
@@ -698,7 +605,7 @@ namespace Boreatek.Economy
 
             // 4. Automatización
             AddRuntimeShopItem("auto_elf_conveyor", "Duende Mecánico + Cinta Transportadora", ShopCategory.Automation,
-                ShopActionType.MechanicalElfExtractor, "Extrae y envía recursos automáticamente desde una veta a la Tolva [Tecla R].", 400, 1, 10f);
+                ShopActionType.MechanicalElfExtractor, "Extrae y envía recursos automáticamente desde una veta a la tolva.", 400, 1, 10f);
         }
 
         private void AddRuntimeShopItem(

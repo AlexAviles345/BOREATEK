@@ -47,6 +47,9 @@ namespace Boreatek.World
             new Vector2Int(Mathf.FloorToInt(position.x / ChunkSize),
                 Mathf.FloorToInt((position.z - GridOffsetZ) / ChunkSize));
 
+        private static Vector3 SectorOrigin(Vector2Int sector) =>
+            new Vector3(sector.x * (float)ChunkSize, 0f, sector.y * (float)ChunkSize + GridOffsetZ);
+
         internal static bool IsFrontier(float x, float z) => Mathf.Abs(x) > 124f || Mathf.Abs(z) > 126f;
 
         internal void EnsureGroundAt(Vector3 position)
@@ -110,7 +113,7 @@ namespace Boreatek.World
             if (_chunks.ContainsKey(sector)) return;
             var root = new GameObject($"Surface_{sector.x}_{sector.y}");
             root.transform.SetParent(transform, false);
-            Vector3 origin = new Vector3(sector.x * (float)ChunkSize, 0f, sector.y * (float)ChunkSize + GridOffsetZ);
+            Vector3 origin = SectorOrigin(sector);
             root.transform.localPosition = origin;
             var owner = root.AddComponent<BoreatekLandscapeGeometry>();
             CaveSite? cave = PlanCave(sector, origin);

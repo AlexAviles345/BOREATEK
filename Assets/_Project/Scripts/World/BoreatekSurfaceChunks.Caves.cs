@@ -56,6 +56,14 @@ namespace Boreatek.World
             return _caves.TryGetValue(SectorAt(position), out CaveSite cave) && IsInsideCave(position, cave);
         }
 
+        private bool IsCaveHeatPlacement(Vector3 position, Vector2Int sector)
+        {
+            if (_caves.TryGetValue(sector, out CaveSite loaded)) return IsInsideCave(position, loaded);
+            if (_chunks.ContainsKey(sector)) return false;
+            CaveSite? planned = PlanCave(sector, SectorOrigin(sector));
+            return planned.HasValue && IsInsideCave(position, planned.Value);
+        }
+
         private bool IsInsideCave(Vector3 position, CaveSite cave)
         {
             Vector2 p = cave.Coordinates(position.x, position.z);

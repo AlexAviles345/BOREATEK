@@ -132,6 +132,7 @@ namespace Boreatek.Player
             UpdateCameraObstruction();
             UpdateInteractionFocus();
             AdvancePickaxeSwing(dt);
+            AdvanceHeatPlacement(dt);
 
             if (!_isShopMenuOpen && !hudPointer)
             {
@@ -403,19 +404,8 @@ namespace Boreatek.Player
                 }
             }
 
-            // G: Desplegar Guirnalda Luminosa Navideña (Burbuja de calor de 6m)
-            if (kb.gKey.wasPressedThisFrame)
-            {
-                if (_inventoryAndShop.StringLightsStock > 0) PlayInteraction(ElfPose.Gesture.Place, transform.forward);
-                _inventoryAndShop.TryDeployStringLight(transform.position + transform.forward * 1.6f);
-            }
-
-            // H: Desplegar Baliza Térmica Portátil (Burbuja de 10m + derrite Cofres Congelados)
-            if (kb.hKey.wasPressedThisFrame)
-            {
-                if (_inventoryAndShop.ThermalBeaconsStock > 0) PlayInteraction(ElfPose.Gesture.Place, transform.forward);
-                _inventoryAndShop.TryDeployThermalBeacon(transform.position + transform.forward * 2.0f);
-            }
+            if (kb.gKey.wasPressedThisFrame) UseEquipment(EquipmentSlot.Garland);
+            if (kb.hKey.wasPressedThisFrame) UseEquipment(EquipmentSlot.Beacon);
 
             // Q: Lanzar Petardo Festivo (Explosivo contra roca/hielo duro y Gólems)
             if (kb.qKey.wasPressedThisFrame)
@@ -540,7 +530,11 @@ namespace Boreatek.Player
 
             _isShopMenuOpen = !_isShopMenuOpen;
             BoreatekSoundscape.Play(SoundCue.Click, strength: 0.65f);
-            if (_isShopMenuOpen) CancelPickaxeSwing();
+            if (_isShopMenuOpen)
+            {
+                CancelPickaxeSwing();
+                CancelHeatPlacement();
+            }
             SetCursorLock(!_isShopMenuOpen);
         }
 
@@ -549,6 +543,7 @@ namespace Boreatek.Player
             _gameplayEnabled = active;
             _isShopMenuOpen = false;
             _currentFocusedInteractable = null;
+            if (!active) CancelHeatPlacement();
             SetCursorLock(active);
         }
 
