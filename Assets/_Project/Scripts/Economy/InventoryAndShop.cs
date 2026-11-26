@@ -399,6 +399,7 @@ namespace Boreatek.Economy
             BoreatekSoundscape.Play(SoundCue.Blast, blastCenter, 0.91f);
             Collider[] hits = Physics.OverlapSphere(blastCenter, 5.5f);
             int affectedNodes = 0;
+            var enemiesHit = new HashSet<AI.DefectiveToyAI>();
 
             for (int i = 0; i < hits.Length; i++)
             {
@@ -410,9 +411,9 @@ namespace Boreatek.Economy
                 }
 
                 AI.DefectiveToyAI enemy = hits[i].GetComponentInParent<AI.DefectiveToyAI>();
-                if (enemy != null)
+                if (enemy != null && enemiesHit.Add(enemy))
                 {
-                    enemy.TakePickaxeDamage(120f, 3, _playerController);
+                    enemy.TakeBlastDamage(120f, blastCenter, _playerController);
                 }
             }
 

@@ -39,6 +39,10 @@ namespace Boreatek.AI
         private EnemyPose _pose;
         private float _attackElapsed, _collapseElapsed, _hurtRemaining, _wakeRemaining;
         private float _stepDistance;
+        private CapsuleCollider _body;
+        private Vector3 _knockbackVelocity;
+        private readonly RaycastHit[] _recoilHits = new RaycastHit[16];
+        private const float RecoilDrag = 17f;
         private bool _attacking, _collapsing;
         private float AttackDuration => _isFrostGolemGuardian ? 1.0f : 0.68f;
         private float CollapseDuration => _isFrostGolemGuardian ? 1.13f : 0.94f;
@@ -78,6 +82,7 @@ namespace Boreatek.AI
             _attacking = _collapsing = false;
             _attackElapsed = _collapseElapsed = _hurtRemaining = _wakeRemaining = 0f;
             _stepDistance = 0f;
+            _knockbackVelocity = Vector3.zero;
             bool active = _currentState != AIState.Disabled;
             SetRenderersActive(active);
             SetCollidersActive(active);
@@ -86,6 +91,7 @@ namespace Boreatek.AI
 
         private void Awake()
         {
+            _body = GetComponent<CapsuleCollider>();
             _spawnOrigin = transform.position;
             _currentHealth = _maxHealth;
             PickNextPatrolPoint();
@@ -110,6 +116,7 @@ namespace Boreatek.AI
                 return;
             }
 
+            MoveKnockback(dt);
             if (_currentState == AIState.Disabled)
             {
                 AdvanceCollapse(dt);
@@ -133,7 +140,7 @@ namespace Boreatek.AI
             {
                 AdvanceAttack(dt);
             }
-            else if (_wakeRemaining <= 0f)
+            else if (_wakeRemaining <= 0f && _hurtRemaining <= 0f)
             {
                 switch (_currentState)
                 {
@@ -317,13 +324,26 @@ namespace Boreatek.AI
                 return;
             }
 
-            _currentHealth -= damage;
+            ApplyDamage(damage, attacker != null ? attacker.transform.position : transform.position + transform.forward, 1f, attacker);
+        }
+
+        internal void TakeBlastDamage(float damage, Vector3 center, PlayerController attacker) =>
+            ApplyDamage(damage, center, 1.30f, attacker);
+
+        private void ApplyDamage(float damage, Vector3 from, float force, PlayerController attacker)
+        {
+            if (_currentState == AIState.Disabled || damage <= 0f) return;
+            _currentHealth = Mathf.Max(0f, _currentHealth - damage);
+            _attacking = false;
+            _attackElapsed = 0f;
+            Vector3 away = Vector3.ProjectOnPlane(transform.position - from, Vector3.up).normalized;
+            if (away.sqrMagnitude < 0.01f) away = -transform.forward;
+            _knockbackVelocity = away * ((_isFrostGolemGuardian ? 2.55f : 4.25f) * force);
             BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.Ice : SoundCue.Metal, transform.position);
             if (_currentHealth <= 0f)
             {
                 _currentState = AIState.Disabled;
                 _respawnTimer = 75f;
-                _attacking = false;
                 _collapsing = _pose != null;
                 _collapseElapsed = 0f;
                 BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemOff : SoundCue.RobotOff, transform.position);
@@ -334,8 +354,60 @@ namespace Boreatek.AI
             else
             {
                 _hurtRemaining = HurtDuration;
+                _attackCooldownTimer = Mathf.Max(_attackCooldownTimer, HurtDuration);
                 attacker?.PublishStatus($"⚔️ Golpeaste a {_enemyDisplayName} ({Mathf.CeilToInt(_currentHealth)}/{Mathf.CeilToInt(_maxHealth)} HP).");
             }
+        }
+
+        private void MoveKnockback(float dt)
+        {
+            float speed = _knockbackVelocity.magnitude;
+            if (speed < 0.01f || dt <= 0f) return;
+            Vector3 direction = _knockbackVelocity / speed;
+            float nextSpeed = Mathf.Max(0f, speed - RecoilDrag * dt);
+            float distance = (speed + nextSpeed) * 0.5f * Mathf.Min(dt, speed / RecoilDrag);
+            Vector3 position = transform.position;
+            float radius = _body != null ? _body.radius * 0.91f : 0.32f;
+            float height = _body != null ? _body.height : 1.35f;
+            Vector3 bottom = position + Vector3.up * (radius + 0.055f);
+            Vector3 top = position + Vector3.up * Mathf.Max(radius + 0.055f, height - radius);
+            int count = Physics.CapsuleCastNonAlloc(bottom, top, radius, direction, _recoilHits, distance + 0.04f,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            float allowed = distance;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = _recoilHits[i];
+                if (hit.collider.transform.IsChildOf(transform)) continue;
+                allowed = Mathf.Min(allowed, Mathf.Max(0f, hit.distance - 0.04f));
+            }
+
+            Vector3 target = position + direction * allowed;
+            if (FindRecoilGround(position, out float oldFloor))
+            {
+                if (FindRecoilGround(target, out float newFloor) && Mathf.Abs(newFloor - oldFloor) <= 0.58f)
+                    target.y += newFloor - oldFloor;
+                else
+                {
+                    _knockbackVelocity = Vector3.zero;
+                    return;
+                }
+            }
+            transform.position = target;
+            _knockbackVelocity = allowed < distance ? Vector3.zero : direction * nextSpeed;
+        }
+
+        private bool FindRecoilGround(Vector3 position, out float ground)
+        {
+            int count = Physics.RaycastNonAlloc(position + Vector3.up * 0.52f, Vector3.down, _recoilHits, 1.36f,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            ground = float.NegativeInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = _recoilHits[i];
+                if (hit.normal.y >= 0.57f && !hit.collider.transform.IsChildOf(transform))
+                    ground = Mathf.Max(ground, hit.point.y);
+            }
+            return float.IsFinite(ground);
         }
 
         private void RespawnAutomaton()
@@ -347,6 +419,7 @@ namespace Boreatek.AI
             _attackElapsed = _collapseElapsed = _hurtRemaining = 0f;
             _wakeRemaining = WakeDuration;
             _stepDistance = 0f;
+            _knockbackVelocity = Vector3.zero;
             BoreatekSoundscape.Play(SoundCue.Reboot, transform.position, 0.84f);
             SetRenderersActive(true);
             SetCollidersActive(true);
