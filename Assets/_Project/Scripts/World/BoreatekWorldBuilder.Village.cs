@@ -80,12 +80,33 @@ namespace Boreatek.World
 
         private static void Pave(Batch batch, Vector2 start, Vector2 end, float width, FoundryMaterials m)
         {
-            Vector2 direction = end - start;
-            Vector2 middle = (start + end) * 0.5f;
-            float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
-            batch.Box(new Vector3(middle.x, -0.142f, middle.y), new Vector3(width, 0.50f, direction.magnitude),
-                m.Stone, Quaternion.Euler(0f, yaw, 0f));
+            Vector2 tangent = (end - start).normalized;
+            Vector2 side = new Vector2(tangent.y, -tangent.x);
+            start -= tangent * 0.43f;
+            end += tangent * 0.43f;
+            int panels = Mathf.CeilToInt(Vector2.Distance(start, end) / 2.4f);
+            for (int panel = 0; panel < panels; panel++)
+            {
+                Vector2 near = Vector2.Lerp(start, end, panel / (float)panels);
+                Vector2 far = Vector2.Lerp(start, end, (panel + 1f) / panels);
+                float inside = width * 0.38f, outside = width * 0.5f;
+                Vector3 a = RoadTop(near - side * inside), b = RoadTop(far - side * inside);
+                Vector3 c = RoadTop(far + side * inside), d = RoadTop(near + side * inside);
+                batch.Quad(a, b, c, d, m.Stone);
+                batch.Quad(RoadShoulder(near - side * outside), RoadShoulder(far - side * outside), b, a, m.Snow);
+                batch.Quad(d, c, RoadShoulder(far + side * outside), RoadShoulder(near + side * outside), m.Snow);
+            }
         }
+
+        private static Vector3 RoadTop(Vector2 point)
+        {
+            Vector3 ground = SurfacePoint(point.x, point.y);
+            float plaza = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(13.7f, 15.6f, point.magnitude));
+            ground.y += 0.058f + plaza * 0.15f;
+            return ground;
+        }
+
+        private static Vector3 RoadShoulder(Vector2 point) => RoadTop(point) - Vector3.up * 0.037f;
 
         private static void AddVillageHearth(Transform room, string label)
         {

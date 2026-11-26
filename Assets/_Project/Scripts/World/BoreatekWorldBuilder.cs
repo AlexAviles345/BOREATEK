@@ -213,6 +213,7 @@ namespace Boreatek.World
             _worldRoot = worldRoot;
             _landscape = worldRoot.gameObject.AddComponent<BoreatekLandscapeGeometry>();
             _landscape.Initialize(_urpLitShader);
+            _worldSignInk = null;
 
             if (!Application.isPlaying) BuildArcticSurfaceTerrain(worldRoot);
             PopulateSnowPineBelts(worldRoot);

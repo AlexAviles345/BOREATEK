@@ -72,6 +72,7 @@ namespace Boreatek.World
             AddFoundryStations(campus, m);
             BuildVillageNeighborhood(campus, m);
             BuildVillageDistricts(campus, m);
+            BuildVillageStreets(campus, m);
         }
 
         private void BuildFoundryApproach(Transform campus, FoundryMaterials m)

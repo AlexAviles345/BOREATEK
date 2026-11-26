@@ -5,6 +5,7 @@ namespace Boreatek.World
 {
     public partial class BoreatekWorldBuilder
     {
+        private Material _worldSignInk;
         private void BuildForgeHall(Transform campus, FoundryMaterials m)
         {
             Transform hall = CharacterPart(campus, "Nave_Central_De_La_Forja", Vector3.zero);
@@ -246,7 +247,7 @@ namespace Boreatek.World
             }
         }
 
-        private static void AddFoundrySign(Transform parent, string label, Vector3 position)
+        private void AddFoundrySign(Transform parent, string label, Vector3 position)
         {
             TextMesh text = CharacterPart(parent, "Sign_" + label, position).gameObject.AddComponent<TextMesh>();
             text.text = label;
@@ -255,6 +256,23 @@ namespace Boreatek.World
             text.fontSize = 56;
             text.characterSize = 0.045f;
             text.color = new Color32(236, 177, 101, 255);
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Shader shader = Resources.Load<Shader>("Boreatek/WorldSign");
+            if (font != null && shader != null)
+            {
+                text.font = font;
+                font.RequestCharactersInTexture(label, text.fontSize, FontStyle.Normal);
+                if (_worldSignInk == null) _worldSignInk = _landscape.Own(new Material(shader));
+                _worldSignInk.mainTexture = font.material.mainTexture;
+                text.GetComponent<MeshRenderer>().sharedMaterial = _worldSignInk;
+            }
+            float width = Mathf.Clamp(label.Length * 0.144f + 0.45f, 1.36f, 3.25f);
+            Material board = _landscape.Finish(new Color32(35, 50, 64, 255));
+            Material edge = _landscape.Finish(new Color32(115, 78, 54, 255));
+            var backing = new Batch();
+            backing.Box(new Vector3(0f, 0f, 0.115f), new Vector3(width, 0.42f, 0.18f), board);
+            backing.Box(new Vector3(0f, -0.193f, 0.048f), new Vector3(width + 0.09f, 0.052f, 0.095f), edge);
+            _landscape.Place(text.transform, "Placa_De_Hierro", backing);
         }
 
         private static void AddFoundryLight(Transform parent, Vector3 at, float intensity, float range)

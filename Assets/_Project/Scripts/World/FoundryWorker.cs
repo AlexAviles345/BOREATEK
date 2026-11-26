@@ -23,6 +23,7 @@ namespace Boreatek.World
         private NavMeshPath _route;
         private Routine _routine;
         private float _remaining, _phase;
+        private float _walkingDistance;
         private bool _returning, _alternate;
 
         internal void Initialize(ElfPose pose, Job job, Transform valve, GameObject tool, float offset, Vector3 rest)
@@ -79,6 +80,12 @@ namespace Boreatek.World
             }
             Vector3 movement = _agent != null ? _agent.velocity : Vector3.zero;
             movement.y = 0f;
+            _walkingDistance += movement.magnitude * dt;
+            if (_walkingDistance > 0.71f)
+            {
+                _walkingDistance -= 0.71f;
+                BoreatekSoundscape.Play(SoundCue.StepStone, transform.position, 0.16f);
+            }
             if (movement.sqrMagnitude > 0.014f)
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(movement), 420f * dt);
             _pose.UpdateTravel(transform.InverseTransformDirection(movement.normalized), movement.magnitude * 0.64f, false, true, dt);
