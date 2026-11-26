@@ -18,6 +18,8 @@ namespace Boreatek.World
         private bool _snowActive;
         private float _stormWeight;
         private float _nextSnowRefresh;
+        private float _snowBudget;
+        private readonly System.Random _snowRandom = new System.Random(20261224);
 
         internal void Initialize(Transform traveler, DayNightCycleManager clock, BoreatekSurfaceChunks surface)
         {
@@ -67,6 +69,7 @@ namespace Boreatek.World
                 }
                 else
                 {
+                    _snowBudget = 0f;
                     _snow.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
                 }
             }
@@ -76,13 +79,39 @@ namespace Boreatek.World
             if (immediate || Time.time >= _nextSnowRefresh)
             {
                 _nextSnowRefresh = Time.time + 0.15f;
-                var emission = _snow.emission;
-                emission.rateOverTime = Mathf.Lerp(26f, 278f, _stormWeight);
                 var wind = _snow.velocityOverLifetime;
                 wind.x = Mathf.Lerp(0.85f, 9.3f, _stormWeight);
                 wind.y = Mathf.Lerp(-2.1f, -3.6f, _stormWeight);
                 wind.z = Mathf.Lerp(0.35f, 1.85f, _stormWeight);
             }
+            EmitSnow(Time.deltaTime);
+        }
+
+        private void EmitSnow(float dt)
+        {
+            _snowBudget += Mathf.Lerp(26f, 278f, _stormWeight) * dt;
+            int count = Mathf.FloorToInt(_snowBudget);
+            _snowBudget -= count;
+            Vector3 origin = _snow.transform.position;
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 offset = new Vector3(
+                    ((float)_snowRandom.NextDouble() - 0.5f) * 29f,
+                    ((float)_snowRandom.NextDouble() - 0.5f) * 4f,
+                    ((float)_snowRandom.NextDouble() - 0.5f) * 29f);
+                TryEmitOutdoorFlake(origin + offset);
+            }
+        }
+
+        private bool TryEmitOutdoorFlake(Vector3 point)
+        {
+            // Trace from above so even a single-sided roof covers the area beneath it.
+            const float overheadDistance = 90f;
+            if (Physics.Raycast(point + Vector3.up * overheadDistance, Vector3.down, overheadDistance + 0.065f,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return false;
+
+            _snow.Emit(new ParticleSystem.EmitParams { position = point, applyShapeToPosition = false }, 1);
+            return true;
         }
 
         private void BuildSnowEmitter()
@@ -103,12 +132,22 @@ namespace Boreatek.World
             settings.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.14f);
             settings.startColor = new ParticleSystem.MinMaxGradient(new Color(0.73f, 0.88f, 1f, 0.5f), Color.white);
             settings.maxParticles = 1250;
-            var distribution = _snow.shape;
-            distribution.shapeType = ParticleSystemShapeType.Box;
-            distribution.scale = new Vector3(29f, 4f, 29f);
+            var emission = _snow.emission;
+            emission.enabled = false;
+            var shape = _snow.shape;
+            shape.enabled = false;
             var wind = _snow.velocityOverLifetime;
             wind.enabled = true;
             wind.space = ParticleSystemSimulationSpace.World;
+            var collision = _snow.collision;
+            collision.enabled = true;
+            collision.type = ParticleSystemCollisionType.World;
+            collision.quality = ParticleSystemCollisionQuality.High;
+            collision.collidesWith = Physics.DefaultRaycastLayers;
+            collision.enableDynamicColliders = true;
+            collision.radiusScale = 0.7f;
+            collision.bounce = 0f;
+            collision.lifetimeLoss = 1f;
             var renderer = emitter.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = _snowMaterial;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
