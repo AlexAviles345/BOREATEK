@@ -1,5 +1,6 @@
 using System;
 using Boreatek.AI;
+using Boreatek.Audio;
 using Boreatek.Automation;
 using Boreatek.Economy;
 using Boreatek.Player;
@@ -23,6 +24,7 @@ namespace Boreatek.Core
         private HarvestableNode[] _nodes;
         private DefectiveToyAI[] _enemies;
         private BoreatekSurfaceChunks _surface;
+        private BoreatekSoundscape _soundscape;
         private int _worldSeed;
         private Screen _screen;
         private float _gameplayTimeScale;
@@ -46,6 +48,7 @@ namespace Boreatek.Core
             _inventory = player.GetComponent<InventoryAndShop>();
             _ui = ui;
             _surface = surface;
+            _soundscape = BoreatekSoundscape.Install(worldRoot, _temperature);
             _surface.BindEconomy(_inventory);
             _inventory.SetSurfaceChunks(_surface);
             _worldSeed = worldSeed;
@@ -224,6 +227,7 @@ namespace Boreatek.Core
         {
             _screen = screen;
             bool playing = screen == Screen.Playing;
+            _soundscape.SetScreen(screen == Screen.MainMenu || screen == Screen.SaveSelection || screen == Screen.CreateSave, playing);
             Time.timeScale = playing ? _gameplayTimeScale : 0f;
             _player.SetGameplayEnabled(playing);
             _ui.ShowSessionScreen(screen, message);

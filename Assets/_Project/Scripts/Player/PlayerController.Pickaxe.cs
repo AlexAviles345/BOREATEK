@@ -1,4 +1,5 @@
 using Boreatek.AI;
+using Boreatek.Audio;
 using Boreatek.World;
 using UnityEngine;
 
@@ -54,6 +55,7 @@ namespace Boreatek.Player
             _impactPoint = null;
             _strikeNode = interactionNode;
             _strikeIsInteraction = interactionNode != null;
+            BoreatekSoundscape.Play(SoundCue.Swing, strength: 0.63f);
         }
 
         private void AdvancePickaxeSwing(float dt)
@@ -86,6 +88,10 @@ namespace Boreatek.Player
             else if (_aimHit.collider.GetComponentInParent<DefectiveToyAI>() is DefectiveToyAI enemy)
             {
                 enemy.TakePickaxeDamage(_pickaxeDamage * 25f, _currentPickaxeTier, this);
+            }
+            else if (!_strikeIsInteraction)
+            {
+                BoreatekSoundscape.Play(SoundCue.Stone, _aimHit.point, 0.50f);
             }
         }
 

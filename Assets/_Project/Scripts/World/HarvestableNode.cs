@@ -1,4 +1,5 @@
 using System;
+using Boreatek.Audio;
 using Boreatek.Core;
 using Boreatek.Data;
 using Boreatek.Economy;
@@ -159,6 +160,7 @@ namespace Boreatek.World
 
             if (IsFrozenLocked)
             {
+                BoreatekSoundscape.Play(SoundCue.Blocked, transform.position);
                 int pct = Mathf.RoundToInt(NormalizedMeltProgress * 100f);
                 player?.PublishStatus($"❄️ [{_nodeConfig.NodeDisplayName}] Congelado ({pct}%). Coloca una Baliza Térmica [H] o Guirnalda [G] junto a él.");
                 return;
@@ -166,11 +168,21 @@ namespace Boreatek.World
 
             if (playerPickaxeTier < _nodeConfig.RequiredPickaxeTier)
             {
+                BoreatekSoundscape.Play(SoundCue.Blocked, transform.position);
                 player?.PublishStatus($"⛏️ Nivel de Pico insuficiente para {_nodeConfig.NodeDisplayName}. Requiere Pico Energético Nivel {_nodeConfig.RequiredPickaxeTier}.");
                 return;
             }
 
             _hitShakeTimer = 0.18f;
+            SoundCue strike = _nodeConfig.OutputResource?.ResourceType switch
+            {
+                ResourceType.CrystallizedWood => SoundCue.Wood,
+                ResourceType.PolarIron or ResourceType.PolarScrap => SoundCue.Metal,
+                ResourceType.CandyCrystal or ResourceType.LuminousCore => SoundCue.Crystal,
+                ResourceType.DeepBlueIce or ResourceType.FrozenChestSupply => SoundCue.Ice,
+                _ => SoundCue.Stone
+            };
+            BoreatekSoundscape.Play(strike, transform.position);
             _currentHitPoints = Mathf.Max(0, _currentHitPoints - Mathf.Max(1, damage));
 
             if (_currentHitPoints <= 0)
@@ -232,6 +244,7 @@ namespace Boreatek.World
             }
 
             _isDepleted = true;
+            BoreatekSoundscape.Play(SoundCue.Break, transform.position, 0.79f);
             _respawnTimer = _nodeConfig.RespawnTimeSeconds;
             SetVisualsActive(false);
             OnNodeHarvested?.Invoke(this);

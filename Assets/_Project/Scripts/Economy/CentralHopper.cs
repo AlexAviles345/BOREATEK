@@ -1,4 +1,5 @@
 using Boreatek.Core;
+using Boreatek.Audio;
 using Boreatek.Player;
 using UnityEngine;
 
@@ -50,7 +51,8 @@ namespace Boreatek.Economy
 
             if (interactor.TryGetComponent(out InventoryAndShop inventory))
             {
-                inventory.DepositAllResourcesIntoCentralHopper();
+                int deposited = inventory.DepositAllResourcesIntoCentralHopper();
+                BoreatekSoundscape.Play(deposited > 0 ? SoundCue.Confirm : SoundCue.Blocked, transform.position);
             }
         }
     }

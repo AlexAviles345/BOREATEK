@@ -1,4 +1,5 @@
 using System;
+using Boreatek.Audio;
 using System.Collections.Generic;
 using Boreatek.Automation;
 using Boreatek.Core;
@@ -320,6 +321,7 @@ namespace Boreatek.Economy
             }
 
             _gingerbreadCoins -= item.CostInGingerbreadCoins;
+            BoreatekSoundscape.Play(SoundCue.Confirm);
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus($"🛒 Comprado: {item.DisplayName} (-{item.CostInGingerbreadCoins} Monedas de Jengibre).");
             return true;
@@ -334,6 +336,7 @@ namespace Boreatek.Economy
             }
 
             _hotChocolateThermosCount--;
+            BoreatekSoundscape.Play(SoundCue.Drink);
             _temperatureSystem?.ConsumeHotChocolateThermos(60f);
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus("☕ Termo de Chocolate Caliente consumido: Calor al 100% y +60s de protección contra Ventisca Ciega.");
@@ -348,6 +351,7 @@ namespace Boreatek.Economy
             }
 
             _gingerbreadCookieCount--;
+            BoreatekSoundscape.Play(SoundCue.Eat);
             _playerController?.ApplyGingerbreadCookieBuff(45f);
             OnInventoryOrCoinsChanged?.Invoke();
         }
@@ -361,6 +365,7 @@ namespace Boreatek.Economy
             }
 
             _peppermintCaneCount--;
+            BoreatekSoundscape.Play(SoundCue.Eat);
             _temperatureSystem?.ConsumePeppermintCane(50f);
             OnInventoryOrCoinsChanged?.Invoke();
             _playerController?.PublishStatus("🍬 Bastón de Menta Curativo consumido: +50 HP restaurados.");
@@ -378,6 +383,7 @@ namespace Boreatek.Economy
             }
 
             _stringLightsStock--;
+            BoreatekSoundscape.Play(SoundCue.Deploy, worldPos);
             PlaceHeatSource(worldPos, isBeacon: false, snapToGround: true);
 
             OnInventoryOrCoinsChanged?.Invoke();
@@ -396,6 +402,7 @@ namespace Boreatek.Economy
             }
 
             _thermalBeaconsStock--;
+            BoreatekSoundscape.Play(SoundCue.Deploy, worldPos, 0.90f);
             PlaceHeatSource(worldPos, isBeacon: true, snapToGround: true);
 
             OnInventoryOrCoinsChanged?.Invoke();
@@ -414,6 +421,7 @@ namespace Boreatek.Economy
             }
 
             _festiveFirecrackersStock--;
+            BoreatekSoundscape.Play(SoundCue.Blast, blastCenter, 0.91f);
             Collider[] hits = Physics.OverlapSphere(blastCenter, 5.5f);
             int affectedNodes = 0;
 
@@ -467,6 +475,7 @@ namespace Boreatek.Economy
             }
 
             _mechanicalElfExtractorsStock--;
+            BoreatekSoundscape.Play(SoundCue.Reboot, targetNode.transform.position);
             if (_surfaceChunks == null || !_surfaceChunks.TryPlaceFrontierExtractor(targetNode))
             {
                 MechanicalElfExtractor.CreateAutomatedExtractorOnNode(targetNode, this);

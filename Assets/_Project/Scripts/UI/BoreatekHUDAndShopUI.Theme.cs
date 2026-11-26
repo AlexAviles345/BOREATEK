@@ -1,4 +1,5 @@
 using UnityEngine;
+using Boreatek.Audio;
 using UnityEngine.UI;
 
 namespace Boreatek.UI
@@ -89,6 +90,7 @@ namespace Boreatek.UI
             markerRect.anchoredPosition = new Vector2(7f, 0f);
             var button = rect.gameObject.AddComponent<BoreatekUiButton>();
             button.Configure(face, rim, marker, surface, accent, lightSurface);
+            button.onClick.AddListener(() => BoreatekSoundscape.Play(SoundCue.Click));
             return button;
         }
 

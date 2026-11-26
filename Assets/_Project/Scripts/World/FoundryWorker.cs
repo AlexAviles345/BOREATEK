@@ -1,4 +1,5 @@
 using Boreatek.Player;
+using Boreatek.Audio;
 using UnityEngine;
 
 namespace Boreatek.World
@@ -25,9 +26,12 @@ namespace Boreatek.World
 
         private void Update()
         {
-            if (_pose == null) return;
+            if (_pose == null || Time.deltaTime <= 0f) return;
+            float previous = _time;
             _time += Time.deltaTime;
             UpdatePose();
+            if (_job == Job.Smith && Mathf.Floor((previous - 0.9246f) / 1.38f) < Mathf.Floor((_time - 0.9246f) / 1.38f))
+                BoreatekSoundscape.Play(SoundCue.Metal, transform.position, 0.48f);
         }
 
         private void UpdatePose()

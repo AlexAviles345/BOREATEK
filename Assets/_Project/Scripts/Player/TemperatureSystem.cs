@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Boreatek.Audio;
 using Boreatek.Core;
 using Boreatek.Data;
 using Boreatek.World;
@@ -280,6 +281,7 @@ namespace Boreatek.Player
             }
             else if (TryGetComponent(out PlayerController player))
             {
+                BoreatekSoundscape.Play(SoundCue.Hurt);
                 player.ReactToCombatDamage(attackerPosition);
             }
         }
@@ -307,6 +309,7 @@ namespace Boreatek.Player
         private void Die(bool fromCold)
         {
             _isDead = true;
+            BoreatekSoundscape.Play(SoundCue.Death, strength: 0.88f);
             _diedOfCold = fromCold;
             if (OnDied == null)
             {

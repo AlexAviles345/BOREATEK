@@ -1,4 +1,5 @@
 using System;
+using Boreatek.Audio;
 using Boreatek.Core;
 using Boreatek.Economy;
 using Boreatek.World;
@@ -56,6 +57,7 @@ namespace Boreatek.Player
         private float _cameraPitch;
         private float _playerYaw;
         private float _swingCooldownTimer;
+        private float _footstepDistance;
         private float _gingerbreadCookieBuffTimer;
         private float _gingerbreadSpeedMultiplier = 1f;
         private bool _isCursorLocked = true;
@@ -169,6 +171,7 @@ namespace Boreatek.Player
             if (kb.fKey.wasPressedThisFrame && _helmetHeadlamp != null)
             {
                 SetHeadlampEnabled(!_helmetHeadlamp.enabled);
+                BoreatekSoundscape.Play(SoundCue.Click, strength: 0.65f);
                 PublishStatus(_helmetHeadlamp.enabled
                     ? "Faro Frontal LED del casco ENCENDIDO."
                     : "Faro Frontal LED del casco APAGADO (menor detección enemiga).");
@@ -262,17 +265,45 @@ namespace Boreatek.Player
             if (jumpPressed && isGrounded && !_isShopMenuOpen)
             {
                 _verticalVelocity.y = Mathf.Sqrt(_jumpHeight * -2f * _gravity);
+                BoreatekSoundscape.Play(SoundCue.Jump, strength: 0.70f);
             }
 
             _verticalVelocity.y += _gravity * dt;
             _characterController.Move((moveDirection * targetSpeed + _verticalVelocity) * dt);
-            if (_elfPose != null && dt > 0f)
+            if (dt > 0f)
             {
                 Vector3 travel = Vector3.ProjectOnPlane(transform.position - startPosition, Vector3.up);
-                float pace = travel.magnitude / (Mathf.Max(targetSpeed, 0.01f) * dt);
-                _elfPose.UpdateTravel(transform.InverseTransformDirection(travel.normalized), pace,
-                    isSprinting, _characterController.isGrounded, dt);
+                float distance = travel.magnitude;
+                float pace = distance / (Mathf.Max(targetSpeed, 0.01f) * dt);
+                bool onGround = _characterController.isGrounded;
+                _elfPose?.UpdateTravel(transform.InverseTransformDirection(travel.normalized), pace, isSprinting, onGround, dt);
+                PlayFootsteps(distance, isGrounded, onGround, isSprinting);
             }
+        }
+
+        private void PlayFootsteps(float distance, bool wasGrounded, bool grounded, bool sprinting)
+        {
+            if (!grounded)
+            {
+                _footstepDistance = 0f;
+                return;
+            }
+            if (!wasGrounded && _verticalVelocity.y < -1.7f)
+            {
+                BoreatekSoundscape.Play(SoundCue.Land, strength: Mathf.Clamp01(-_verticalVelocity.y * 0.12f));
+                return;
+            }
+            float stride = sprinting ? 1.55f : 1.20f;
+            _footstepDistance += distance;
+            if (_footstepDistance < stride) return;
+            _footstepDistance = Mathf.Repeat(_footstepDistance, stride);
+            SoundCue footstep = _temperatureSystem.CurrentBiome switch
+            {
+                BiomeType.SantaIndustrialVillage or BiomeType.VentilationTunnels => SoundCue.StepPlanks,
+                >= BiomeType.IceCavesLevel1 => SoundCue.StepIce,
+                _ => SoundCue.StepSnow
+            };
+            BoreatekSoundscape.Play(footstep, strength: sprinting ? 0.68f : 0.48f);
         }
 
         private void UpdateInteractionFocus()
@@ -330,7 +361,9 @@ namespace Boreatek.Player
                 else
                 {
                     if (_currentFocusedInteractable.CanInteract(gameObject))
+                    {
                         PlayInteraction(ElfPose.Gesture.Reach, AimFrame.forward);
+                    }
                     _currentFocusedInteractable.Interact(gameObject);
                 }
             }
@@ -469,6 +502,7 @@ namespace Boreatek.Player
             }
 
             _isShopMenuOpen = !_isShopMenuOpen;
+            BoreatekSoundscape.Play(SoundCue.Click, strength: 0.65f);
             if (_isShopMenuOpen) CancelPickaxeSwing();
             SetCursorLock(!_isShopMenuOpen);
         }
@@ -484,6 +518,7 @@ namespace Boreatek.Player
         internal void SetCharacterPresent(bool present)
         {
             _verticalVelocity = Vector3.zero;
+            _footstepDistance = 0f;
             CancelPickaxeSwing();
             _elfPose?.Reset();
             _characterController.enabled = present;
@@ -530,6 +565,7 @@ namespace Boreatek.Player
             transform.SetPositionAndRotation(state.position, Quaternion.Euler(0f, _playerYaw, 0f));
             _characterController.enabled = true;
             _verticalVelocity = state.verticalVelocity;
+            _footstepDistance = 0f;
             RestorePerspective(state);
             if (_cameraPivot != null)
             {

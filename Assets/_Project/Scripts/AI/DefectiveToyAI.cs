@@ -1,4 +1,5 @@
 using Boreatek.Player;
+using Boreatek.Audio;
 using UnityEngine;
 
 namespace Boreatek.AI
@@ -37,6 +38,7 @@ namespace Boreatek.AI
         private TemperatureSystem _targetPlayerTemp;
         private EnemyPose _pose;
         private float _attackElapsed, _collapseElapsed, _hurtRemaining, _wakeRemaining;
+        private float _stepDistance;
         private bool _attacking, _collapsing;
         private float AttackDuration => _isFrostGolemGuardian ? 1.0f : 0.68f;
         private float CollapseDuration => _isFrostGolemGuardian ? 1.13f : 0.94f;
@@ -75,6 +77,7 @@ namespace Boreatek.AI
             _respawnTimer = state.respawnSeconds;
             _attacking = _collapsing = false;
             _attackElapsed = _collapseElapsed = _hurtRemaining = _wakeRemaining = 0f;
+            _stepDistance = 0f;
             bool active = _currentState != AIState.Disabled;
             SetRenderersActive(active);
             SetCollidersActive(active);
@@ -145,7 +148,15 @@ namespace Boreatek.AI
                         break;
                 }
             }
-            _pose?.Animate(dt, Vector3.Distance(before, transform.position),
+            float traveled = Vector3.Distance(before, transform.position);
+            _stepDistance += traveled;
+            float stride = _isFrostGolemGuardian ? 0.78f : 0.61f;
+            if (_stepDistance >= stride)
+            {
+                _stepDistance = Mathf.Repeat(_stepDistance, stride);
+                BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemStep : SoundCue.Servo, transform.position, 0.43f);
+            }
+            _pose?.Animate(dt, traveled,
                 _attacking ? _attackElapsed / AttackDuration : 0f, 1f - _hurtRemaining / HurtDuration,
                 _wakeRemaining / WakeDuration);
             _hurtRemaining = Mathf.Max(0f, _hurtRemaining - dt);
@@ -245,6 +256,7 @@ namespace Boreatek.AI
             _attackCooldownTimer = Mathf.Max(_attackCooldownSeconds, AttackDuration);
             _attackElapsed = 0f;
             _attacking = true;
+            BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemReady : SoundCue.RobotReady, transform.position);
         }
 
         private void AdvanceAttack(float dt)
@@ -267,6 +279,7 @@ namespace Boreatek.AI
 
         private void ApplyAttackImpact()
         {
+            BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemStrike : SoundCue.RobotStrike, transform.position);
             if (_targetPlayerTemp == null || _targetPlayerTemp.CurrentHealth <= 0f ||
                 _currentState != AIState.Attack || IsVillageSafe(_targetPlayer.transform.position)) return;
             Vector3 origin = transform.position + Vector3.up * (_isFrostGolemGuardian ? 1.45f : 1.0f);
@@ -280,7 +293,10 @@ namespace Boreatek.AI
         private void AdvanceCollapse(float dt)
         {
             if (!_collapsing) return;
+            float previous = _collapseElapsed;
             _collapseElapsed += dt;
+            if (previous < CollapseDuration * 0.73f && _collapseElapsed >= CollapseDuration * 0.73f)
+                BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemStep : SoundCue.RobotStrike, transform.position, 0.84f);
             _pose?.Collapse(Mathf.Clamp01(_collapseElapsed / CollapseDuration));
             if (_collapseElapsed < CollapseDuration + 0.33f) return;
             _collapsing = false;
@@ -296,11 +312,13 @@ namespace Boreatek.AI
 
             if (_isFrostGolemGuardian && pickaxeTier < 2)
             {
+                BoreatekSoundscape.Play(SoundCue.Blocked, transform.position);
                 attacker?.PublishStatus($"🛡️ La coraza de {_enemyDisplayName} rebota el Pico Nivel 1. Usa Pico Nivel 2+ o Petardos Festivos [Q].");
                 return;
             }
 
             _currentHealth -= damage;
+            BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.Ice : SoundCue.Metal, transform.position);
             if (_currentHealth <= 0f)
             {
                 _currentState = AIState.Disabled;
@@ -308,6 +326,7 @@ namespace Boreatek.AI
                 _attacking = false;
                 _collapsing = _pose != null;
                 _collapseElapsed = 0f;
+                BoreatekSoundscape.Play(_isFrostGolemGuardian ? SoundCue.GolemOff : SoundCue.RobotOff, transform.position);
                 SetCollidersActive(false);
                 if (!_collapsing) SetRenderersActive(false);
                 attacker?.PublishStatus($"💥 ¡{_enemyDisplayName} neutralizado!");
@@ -327,6 +346,8 @@ namespace Boreatek.AI
             _attacking = _collapsing = false;
             _attackElapsed = _collapseElapsed = _hurtRemaining = 0f;
             _wakeRemaining = WakeDuration;
+            _stepDistance = 0f;
+            BoreatekSoundscape.Play(SoundCue.Reboot, transform.position, 0.84f);
             SetRenderersActive(true);
             SetCollidersActive(true);
             _pose?.Animate(0f, 0f, 0f, 0f, 1f);
