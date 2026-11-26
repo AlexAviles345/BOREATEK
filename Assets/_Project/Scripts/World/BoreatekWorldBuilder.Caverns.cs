@@ -20,8 +20,10 @@ namespace Boreatek.World
             new Vector2(0.91f, 0.53f), new Vector2(0.93f, 0.21f), new Vector2(0.959f, 0.0f)
         };
 
-        private void DressTunnel(Transform tunnel, Vector3 start, Quaternion rotation, float length, Color wallColor)
+        private void DressTunnel(Transform tunnel, Vector3 start, Quaternion rotation, float length, Color wallColor,
+            float heightScale = 1f, bool solidVault = false)
         {
+            var vault = new Batch();
             var liner = new Batch();
             Material stone = _landscape.Finish(wallColor * 0.73f);
             Material rockBand = _landscape.Finish(wallColor * 0.87f);
@@ -32,7 +34,7 @@ namespace Boreatek.World
             for (int panel = 0; panel < TunnelProfile.Length - 1; panel++)
             {
                 Vector2 a = TunnelProfile[panel], b = TunnelProfile[panel + 1];
-                liner.Quad(new Vector3(a.x, a.y, 0f), new Vector3(b.x, b.y, 0f),
+                vault.Quad(new Vector3(a.x, a.y, 0f), new Vector3(b.x, b.y, 0f),
                     new Vector3(b.x, b.y, length), new Vector3(a.x, a.y, length),
                     panel % 2 == 0 ? stone : rockBand);
             }
@@ -61,9 +63,10 @@ namespace Boreatek.World
                     liner.Frustum(end, end + Vector3.forward * (length - 0.36f), 0.09f, 0.09f, 7, copper);
                 }
             }
-            Transform shell = _landscape.Place(tunnel, "RivetedVault_PipesAndRouteLights", liner).transform;
-            shell.localPosition = start;
-            shell.localRotation = rotation;
+            Transform shell = _landscape.Place(tunnel, "Ventilation_Vault", vault, collision: solidVault).transform;
+            shell.SetLocalPositionAndRotation(start, rotation);
+            shell.localScale = new Vector3(1f, heightScale, 1f);
+            _landscape.Place(shell, "RivetedVault_PipesAndRouteLights", liner);
         }
 
         private void CloseChamberEnds(Transform chamber, Vector3 size, Color rockColor, bool hasNorthExit)

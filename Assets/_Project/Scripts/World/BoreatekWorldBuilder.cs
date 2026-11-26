@@ -371,7 +371,7 @@ namespace Boreatek.World
 
             // 1. Entrada y Rampa por los Túneles de Ventilación (Z = 15m a 45m, bajando a Y = -10m)
             BuildVentilationTunnelRamp(underground, new Vector3(0f, 0f, 15f), new Vector3(0f, -10f, 45f),
-                "Tunnel_01_VentilationTransition", new Color(0.28f, 0.25f, 0.23f));
+                "Tunnel_01_VentilationTransition", new Color(0.28f, 0.25f, 0.23f), surfaceEntrance: true);
 
             // 2. Sala de Cuevas de Nivel 1 (Centro en 0, -10, 58)
             Vector3 cave1Center = new Vector3(0f, -10f, 58f);
@@ -436,7 +436,8 @@ namespace Boreatek.World
             Vector3 start,
             Vector3 end,
             string name,
-            Color wallColor)
+            Color wallColor,
+            bool surfaceEntrance = false)
         {
             Transform tunnel = new GameObject(name).transform;
             tunnel.SetParent(parent, false);
@@ -447,24 +448,21 @@ namespace Boreatek.World
             Quaternion rot = Quaternion.LookRotation(delta.normalized);
 
             // Rampa caminable
-            GameObject ramp = CreateBox(tunnel, "Tunnel_FloorRamp", mid, new Vector3(7.5f, 0.5f, length + 1.5f), wallColor);
+            GameObject ramp = CreateBox(tunnel, "Tunnel_FloorRamp", mid,
+                new Vector3(7.5f, 0.5f, length + (surfaceEntrance ? 0f : 1.5f)), wallColor);
             ramp.transform.rotation = rot;
 
-            // Paredes laterales y techo con tuberías de cobre
-            GameObject leftWall = CreateBox(tunnel, "Tunnel_WallLeft", mid + Vector3.left * 3.8f + Vector3.up * 2.5f,
-                new Vector3(0.6f, 5.5f, length), wallColor * 0.85f);
-            leftWall.transform.rotation = rot;
+            if (surfaceEntrance)
+            {
+                DressTunnel(tunnel, start, rot, length, wallColor, heightScale: 0.7f, solidVault: true);
+                BuildCoveredMineEntrance(tunnel);
+            }
+            else
+            {
+                BuildTunnelShell(tunnel, mid, rot, length, wallColor);
+                DressTunnel(tunnel, start, rot, length, wallColor);
+            }
 
-            GameObject rightWall = CreateBox(tunnel, "Tunnel_WallRight", mid + Vector3.right * 3.8f + Vector3.up * 2.5f,
-                new Vector3(0.6f, 5.5f, length), wallColor * 0.85f);
-            rightWall.transform.rotation = rot;
-
-            GameObject ceiling = CreateBox(tunnel, "Tunnel_Ceiling", mid + Vector3.up * 5.2f,
-                new Vector3(8.2f, 0.6f, length), wallColor * 0.75f);
-            ceiling.transform.rotation = rot;
-            DressTunnel(tunnel, start, rot, length, wallColor);
-
-            // Guirnalda luminosa térmica a mitad del túnel para guiar al jugador
             GameObject stringLight = new GameObject("Tunnel_FestiveStringLight");
             stringLight.transform.SetParent(tunnel, false);
             stringLight.transform.position = mid + Vector3.up * 2.2f;
@@ -479,6 +477,22 @@ namespace Boreatek.World
             heatCol.radius = 6.5f;
             HeatSourceNode heat = stringLight.AddComponent<HeatSourceNode>();
             heat.ConfigureRuntime("Guirnalda de Túnel de Ventilación", 5.5f, 6.5f, canMeltChests: false);
+        }
+
+        private void BuildTunnelShell(Transform tunnel, Vector3 mid, Quaternion rot, float length, Color wallColor)
+        {
+            // Paredes laterales y techo con tuberías de cobre
+            GameObject leftWall = CreateBox(tunnel, "Tunnel_WallLeft", mid + Vector3.left * 3.8f + Vector3.up * 2.5f,
+                new Vector3(0.6f, 5.5f, length), wallColor * 0.85f);
+            leftWall.transform.rotation = rot;
+
+            GameObject rightWall = CreateBox(tunnel, "Tunnel_WallRight", mid + Vector3.right * 3.8f + Vector3.up * 2.5f,
+                new Vector3(0.6f, 5.5f, length), wallColor * 0.85f);
+            rightWall.transform.rotation = rot;
+
+            GameObject ceiling = CreateBox(tunnel, "Tunnel_Ceiling", mid + Vector3.up * 5.2f,
+                new Vector3(8.2f, 0.6f, length), wallColor * 0.75f);
+            ceiling.transform.rotation = rot;
         }
 
         private void BuildCavernChamber(
@@ -773,6 +787,12 @@ namespace Boreatek.World
             obj.transform.SetParent(parent, false);
             obj.transform.localPosition = localPos;
             obj.transform.localScale = scale;
+            // Primitive cylinders use capsules, which expand in height when the platform is widened.
+            CapsuleCollider capsule = obj.GetComponent<CapsuleCollider>();
+            capsule.enabled = false;
+            if (Application.isPlaying) Destroy(capsule);
+            else DestroyImmediate(capsule);
+            obj.AddComponent<MeshCollider>().sharedMesh = obj.GetComponent<MeshFilter>().sharedMesh;
             ApplyStylizedMaterial(obj.GetComponent<Renderer>(), color, emissionIntensity, 0.35f);
             return obj;
         }

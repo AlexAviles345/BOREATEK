@@ -30,8 +30,7 @@ namespace Boreatek.World
             {
                 for (int x = -124; x < 124; x += step)
                 {
-                    // The first ramp must descend below the snow deck before the deck closes above it.
-                    if (x >= -4 && x < 4 && z >= 14 && z < 34) continue;
+                    if (IsMineEntranceCutout(x, z)) continue;
                     Vector3 a = SurfacePoint(x, z), b = SurfacePoint(x + step, z);
                     Vector3 c = SurfacePoint(x + step, z + step), d = SurfacePoint(x, z + step);
                     terrain.Triangle(a, d, b, snow[SnowBand(x + 1f, z + 1f)]);

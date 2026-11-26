@@ -119,8 +119,7 @@ namespace Boreatek.World
                 for (int x = 0; x < ChunkSize; x += VertexStep)
                 {
                     float wx = origin.x + x, wz = origin.z + z;
-                    // Keep the original north opening above the first mining ramp.
-                    if (wx >= -4f && wx < 4f && wz >= 14f && wz < 34f) continue;
+                    if (BoreatekWorldBuilder.IsMineEntranceCutout(wx, wz)) continue;
                     var a = new Vector3(x, VertexHeight(wx, wz), z);
                     var b = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz), z);
                     var c = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz + VertexStep), z + VertexStep);
