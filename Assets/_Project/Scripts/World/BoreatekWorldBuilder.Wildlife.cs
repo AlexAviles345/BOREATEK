@@ -97,10 +97,10 @@ namespace Boreatek.World
             out Transform tail, out Transform[] hinges, out Transform[] feet)
         {
             Material velvet = CharacterFinish(114, 108, 143, smoothness: 0.13f);
-            Material ash = CharacterFinish(183, 192, 211, smoothness: 0.17f);
-            Material lavender = CharacterFinish(125, 150, 206, smoothness: 0.30f, glow: 0.19f);
-            Material edge = CharacterFinish(66, 77, 129, smoothness: 0.23f);
-            Material eye = CharacterFinish(182, 237, 242, smoothness: 0.38f, glow: 0.43f);
+            Material ash = CharacterFinish(156, 171, 196, smoothness: 0.09f);
+            Material lavender = CharacterFinish(113, 141, 192, smoothness: 0.07f);
+            Material edge = CharacterFinish(66, 77, 129, smoothness: 0.09f);
+            Material eye = CharacterFinish(139, 199, 214, smoothness: 0.10f, glow: 0.10f);
             Material ink = CharacterFinish(48, 56, 83, smoothness: 0.23f);
             var torso = new Batch();
             torso.Ellipsoid(new Vector3(0f, 0f, -0.20f), new Vector3(0.15f, 0.14f, 0.43f), 10, 6, velvet);
@@ -143,6 +143,7 @@ namespace Boreatek.World
         private static void AddMothWing(BoreatekLandscapeGeometry owner, Transform hinge, float side, Material ash,
             Material lavender, Material edge, Material ink, Material pupil)
         {
+            const float halfThickness = 0.018f;
             Vector3 P(float x, float y, float z) => new(side * x, y, z);
             var wing = new Batch();
             Vector3 heart = P(0.40f, 0.045f, 0.035f);
@@ -152,19 +153,50 @@ namespace Boreatek.World
                 P(0.99f, 0.005f, 0.32f), P(0.81f, -0.035f, 0.04f), P(0.78f, -0.028f, -0.14f),
                 P(0.49f, -0.035f, -0.55f), P(0.20f, -0.017f, -0.49f), P(0f, 0f, -0.20f)
             };
+            void Skin(Vector3 a, Vector3 b, Vector3 c, Material material, float face)
+            {
+                Vector3 offset = Vector3.up * (face * halfThickness);
+                if (Vector3.Cross(b - a, c - a).y * face < 0f) (b, c) = (c, b);
+                wing.Triangle(a + offset, b + offset, c + offset, material);
+            }
+
+            // The eye spots share the skin's vertices with the surrounding scales.
+            void Pattern(Vector3 a, Vector3 b, Vector3 c, Material color, float face)
+            {
+                Vector3 center = (a + b + c) / 3f;
+                Vector3[] rim = { a, (a + b) * 0.5f, b, (b + c) * 0.5f, c, (c + a) * 0.5f };
+                for (int segment = 0; segment < rim.Length; segment++)
+                {
+                    Vector3 start = rim[segment], end = rim[(segment + 1) % rim.Length];
+                    float size = segment % 2 == 0 ? 0.40f : 0.75f;
+                    float nextSize = segment % 2 == 0 ? 0.75f : 0.40f;
+                    Vector3 darkA = Vector3.Lerp(center, start, size), darkB = Vector3.Lerp(center, end, nextSize);
+                    Vector3 eyeA = Vector3.Lerp(center, darkA, 0.51f), eyeB = Vector3.Lerp(center, darkB, 0.51f);
+                    Skin(start, end, darkB, color, face);
+                    Skin(start, darkB, darkA, color, face);
+                    Skin(darkA, darkB, eyeB, ink, face);
+                    Skin(darkA, eyeB, eyeA, ink, face);
+                    Skin(eyeA, eyeB, center, pupil, face);
+                }
+            }
+
+            Vector3 thickness = Vector3.up * halfThickness;
             for (int i = 0; i < outline.Length; i++)
             {
                 Vector3 a = outline[i], b = outline[(i + 1) % outline.Length];
                 Vector3 innerA = Vector3.Lerp(heart, a, 0.83f), innerB = Vector3.Lerp(heart, b, 0.83f);
                 Material vein = i % 3 == 0 ? ash : lavender;
-                wing.Quad(innerA, a, b, innerB, edge);
-                wing.Quad(innerB, b, a, innerA, edge);
-                wing.Triangle(heart, innerA, innerB, vein);
-                wing.Triangle(heart, innerB, innerA, vein);
+                foreach (float face in new[] { 1f, -1f })
+                {
+                    Skin(innerA, a, b, edge, face);
+                    Skin(innerA, b, innerB, edge, face);
+                    if (i == 2 || i == 6) Pattern(heart, innerA, innerB, vein, face);
+                    else Skin(heart, innerA, innerB, vein, face);
+                }
+                Vector3 outside = (a + b) * 0.5f - heart;
+                if (Vector3.Dot(Vector3.Cross(-thickness, b - a), outside) < 0f) (a, b) = (b, a);
+                wing.Quad(a + thickness, a - thickness, b - thickness, b + thickness, edge);
             }
-            wing.Ellipsoid(P(0.63f, 0.045f, 0.23f), new Vector3(0.14f, 0.024f, 0.13f), 9, 4, ink);
-            wing.Ellipsoid(P(0.63f, 0.068f, 0.23f), new Vector3(0.062f, 0.013f, 0.068f), 8, 4, pupil);
-            wing.Ellipsoid(P(0.40f, 0.022f, -0.31f), new Vector3(0.092f, 0.020f, 0.084f), 7, 4, lavender);
             owner.Place(hinge, "Escamas_Y_Ocelos", wing);
         }
     }
