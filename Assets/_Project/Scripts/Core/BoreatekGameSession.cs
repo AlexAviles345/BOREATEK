@@ -276,14 +276,6 @@ namespace Boreatek.Core
             }
         }
 
-        internal void SaveGame()
-        {
-            if (_screen == Screen.Paused && WriteSave(_activeSaveId, _activeSaveName))
-            {
-                _ui.SetSessionMessage("Partida guardada.");
-            }
-        }
-
         internal void ReturnToMainMenu()
         {
             if (_leavingScene || (_screen != Screen.Paused && _screen != Screen.Dead))

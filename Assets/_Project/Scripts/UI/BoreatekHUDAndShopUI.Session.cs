@@ -47,9 +47,8 @@ namespace Boreatek.UI
             ApplyMetalPanel(_gameplayMenuCard, ColDeepSteel, ColSteelRim);
 
             _pauseMenu = CreateSessionPanel(_gameplayMenuCard, "PauseMenu", "En pausa", ColIceCyan);
-            _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 165f, ColBrassGold, session.Resume);
-            CreateSessionButton(_pauseMenu, "SaveGame", "Guardar partida", 231f, ColBlueSteel, session.SaveGame);
-            CreateSessionButton(_pauseMenu, "MainMenu", "Guardar y volver al menú", 297f, ColDeepSteel, session.ReturnToMainMenu);
+            _resumeButton = CreateSessionButton(_pauseMenu, "Resume", "Reanudar", 174f, ColBrassGold, session.Resume);
+            CreateSessionButton(_pauseMenu, "MainMenu", "Guardar y volver al menú", 248f, ColDeepSteel, session.ReturnToMainMenu);
 
             _deathMenu = CreateSessionPanel(_gameplayMenuCard, "DeathMenu", "Has muerto", ColCandyRed);
             _respawnButton = CreateSessionButton(_deathMenu, "Respawn", "Reaparecer en la aldea", 182f, ColBrassGold, session.Respawn);
