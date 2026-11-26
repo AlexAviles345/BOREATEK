@@ -1,0 +1,260 @@
+using System.Collections.Generic;
+using Boreatek.Core;
+using UnityEngine;
+using Batch = Boreatek.World.BoreatekLandscapeGeometry.Batch;
+
+namespace Boreatek.World
+{
+    public sealed partial class BoreatekSurfaceChunks : MonoBehaviour
+    {
+        internal const int ChunkSize = 64;
+        private const int VertexStep = 4;
+        private const int GridOffsetZ = -2;
+        private const int ViewRadius = 4;
+        private const int RetentionRadius = ViewRadius + 1;
+        private const int ChunksPerFrame = 2;
+
+        private readonly Dictionary<Vector2Int, Transform> _chunks = new Dictionary<Vector2Int, Transform>();
+        private readonly List<Vector2Int> _pending = new List<Vector2Int>();
+        private readonly List<Vector2Int> _retired = new List<Vector2Int>();
+        private Transform _traveler;
+        private BoreatekWorldBuilder _builder;
+        private BoreatekLandscapeGeometry _sharedMaterials;
+        private Material _snow;
+        private Material _rock;
+        private Material _candyAccent;
+        private int _seed;
+        private Vector2 _noiseOffset;
+        private Vector2Int _center;
+        private int _queueIndex;
+        private bool _hasCenter;
+
+        internal void Initialize(Transform traveler, BoreatekWorldBuilder builder, int seed,
+            BoreatekLandscapeGeometry materials, Material snow)
+        {
+            _traveler = traveler;
+            _builder = builder;
+            _sharedMaterials = materials;
+            _seed = seed;
+            _snow = snow;
+            _rock = materials.Finish(new Color32(81, 112, 133, 255));
+            _candyAccent = materials.Finish(new Color32(219, 77, 103, 255), 0.36f);
+            _noiseOffset = new Vector2((CellSeed(seed, 17, 50) & 4095) * 0.27f, (CellSeed(seed, 88, 13) & 4095) * 0.27f);
+            EnsureGroundAt(traveler.position);
+        }
+
+        internal static Vector2Int SectorAt(Vector3 position) =>
+            new Vector2Int(Mathf.FloorToInt(position.x / ChunkSize),
+                Mathf.FloorToInt((position.z - GridOffsetZ) / ChunkSize));
+
+        private static Vector3 SectorOrigin(Vector2Int sector) =>
+            new Vector3(sector.x * (float)ChunkSize, 0f, sector.y * (float)ChunkSize + GridOffsetZ);
+
+        internal static bool IsFrontier(float x, float z) => Mathf.Abs(x) > 124f || Mathf.Abs(z) > 126f;
+
+        internal void EnsureGroundAt(Vector3 position)
+        {
+            Vector2Int sector = SectorAt(position);
+            if (_hasCenter && sector == _center) return;
+
+            _center = sector;
+            _hasCenter = true;
+            _pending.Clear();
+            _queueIndex = 0;
+            for (int distance = 0; distance <= ViewRadius; distance++)
+            {
+                for (int z = -distance; z <= distance; z++)
+                {
+                    for (int x = -distance; x <= distance; x++)
+                    {
+                        if (Mathf.Max(Mathf.Abs(x), Mathf.Abs(z)) != distance) continue;
+                        Vector2Int wanted = sector + new Vector2Int(x, z);
+                        // The landing sector and its neighbors must already collide after loading or respawning.
+                        if (distance <= 1) Load(wanted);
+                        else if (!_chunks.ContainsKey(wanted)) _pending.Add(wanted);
+                    }
+                }
+            }
+
+            _retired.Clear();
+            foreach (Vector2Int existing in _chunks.Keys)
+            {
+                Vector2Int delta = existing - sector;
+                if (Mathf.Max(Mathf.Abs(delta.x), Mathf.Abs(delta.y)) > RetentionRadius) _retired.Add(existing);
+            }
+            foreach (Vector2Int retired in _retired)
+            {
+                Transform chunk = _chunks[retired];
+                RememberNodes(retired);
+                UnloadWildlife(retired);
+                SetExtractorsRemote(retired);
+                _frontierNodes.Remove(retired);
+                _caveLayouts.Remove(retired);
+                _chunks.Remove(retired);
+                chunk.gameObject.SetActive(false);
+                Destroy(chunk.gameObject);
+            }
+        }
+
+        private void Update()
+        {
+            if (_traveler == null || Time.timeScale <= 0f) return;
+            UpdateRemoteExtractors();
+            if (_traveler.position.y < -1.8f) return;
+
+            EnsureGroundAt(_traveler.position);
+            for (int i = 0; i < ChunksPerFrame && _queueIndex < _pending.Count; i++)
+            {
+                Load(_pending[_queueIndex++]);
+            }
+        }
+
+        private void Load(Vector2Int sector)
+        {
+            if (_chunks.ContainsKey(sector)) return;
+            var root = new GameObject($"Surface_{sector.x}_{sector.y}");
+            root.transform.SetParent(transform, false);
+            Vector3 origin = SectorOrigin(sector);
+            root.transform.localPosition = origin;
+            var owner = root.AddComponent<BoreatekLandscapeGeometry>();
+            CaveSite? cave = PlanCave(sector, origin);
+            var snowfield = new Batch();
+            const int stride = ChunkSize / VertexStep + 1;
+            var colors = new Color[stride * stride];
+            for (int z = 0; z < stride; z++)
+            {
+                for (int x = 0; x < stride; x++)
+                {
+                    float wx = origin.x + x * VertexStep, wz = origin.z + z * VertexStep;
+                    colors[z * stride + x] = SnowColor(wx, wz);
+                }
+            }
+
+            for (int z = 0; z < ChunkSize; z += VertexStep)
+            {
+                for (int x = 0; x < ChunkSize; x += VertexStep)
+                {
+                    float wx = origin.x + x, wz = origin.z + z;
+                    if (BoreatekWorldBuilder.IsMineEntranceCutout(wx, wz) ||
+                        (cave.HasValue && cave.Value.OpensTerrainAt(wx + 2f, wz + 2f))) continue;
+                    var a = new Vector3(x, VertexHeight(wx, wz), z);
+                    var b = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz), z);
+                    var c = new Vector3(x + VertexStep, VertexHeight(wx + VertexStep, wz + VertexStep), z + VertexStep);
+                    var d = new Vector3(x, VertexHeight(wx, wz + VertexStep), z + VertexStep);
+                    int i = z / VertexStep * stride + x / VertexStep;
+                    BoreatekWorldBuilder.PaintSnowCell(snowfield, a, b, c, d, _snow,
+                        colors[i], colors[i + 1], colors[i + stride + 1], colors[i + stride]);
+                }
+            }
+            owner.Place(root.transform, "ArcticSnowfield", snowfield, collision: true);
+            if (cave.HasValue) BuildCave(sector, root.transform, owner, cave.Value);
+            DressFrontier(owner, root.transform, sector, origin, cave);
+            _chunks.Add(sector, root.transform);
+            BuildFrontierResources(sector, owner, root.transform, origin);
+            SpawnSectorWildlife(sector, root.transform, owner, origin);
+            SpawnSectorInstallations(sector, root.transform);
+        }
+
+        private void DressFrontier(BoreatekLandscapeGeometry owner, Transform root, Vector2Int sector, Vector3 origin, CaveSite? cave)
+        {
+            var random = new System.Random(CellSeed(_seed, sector.x, sector.y));
+            var features = new Batch();
+            bool hasFeatures = false;
+            for (int i = 0; i < ScenerySlots; i++)
+            {
+                float x = (float)random.NextDouble() * 60f + 2f;
+                float z = (float)random.NextDouble() * 60f + 2f;
+                float scale = (float)random.NextDouble();
+                float wx = x + origin.x, wz = z + origin.z;
+                if (!IsFrontier(wx, wz)) continue;
+                if (cave.HasValue && cave.Value.BlocksDressingAt(wx, wz)) continue;
+                float ground = GroundHeight(wx, wz);
+                var foot = new Vector3(x, ground, z);
+                BiomeType biome = DressingBiome(wx, wz, scale);
+                if (CanGrowTree(biome, i))
+                {
+                    var pine = _builder.SpawnSceneryPine(root, origin + foot - Vector3.up * FootingDrop(wx, wz, 0.42f),
+                        3.4f + scale * 3.5f,
+                        birch: biome == BiomeType.FrostBirchForest);
+                    AttachResource(sector, LegacyResourceSlots + i, pine);
+                }
+                else
+                {
+                    float drop = FootingDrop(wx, wz, biome is BiomeType.GlacialFlats or BiomeType.SnowDunes ? 3.4f : 2.4f);
+                    if (drop < 1.45f)
+                        AddNorthernFormation(features, foot - Vector3.up * (0.14f + drop), biome, scale, i);
+                }
+
+                float detailX = wx + 1.4f;
+                if (!cave.HasValue || !cave.Value.BlocksDressingAt(detailX, wz))
+                {
+                    float size = 0.64f + scale * 0.62f;
+                    var detail = new Vector3(x + 1.4f, GroundHeight(detailX, wz), z);
+                    Vector3 normal = GroundNormal(detailX, wz);
+                    if (normal.y > 0.62f)
+                        _builder.AddBiomeTerrainDetail(features, detail, biome, size, _sharedMaterials, normal);
+                }
+                hasFeatures = true;
+            }
+            if (hasFeatures) owner.Place(root, "WindScouredRockAndSnow", features, collision: true);
+        }
+
+        private float FootingDrop(float x, float z, float radius)
+        {
+            float center = GroundHeight(x, z);
+            float lowest = center;
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i * Mathf.PI / 4f;
+                lowest = Mathf.Min(lowest, GroundHeight(x + Mathf.Cos(angle) * radius, z + Mathf.Sin(angle) * radius));
+            }
+            return center - lowest;
+        }
+
+        private Vector3 GroundNormal(float x, float z)
+        {
+            const float sample = 0.36f;
+            return new Vector3(GroundHeight(x - sample, z) - GroundHeight(x + sample, z), sample * 2f,
+                GroundHeight(x, z - sample) - GroundHeight(x, z + sample)).normalized;
+        }
+
+        internal float GroundHeight(float x, float z)
+        {
+            float tx = Mathf.Floor(x / VertexStep) * VertexStep;
+            float tz = Mathf.Floor((z - GridOffsetZ) / VertexStep) * VertexStep + GridOffsetZ;
+            float u = (x - tx) / VertexStep, v = (z - tz) / VertexStep;
+            float a = VertexHeight(tx, tz), b = VertexHeight(tx + VertexStep, tz);
+            float d = VertexHeight(tx, tz + VertexStep);
+            if (u + v <= 1f) return a + u * (b - a) + v * (d - a);
+            float c = VertexHeight(tx + VertexStep, tz + VertexStep);
+            return c + (1f - u) * (d - c) + (1f - v) * (b - c);
+        }
+
+        private float VertexHeight(float x, float z)
+        {
+            Vector3 starter = BoreatekWorldBuilder.SurfacePoint(Mathf.Clamp(x, -124f, 124f), Mathf.Clamp(z, -126f, 126f));
+            if (!IsFrontier(x, z)) return starter.y;
+
+            float distanceFromStarter = Mathf.Max(Mathf.Abs(x) - 124f, Mathf.Abs(z) - 126f);
+            float fade = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 48f, distanceFromStarter));
+            float nx = x + _noiseOffset.x, nz = z + _noiseOffset.y;
+            float plains = Mathf.PerlinNoise(nx * 0.0064f, nz * 0.0064f);
+            float ridge = Mathf.PerlinNoise(nx * 0.018f + 42f, nz * 0.018f + 21f);
+            float drift = Mathf.PerlinNoise(nx * 0.061f + 11f, nz * 0.058f + 78f);
+            float elevation = 1.1f + 12f * plains + 28f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.46f, 0.91f, ridge)) + 1.4f * drift;
+            return Mathf.Lerp(starter.y, elevation, fade);
+        }
+
+        internal static int CellSeed(int seed, int x, int z)
+        {
+            unchecked
+            {
+                uint hash = (uint)seed ^ ((uint)x * 0x9E3779B9u) ^ ((uint)z * 0x85EBCA6Bu);
+                hash ^= hash >> 16;
+                hash *= 0x7FEB352Du;
+                hash ^= hash >> 15;
+                return (int)hash;
+            }
+        }
+    }
+}
