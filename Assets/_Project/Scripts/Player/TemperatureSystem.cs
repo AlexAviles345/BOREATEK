@@ -166,6 +166,13 @@ namespace Boreatek.Player
                 {
                     BiomeType.GiantCandyForest => (1.5f, "Bosque de Caramelos de la Frontera"),
                     BiomeType.SleighGraveyard => (2.5f, "Páramo de Trineos de la Frontera"),
+                    BiomeType.GlacialFlats => (1.45f, "Planicies de hielo"),
+                    BiomeType.SnowDunes => (1.15f, "Dunas de nieve"),
+                    BiomeType.SnowyTaiga => (1.05f, "Taiga nevada"),
+                    BiomeType.GlacialMoraine => (1.55f, "Morrenas glaciares"),
+                    BiomeType.FrostBirchForest => (1.12f, "Bosque de abedules escarchados"),
+                    BiomeType.FrostValley => (1.23f, "Valle de escarcha"),
+                    BiomeType.AlpineRidges => (1.74f, "Crestas alpinas"),
                     _ => (1.0f, "Tundra de la Frontera")
                 };
             }

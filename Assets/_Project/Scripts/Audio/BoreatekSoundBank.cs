@@ -9,7 +9,7 @@ namespace Boreatek.Audio
         RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone
     }
 
-    internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm }
+    internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm, FrozenPlain, Forest, Ridge }
 
     internal static class BoreatekSoundBank
     {
@@ -151,6 +151,9 @@ namespace Boreatek.Audio
                 SoundBed.Cavern  => (63, 141, 0.31f, 2f, 0.100f),
                 SoundBed.Geode   => (83, 208, 0.22f, 4f, 0.082f),
                 SoundBed.Abyss   => (34, 77, 0.59f, 3f, 0.140f),
+                SoundBed.FrozenPlain => (60, 117, 0.83f, 2f, 0.068f),
+                SoundBed.Forest => (66, 143, 0.58f, 3f, 0.062f),
+                SoundBed.Ridge => (43, 126, 1.02f, 5f, 0.092f),
                 _                => (43, 204, 1.28f, 5f, 0.130f)
             };
             const int duration = 8;

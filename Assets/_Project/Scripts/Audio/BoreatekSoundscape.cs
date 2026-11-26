@@ -186,7 +186,13 @@ namespace Boreatek.Audio
         private void LateUpdate()
         {
             BiomeType biome = _traveler.CurrentBiome;
-            SoundBed next = _title ? SoundBed.Title : (SoundBed)biome;
+            SoundBed next = _title ? SoundBed.Title : biome switch
+            {
+                BiomeType.GlacialFlats or BiomeType.FrostValley => SoundBed.FrozenPlain,
+                BiomeType.SnowyTaiga or BiomeType.FrostBirchForest => SoundBed.Forest,
+                BiomeType.SnowDunes or BiomeType.GlacialMoraine or BiomeType.AlpineRidges => SoundBed.Ridge,
+                _ => (SoundBed)biome
+            };
             if (_selectedBed != next) SwitchBed(next);
             float dt = Time.unscaledDeltaTime;
             UpdateWorldVoices(dt);
@@ -197,7 +203,7 @@ namespace Boreatek.Audio
                 source.volume = Mathf.MoveTowards(source.volume, target, dt * 0.38f);
                 if (i != _selected && source.volume <= 0f && source.isPlaying) source.Stop();
             }
-            bool blizzard = !_title && biome > BiomeType.SantaIndustrialVillage && biome < BiomeType.VentilationTunnels &&
+            bool blizzard = !_title && biome != BiomeType.SantaIndustrialVillage && !BiomeRules.IsUnderground(biome) &&
                 DayNightCycleManager.Instance != null && DayNightCycleManager.Instance.IsBlindBlizzardActive;
             if (blizzard && !_storm.isPlaying) StartLoop(_storm, SoundBed.Storm);
             _storm.volume = Mathf.MoveTowards(_storm.volume, blizzard ? (_running ? 0.46f : 0.12f) : 0f, dt * 0.31f);

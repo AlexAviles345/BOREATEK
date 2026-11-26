@@ -239,7 +239,7 @@ namespace Boreatek.Core
             float cycleProgress = NormalizedCycleTime;
             float night = NightSkyWeight;
             BiomeType biome = _lightingTraveler != null ? _lightingTraveler.CurrentBiome : BiomeType.OuterTundra;
-            bool underground = biome >= BiomeType.VentilationTunnels;
+            bool underground = BiomeRules.IsUnderground(biome);
 
             if (_directionalLight != null)
             {

@@ -21,7 +21,7 @@ namespace Boreatek.World
             public HarvestableNode.SaveState state;
         }
 
-        private BiomeType FrontierBiome(float x, float z)
+        private BiomeType LegacyFrontierBiome(float x, float z)
         {
             float climate = FrontierClimate(x, z);
             if (climate > 0.62f) return BiomeType.GiantCandyForest;
@@ -44,7 +44,7 @@ namespace Boreatek.World
                 if (!IsFrontier(x, z)) continue;
 
                 Vector3 foot = new Vector3(x, GroundHeight(x, z), z);
-                HarvestableNode node = _builder.CreateFrontierResource(root, owner, foot, FrontierBiome(x, z), type, yaw);
+                HarvestableNode node = _builder.CreateFrontierResource(root, owner, foot, LegacyFrontierBiome(x, z), type, yaw);
                 AttachResource(sector, slot, node);
             }
         }

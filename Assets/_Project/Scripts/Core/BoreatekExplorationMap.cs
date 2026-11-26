@@ -93,7 +93,7 @@ namespace Boreatek.Core
             Color32 shade;
             if (layer == 0)
             {
-                Color tint = BoreatekWorldBuilder.SnowTint(_surface.SnowWeights(x, z), x, z);
+                Color tint = _surface.SnowColor(x, z);
                 float relief = Mathf.Clamp01((_surface.GroundHeight(x, z) + 1f) * 0.034f);
                 shade = Color.Lerp(tint * 0.72f, tint, 0.24f + relief * 0.67f);
             }

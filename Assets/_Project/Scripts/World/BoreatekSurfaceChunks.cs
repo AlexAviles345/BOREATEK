@@ -122,7 +122,7 @@ namespace Boreatek.World
                 for (int x = 0; x < stride; x++)
                 {
                     float wx = origin.x + x * VertexStep, wz = origin.z + z * VertexStep;
-                    colors[z * stride + x] = BoreatekWorldBuilder.SnowTint(SnowWeights(wx, wz), wx, wz);
+                    colors[z * stride + x] = SnowColor(wx, wz);
                 }
             }
 
@@ -164,37 +164,18 @@ namespace Boreatek.World
                 if (!IsFrontier(wx, wz)) continue;
                 if (cave.HasValue && cave.Value.BlocksDressingAt(wx, wz)) continue;
                 var foot = new Vector3(x, GroundHeight(wx, wz) - 0.11f, z);
-                BiomeType biome = BoreatekWorldBuilder.SampleSnowBiome(SnowWeights(wx, wz), scale);
-                if (biome == BiomeType.GiantCandyForest && i % 3 != 0)
+                BiomeType biome = DressingBiome(wx, wz, scale);
+                if (CanGrowTree(biome, i))
                 {
-                    features.Frustum(foot, foot + new Vector3(-0.31f, 1f + scale * 1.35f, 0.44f),
-                        0.42f + scale * 0.34f, 0f, 5, _candyAccent);
-                }
-                else if (biome == BiomeType.SleighGraveyard || i % 3 == 0)
-                {
-                    features.Frustum(foot, foot + new Vector3(0.3f, 0.45f + scale * 0.7f, 0.25f), 0.83f + scale, 0.25f, 6, _rock);
-                }
-                else
-                {
-                    var pine = _builder.SpawnSceneryPine(root, origin + foot + Vector3.up * 0.11f, 3.4f + scale * 3.5f);
+                    var pine = _builder.SpawnSceneryPine(root, origin + foot + Vector3.up * 0.11f, 3.4f + scale * 3.5f,
+                        birch: biome == BiomeType.FrostBirchForest);
                     AttachResource(sector, LegacyResourceSlots + i, pine);
                 }
+                else AddNorthernFormation(features, foot, biome, scale, i);
                 _builder.AddBiomeTerrainDetail(features, foot + Vector3.right * 1.4f, biome, 0.64f + scale * 0.62f, _sharedMaterials);
                 hasFeatures = true;
             }
             if (hasFeatures) owner.Place(root, "WindScouredRockAndSnow", features, collision: true);
-        }
-
-        internal Vector4 SnowWeights(float x, float z)
-        {
-            Vector4 starter = BoreatekWorldBuilder.StarterSnowWeights(x, z);
-            float edge = Mathf.Max(Mathf.Abs(x) - 124f, Mathf.Abs(z) - 126f);
-            if (edge <= 0f) return starter;
-            float climate = FrontierClimate(x, z);
-            float candy = BoreatekWorldBuilder.EaseSnow(0.55f, 0.69f, climate);
-            float wreckage = 1f - BoreatekWorldBuilder.EaseSnow(0.28f, 0.44f, climate);
-            var frontier = new Vector4(0f, 1f - candy - wreckage, candy, wreckage);
-            return Vector4.Lerp(starter, frontier, BoreatekWorldBuilder.EaseSnow(0f, 44f, edge));
         }
 
         internal float GroundHeight(float x, float z)

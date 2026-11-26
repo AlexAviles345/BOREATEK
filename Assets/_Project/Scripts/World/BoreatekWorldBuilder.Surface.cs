@@ -191,23 +191,43 @@ namespace Boreatek.World
             }
         }
 
-        internal HarvestableNode SpawnSceneryPine(Transform parent, Vector3 position, float height, string sceneryId = null)
+        internal HarvestableNode SpawnSceneryPine(Transform parent, Vector3 position, float height, string sceneryId = null,
+            bool birch = false)
         {
             position = KeepClearOfVillageBuildings(position);
-            var tree = new GameObject("Pino_Nevado");
+            var tree = new GameObject(birch ? "Abedul_Escarchado" : "Pino_Nevado");
             tree.transform.SetParent(parent, false);
             tree.transform.position = position;
             int size = Mathf.Clamp(Mathf.RoundToInt(height * 2f), 5, 17);
-            _landscape.PlaceShared(tree.transform, $"FrostedPine_{size}", () =>
+            _landscape.PlaceShared(tree.transform, birch ? $"FrostedBirch_{size}" : $"FrostedPine_{size}", () =>
             {
                 var mesh = new Batch();
-                AddFrostedPine(mesh, Vector3.down * 0.07f, size * 0.5f, marked: false);
+                if (birch) AddFrostBirch(mesh, size * 0.5f);
+                else AddFrostedPine(mesh, Vector3.down * 0.07f, size * 0.5f, marked: false);
                 return mesh;
             }, collision: true);
             var node = tree.AddComponent<HarvestableNode>();
             node.SceneryId = sceneryId;
             node.InitializeRuntime(_nodeConfigs["pine"]);
             return node;
+        }
+
+        private void AddFrostBirch(Batch tree, float height)
+        {
+            Material bark = _landscape.Finish(new Color32(179, 192, 201, 255));
+            Material scars = _landscape.Finish(new Color32(82, 114, 132, 255));
+            Material ice = _landscape.Finish(new Color32(172, 211, 226, 255));
+            Vector3 crown = new Vector3(0.12f, height * 0.91f, 0.12f);
+            tree.Frustum(Vector3.down * 0.09f, crown, height * 0.042f, 0.04f, 6, bark);
+            for (int fork = 0; fork < 5; fork++)
+            {
+                float angle = fork * 2.39f;
+                Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                Vector3 trunk = Vector3.up * (height * (0.43f + fork * 0.085f));
+                Vector3 tip = trunk + direction * (height * (0.20f - fork * 0.024f)) + Vector3.up * height * 0.19f;
+                tree.Frustum(trunk, tip, 0.10f, 0.022f, 5, fork % 2 == 0 ? bark : scars);
+                tree.Ellipsoid(tip, new Vector3(0.72f, 0.47f, 0.66f) * (height * 0.16f), 6, 4, ice);
+            }
         }
 
         internal void AddFrostedPine(Batch trees, Vector3 foot, float height, bool marked)

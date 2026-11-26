@@ -29,7 +29,21 @@ namespace Boreatek.Core
         VentilationTunnels = 4,
         IceCavesLevel1 = 5,
         BlueIceGeodeLevel2 = 6,
-        LuminousCoreAbyssLevel3 = 7
+        LuminousCoreAbyssLevel3 = 7,
+        GlacialFlats = 8,
+        SnowDunes = 9,
+        SnowyTaiga = 10,
+        GlacialMoraine = 11,
+        FrostBirchForest = 12,
+        FrostValley = 13,
+        AlpineRidges = 14
+    }
+
+    internal static class BiomeRules
+    {
+        internal static bool IsUnderground(BiomeType biome) =>
+            biome is BiomeType.VentilationTunnels or BiomeType.IceCavesLevel1 or
+                BiomeType.BlueIceGeodeLevel2 or BiomeType.LuminousCoreAbyssLevel3;
     }
 
     /// <summary>

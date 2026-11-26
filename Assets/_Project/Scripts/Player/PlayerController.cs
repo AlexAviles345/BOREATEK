@@ -307,7 +307,7 @@ namespace Boreatek.Player
                 0.72f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             SoundCue surface = FootstepSurface(foundGround ? ground.collider : null);
             BoreatekSoundscape.Play(surface, strength: sprinting ? 0.22f : 0.15f);
-            if (foundGround) _snowFootprints?.Step(ground, IsSnowfield(ground.collider), transform.forward);
+            if (foundGround) _snowFootprints?.Step(ground, surface == SoundCue.StepSnow && IsSnowfield(ground.collider), transform.forward);
         }
 
         internal void BindFootprints(SnowFootprints footprints) => _snowFootprints = footprints;
@@ -322,7 +322,7 @@ namespace Boreatek.Player
                 {
                     case "Entrance_Bridge": return SoundCue.StepPlanks;
                     case "ArcticSnowfield":
-                    case "ArcticSnowfields": return SoundCue.StepSnow;
+                    case "ArcticSnowfields": return _temperatureSystem.CurrentBiome == BiomeType.GlacialFlats ? SoundCue.StepIce : SoundCue.StepSnow;
                     case "Cueva_Procedural_Rampa_Y_Camara": return SoundCue.StepIce;
                     case "Tunnel_FloorRamp":
                     case "Village_ThermalPlatform":
@@ -336,7 +336,7 @@ namespace Boreatek.Player
             return _temperatureSystem.CurrentBiome switch
             {
                 BiomeType.SantaIndustrialVillage or BiomeType.VentilationTunnels => SoundCue.StepStone,
-                >= BiomeType.IceCavesLevel1 => SoundCue.StepIce,
+                var biome when BiomeRules.IsUnderground(biome) || biome == BiomeType.GlacialFlats => SoundCue.StepIce,
                 _ => SoundCue.StepSnow
             };
         }
