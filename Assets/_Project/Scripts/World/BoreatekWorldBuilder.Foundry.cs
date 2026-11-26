@@ -54,10 +54,17 @@ namespace Boreatek.World
             BuildFoundryWing(campus, "Almacen", new Vector3(9.15f, 0f, 3.25f), 6.4f, 7.7f, 1, m);
             BuildFoundryWing(campus, "Sala_De_Vapor", new Vector3(10.05f, 0f, 10.0f), 5.2f, 5.4f, 1, m);
             var gallery = new Batch();
-            gallery.Box(new Vector3(6.68f, FoundryFloor - 0.11f, 9.56f), new Vector3(1.66f, 0.22f, 2.60f), m.Iron);
+            gallery.Box(new Vector3(6.68f, FoundryFloor - 0.11f, 9.56f), new Vector3(1.85f, 0.22f, 2.79f), m.Iron);
+            foreach (float z in new[] { 8.20f, 10.93f })
+            {
+                Wall(gallery, true, z, 5.87f, 7.49f, FoundryFloor, 2.75f, m.Timber);
+                AddFoundryWindow(gallery, new Vector3(6.68f, 1.82f, z), 0.76f, 0.72f, Quaternion.identity, m);
+            }
+            gallery.Box(new Vector3(6.68f, 2.81f, 9.56f), new Vector3(1.94f, 0.19f, 3.04f), m.Roof);
             _landscape.Place(campus, "Walkway_To_Steam_Room", gallery, collision: true);
             BuildFoundryIceOutcrops(campus, m);
             AddFoundryStations(campus, m);
+            BuildVillageNeighborhood(campus, m);
         }
 
         private void BuildFoundryApproach(Transform campus, FoundryMaterials m)
@@ -112,7 +119,7 @@ namespace Boreatek.World
             {
                 for (int i = 0; i < 5; i++)
                 {
-                    float x = side * (17.2f + i * 0.47f);
+                    float x = side * (25.6f + i * 0.65f);
                     float z = 5.9f + i * 2.17f;
                     Vector3 foot = SurfacePoint(x, z) - Vector3.up * 0.35f;
                     Vector3 ridge = foot + new Vector3(side * 0.82f, 1.9f + i * 0.55f, 0.21f);

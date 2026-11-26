@@ -84,6 +84,7 @@ namespace Boreatek.World
                 _session.Initialize(player, ui, _worldRoot, _worldSeed, surface);
                 player.GetComponent<TemperatureSystem>().SetSurfaceChunks(surface);
                 surface.Initialize(player.transform, this, _worldSeed, _landscape, CreateSnowMaterial());
+                _worldRoot.gameObject.AddComponent<FoundryNavigation>().Build(_worldRoot.Find("Biome_01_SantaIndustrialVillage"));
             }
         }
 

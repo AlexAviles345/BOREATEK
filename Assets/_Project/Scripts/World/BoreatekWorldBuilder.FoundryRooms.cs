@@ -73,15 +73,17 @@ namespace Boreatek.World
             _landscape.Place(hall, "Trusses_Pipes_Windows_And_Lanterns", trim);
         }
 
-        private void BuildFoundryWing(Transform campus, string name, Vector3 position, float width, float depth,
-            int side, FoundryMaterials m)
+        private Transform BuildFoundryWing(Transform campus, string name, Vector3 position, float width, float depth,
+            int side, FoundryMaterials m, string sign = null)
         {
             Transform room = CharacterPart(campus, name, position);
             var shell = new Batch();
             var trim = new Batch();
             float x = width * 0.5f, z = depth * 0.5f;
             const float eave = 3.47f;
-            shell.Box(new Vector3(0f, FoundryFloor - 0.15f, 0f), new Vector3(width, 0.30f, depth), m.Stone);
+            shell.Box(new Vector3(0f, FoundryFloor - 0.28f, 0f), new Vector3(width, 0.56f, depth), m.Stone);
+            shell.Quad(new Vector3(-1.08f, 0.045f, -z - 1.06f), new Vector3(-1.08f, FoundryFloor, -z + 0.01f),
+                new Vector3(1.08f, FoundryFloor, -z + 0.01f), new Vector3(1.08f, 0.045f, -z - 1.06f), m.Stone);
             Wall(shell, true, -z, -x, -1.12f, FoundryFloor, eave, m.Stone);
             Wall(shell, true, -z, 1.12f, x, FoundryFloor, eave, m.Stone);
             Wall(shell, true, -z, -1.12f, 1.12f, 2.69f, eave, m.Stone);
@@ -90,6 +92,22 @@ namespace Boreatek.World
             AddFoundryFloorPlates(trim, width, depth, 0f, m);
             Wall(shell, true, z, -x, x, FoundryFloor, eave, m.Stone);
             Wall(shell, false, side * x, -z, z, FoundryFloor, eave, m.Stone);
+            float inner = -side * x;
+            if (sign != null)
+            {
+                Wall(shell, false, inner, -z, z, FoundryFloor, eave, m.Stone);
+            }
+            else
+            {
+                float passageStart = name == "Sala_De_Vapor" ? -1.72f : 2.05f - position.z;
+                float passageEnd = name == "Sala_De_Vapor" ? 0.87f : 5.47f - position.z;
+                Wall(shell, false, inner, -z, passageStart, FoundryFloor, eave, m.Stone);
+                Wall(shell, false, inner, passageEnd, z, FoundryFloor, eave, m.Stone);
+                Wall(shell, false, inner, passageStart, passageEnd, 2.53f, eave, m.Stone);
+                foreach (float jamb in new[] { passageStart, passageEnd })
+                    trim.Box(new Vector3(inner, (FoundryFloor + 2.53f) * 0.5f, jamb),
+                        new Vector3(0.36f, 2.53f - FoundryFloor, 0.13f), m.Timber);
+            }
             AddGable(shell, trim, x, -z, z, eave, 1.62f, m);
             for (int i = 0; i < 3; i++)
             {
@@ -105,10 +123,11 @@ namespace Boreatek.World
             }
             AddFoundryLantern(trim, new Vector3(side * (x - 0.46f), 2.76f, 0.45f), 0.86f, m);
             AddFoundryLight(room, new Vector3(0f, 2.62f, 0.13f), 2.5f, 6.0f);
-            string label = name == "Herreria" ? "HERRERÍA" : name == "Almacen" ? "ALMACÉN" : "SALA DE VAPOR";
+            string label = sign ?? (name == "Herreria" ? "HERRERÍA" : name == "Almacen" ? "ALMACÉN" : "SALA DE VAPOR");
             AddFoundrySign(room, label, new Vector3(0f, 2.99f, -z - 0.24f));
             _landscape.Place(room, "Shell_And_Walkable_Floor", shell, collision: true);
             _landscape.Place(room, "Timber_And_Fittings", trim);
+            return room;
         }
 
         private static void Wall(Batch shell, bool acrossX, float fixedAxis, float from, float to, float bottom, float top,
@@ -190,10 +209,17 @@ namespace Boreatek.World
                 Beam(trim, new Vector3(side * halfWidth, eave - 0.07f, front - 0.39f),
                     new Vector3(side * halfWidth, eave - 0.07f, back + 0.42f), 0.23f, m.Timber);
             }
-            shell.Triangle(new Vector3(-halfWidth, eave, front), new Vector3(0f, eave + rise, front),
-                new Vector3(halfWidth, eave, front), m.Timber);
-            shell.Triangle(new Vector3(halfWidth, eave, back), new Vector3(0f, eave + rise, back),
-                new Vector3(-halfWidth, eave, back), m.Timber);
+            foreach (float end in new[] { front, back })
+            {
+                Vector3 left = new Vector3(-halfWidth, eave - 0.12f, end - 0.10f);
+                Vector3 right = new Vector3(halfWidth, eave - 0.12f, end - 0.10f);
+                Vector3 peak = new Vector3(0f, eave + rise, end - 0.10f);
+                Vector3 thickness = Vector3.forward * 0.20f;
+                shell.Triangle(left, peak, right, m.Timber);
+                shell.Triangle(right + thickness, peak + thickness, left + thickness, m.Timber);
+                shell.Quad(left, left + thickness, peak + thickness, peak, m.Timber);
+                shell.Quad(peak, peak + thickness, right + thickness, right, m.Timber);
+            }
             for (int i = 0; i < 4; i++)
             {
                 float z = Mathf.Lerp(front - 0.19f, back + 0.10f, i / 3f);

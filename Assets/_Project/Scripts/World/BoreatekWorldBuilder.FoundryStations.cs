@@ -73,15 +73,18 @@ namespace Boreatek.World
             _landscape.Place(wheel, "Valve_Wheel", wheelMesh);
 
             SpawnFoundryWorker(smithy, "Duende_Herrero", FoundryWorker.Job.Smith, new Color32(135, 69, 57, 255),
-                new Vector3(0.20f, FoundryFloor, 0.64f), 180f, 0.59f, m);
+                new Vector3(0.20f, FoundryFloor, 0.64f), 180f, 0.59f, m,
+                rest: new Vector3(-14.7f, FoundryFloor, -1.6f));
             SpawnFoundryWorker(packing, "Duende_Almacenista", FoundryWorker.Job.Packer, new Color32(74, 115, 110, 255),
-                new Vector3(-0.21f, FoundryFloor, 0.45f), 180f, 0.21f, m);
+                new Vector3(-0.21f, FoundryFloor, 0.45f), 180f, 0.21f, m,
+                rest: new Vector3(12.4f, FoundryFloor, -3.3f));
             SpawnFoundryWorker(steam, "Duende_Mecanico_De_Vapor", FoundryWorker.Job.Mechanic, new Color32(90, 100, 132, 255),
-                new Vector3(0.31f, FoundryFloor, -0.59f), 0f, 0.34f, m, wheel);
+                new Vector3(0.31f, FoundryFloor, -0.59f), 0f, 0.34f, m, wheel,
+                new Vector3(15.4f, FoundryFloor, 6.3f));
         }
 
         private void SpawnFoundryWorker(Transform room, string name, FoundryWorker.Job job, Color32 uniform,
-            Vector3 position, float yaw, float phase, FoundryMaterials m, Transform valve = null)
+            Vector3 position, float yaw, float phase, FoundryMaterials m, Transform valve = null, Vector3 rest = default)
         {
             Transform worker = CharacterPart(room, name, position);
             worker.localRotation = Quaternion.Euler(0f, yaw, 0f);
@@ -90,21 +93,40 @@ namespace Boreatek.World
             body.height = ElfHeight;
             body.radius = 0.25f;
             ElfVisuals rig = BuildElfModel(worker, uniform);
+            GameObject tool = null;
             if (job == FoundryWorker.Job.Smith)
             {
                 var hammer = new Batch();
                 hammer.Frustum(Vector3.down * 0.13f, Vector3.up * 0.26f, 0.025f, 0.019f, 8, m.Timber);
                 hammer.Box(Vector3.up * 0.26f, new Vector3(0.26f, 0.10f, 0.12f), m.Iron);
                 hammer.Box(new Vector3(0.121f, 0.26f, 0f), new Vector3(0.039f, 0.11f, 0.13f), m.Copper);
-                _landscape.Place(rig.RightGrip, "Smith_Hammer", hammer).transform.localRotation = Quaternion.Euler(32f, 0f, -19f);
+                tool = _landscape.Place(rig.RightGrip, "Smith_Hammer", hammer);
+                tool.transform.localRotation = Quaternion.Euler(32f, 0f, -19f);
             }
             else if (job == FoundryWorker.Job.Packer)
             {
                 var part = new Batch();
                 AddGear(part, Vector3.up * 0.05f, 0.093f, m.Copper, m.Iron);
-                _landscape.Place(rig.RightGrip, "Part_Being_Sorted", part);
+                tool = _landscape.Place(rig.RightGrip, "Part_Being_Sorted", part);
             }
-            worker.gameObject.AddComponent<FoundryWorker>().Initialize(rig.Pose, job, valve, phase);
+            else if (job == FoundryWorker.Job.Cook || job == FoundryWorker.Job.Sweeper)
+            {
+                bool broom = job == FoundryWorker.Job.Sweeper;
+                float length = broom ? 0.86f : 0.35f;
+                var utensil = new Batch();
+                utensil.Frustum(Vector3.up * 0.14f, Vector3.down * length, 0.025f, 0.018f, 8, m.Timber);
+                utensil.Box(Vector3.down * length, broom ? new Vector3(0.34f, 0.14f, 0.16f) : new Vector3(0.09f, 0.14f, 0.035f),
+                    broom ? m.Stitch : m.Copper);
+                tool = _landscape.Place(rig.RightGrip, broom ? "Broom" : "Ladle", utensil);
+                tool.transform.localRotation = Quaternion.Euler(31f, 0f, 14f);
+            }
+            else if (job == FoundryWorker.Job.Courier)
+            {
+                var parcel = new Batch();
+                AddCrate(parcel, Vector3.down * 0.15f, 0.31f, m);
+                tool = _landscape.Place(rig.RightGrip, "Dispatch_Parcel", parcel);
+            }
+            worker.gameObject.AddComponent<FoundryWorker>().Initialize(rig.Pose, job, valve, tool, phase, rest);
         }
 
         private static void AddWorkbench(Batch batch, Vector3 at, float width, FoundryMaterials m)
