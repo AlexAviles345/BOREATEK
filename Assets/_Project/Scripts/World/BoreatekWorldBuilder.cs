@@ -746,6 +746,7 @@ namespace Boreatek.World
                 elf.Head,
                 elf.LampLens);
             playerCtrl.ConfigureProceduralPose(elf.Pose);
+            playerCtrl.ConfigureHeldEquipment(BuildHeldEquipment(elf.RightGrip), BuildFirstPersonGlove(camPivot));
 
             return playerCtrl;
         }

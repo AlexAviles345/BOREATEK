@@ -9,6 +9,7 @@ namespace Boreatek.Player
         private readonly RaycastHit[] _viewObstructions = new RaycastHit[12];
         private Perspective _perspective;
         private float _standardFieldOfView = 60f;
+        private Renderer[] _bodyRenderers = System.Array.Empty<Renderer>();
 
         private Perspective CurrentPerspective => _perspective == Perspective.Legacy
             ? (_useThirdPersonView ? Perspective.Behind : Perspective.FirstPerson)
@@ -44,7 +45,10 @@ namespace Boreatek.Player
                 _playerCamera.fieldOfView = CurrentPerspective == Perspective.Shoulder
                     ? _standardFieldOfView * 0.88f : _standardFieldOfView;
             }
+            foreach (Renderer renderer in _bodyRenderers)
+                if (renderer != null) renderer.forceRenderingOff = InFirstPerson;
             UpdateCameraObstruction();
+            RefreshHeldEquipment();
         }
 
         private void UpdateCameraObstruction()

@@ -28,7 +28,7 @@ namespace Boreatek.Player
             }
         }
 
-        internal enum Gesture { Reach, Place, Throw }
+        internal enum Gesture { Reach, Place, Throw, Consume }
 
         private readonly Transform _waist, _neck;
         private readonly Vector3 _waistRest;
@@ -39,7 +39,7 @@ namespace Boreatek.Player
         private bool _grounded = true;
         private Gesture _gesture;
         private const float HitDuration = 0.34f;
-        private const float GestureDuration = 0.42f;
+        internal const float GestureDuration = 0.42f;
         internal Transform Waist => _waist;
         internal Transform Neck => _neck;
         internal Arm LeftArm => _leftArm;
@@ -110,7 +110,7 @@ namespace Boreatek.Player
             PoseLeg(_leftLeg, phase, -1f);
             PoseLeg(_rightLeg, phase + Mathf.PI, 1f);
             float armSwing = stride * Mathf.Lerp(24f, 39f, _run);
-            float reach = _gesture == Gesture.Throw ? 121f : (_gesture == Gesture.Place ? 45f : 81f);
+            float reach = _gesture == Gesture.Throw ? 121f : (_gesture == Gesture.Place ? 45f : _gesture == Gesture.Consume ? 101f : 81f);
             float aimTilt = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(aim.y, -1f, 1f)) * Mathf.Rad2Deg, -45f, 55f);
             float pickaxePitch = -137f * strike.Raise + (-69f - aimTilt * 0.65f) * strike.Contact +
                 (-31f - aimTilt * 0.54f) * strike.Follow;

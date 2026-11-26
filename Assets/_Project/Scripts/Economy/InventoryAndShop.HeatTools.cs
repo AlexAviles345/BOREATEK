@@ -143,7 +143,7 @@ namespace Boreatek.Economy
             return placement;
         }
 
-        private static Batch ModelBeacon(BoreatekLandscapeGeometry materials)
+        internal static Batch ModelBeacon(BoreatekLandscapeGeometry materials)
         {
             var mesh = new Batch();
             Material iron = materials.Finish(new Color32(42, 53, 68, 255));

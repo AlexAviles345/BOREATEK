@@ -142,6 +142,7 @@ namespace Boreatek.Player
             UpdatePlacementGuide(!_isShopMenuOpen && !hudPointer);
 
             UpdateCharacterAnimation(dt);
+            RefreshHeldEquipment(dt);
         }
 
         private void UpdateTimers(float dt)
@@ -406,6 +407,8 @@ namespace Boreatek.Player
             Renderer thirdPersonHead = null,
             Renderer headlampLens = null)
         {
+            _characterController ??= GetComponent<CharacterController>();
+            _inventoryAndShop ??= GetComponent<InventoryAndShop>();
             _cameraPivot = cameraPivot;
             _playerCamera = cam;
             if (cam != null) _standardFieldOfView = cam.fieldOfView;
@@ -413,6 +416,10 @@ namespace Boreatek.Player
             _pickaxeVisualRoot = pickaxeRoot;
             _pickaxeCrystalTipRenderer = pickaxeCrystalRenderer;
             _characterVisual = characterVisual;
+            _bodyRenderers = _characterVisual != null
+                ? Array.FindAll(_characterVisual.GetComponentsInChildren<Renderer>(true),
+                    renderer => pickaxeRoot == null || !renderer.transform.IsChildOf(pickaxeRoot))
+                : Array.Empty<Renderer>();
             _thirdPersonHead = thirdPersonHead;
             _headlampLens = headlampLens;
 
@@ -436,6 +443,8 @@ namespace Boreatek.Player
         private void PlayInteraction(ElfPose.Gesture gesture, Vector3 direction)
         {
             _elfPose?.BeginGesture(gesture, transform.InverseTransformDirection(direction));
+            _heldGesture = gesture;
+            _heldGestureTime = ElfPose.GestureDuration;
         }
 
         internal void ReactToCombatDamage(Vector3? attackerPosition, float strength)
@@ -512,11 +521,12 @@ namespace Boreatek.Player
             CancelPickaxeSwing();
             _elfPose?.Reset();
             _characterController.enabled = present;
-            if (_pickaxeVisualRoot != null) _pickaxeVisualRoot.gameObject.SetActive(present && SelectedEquipment == EquipmentSlot.Pickaxe);
+            _heldGestureTime = 0f;
             if (_characterVisual != null)
             {
                 _characterVisual.gameObject.SetActive(present);
             }
+            RefreshHeldEquipment();
         }
 
         [Serializable]

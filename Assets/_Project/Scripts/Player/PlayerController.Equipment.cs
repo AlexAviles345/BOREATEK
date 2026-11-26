@@ -24,8 +24,8 @@ namespace Boreatek.Player
             if (SelectedEquipment == equipment) return;
             SelectedEquipment = equipment;
             CancelPickaxeSwing();
-            if (_pickaxeVisualRoot != null)
-                _pickaxeVisualRoot.gameObject.SetActive(equipment == EquipmentSlot.Pickaxe && _characterController.enabled);
+            _heldGestureTime = 0f;
+            RefreshHeldEquipment();
         }
 
         private void HandleEquipmentSelection()
@@ -64,7 +64,9 @@ namespace Boreatek.Player
                 case EquipmentSlot.Cookie: _inventoryAndShop.TryUseGingerbreadCookie(); break;
                 case EquipmentSlot.Peppermint: _inventoryAndShop.TryUsePeppermintCane(); break;
             }
-            return _inventoryAndShop.GetEquipmentStock(slot) < stock;
+            if (_inventoryAndShop.GetEquipmentStock(slot) >= stock) return false;
+            if (SelectedEquipment == slot) PlayInteraction(ElfPose.Gesture.Consume, AimFrame.forward);
+            return true;
         }
 
         private void UseEquipment(EquipmentSlot slot)
