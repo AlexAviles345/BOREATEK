@@ -59,4 +59,12 @@ Patrullan la tundra y los alrededores del Cementerio de Trineos. Antes de embest
 
 Vuelan entre los árboles de caramelo, en las planicies glaciares y en algunas cuevas procedurales. Se elevan y aceleran el aleteo antes de atacar en picada. Después se apartan para recuperar altura.
 
-El pico, la espada y los petardos dañan a ambas especies. La salud de cada criatura se conserva al guardar la partida o al volver a su sector.
+### 3.5. Escarabajos de cristal
+
+Merodean en las morrenas, las planicies glaciares y las cámaras profundas de las cuevas. Se agachan antes de embestir en línea recta. El caparazón amortigua los golpes frontales. Puedes atacar por un costado, usar un petardo o golpear mientras recuperan el aliento tras una embestida.
+
+### 3.6. Espectros de ventisca
+
+Aparecen en la tundra y las crestas nevadas. Forman un cristal en el aire antes de lanzarlo hacia la posición en la que vieron al jugador. La descarga se puede esquivar y se rompe al chocar con una pared.
+
+El pico, la espada y los petardos dañan a estas criaturas. Su salud se conserva al guardar la partida o al volver a su sector.

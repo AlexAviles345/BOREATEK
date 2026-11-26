@@ -10,13 +10,18 @@ namespace Boreatek.World
 {
     public sealed partial class BoreatekSurfaceChunks
     {
-        private const int WildlifeSlots = 6;
+        private const int WildlifeSlots = 10;
         private static readonly (Vector2 point, Species species)[] WildlifeNearVillage =
         {
             (new Vector2(-30f, -70f), Species.SnowWolf),
             (new Vector2(-79f, 33f), Species.SnowWolf),
             (new Vector2(63f, 29f), Species.FrostMoth),
             (new Vector2(74f, -30f), Species.FrostMoth)
+        };
+        private static readonly (Vector2 point, Species species)[] WildernessEncounters =
+        {
+            (new Vector2(-53f, -95f), Species.CrystalBeetle),
+            (new Vector2(-96f, 48f), Species.BlizzardWraith)
         };
         private readonly Dictionary<Vector2Int, HostileWildlife[]> _wildlife = new();
         private readonly Dictionary<(Vector2Int sector, int slot), float> _wildlifeHealth = new();
@@ -62,6 +67,56 @@ namespace Boreatek.World
                 Vector3 pocket = site.At(RandomRange(random, -1.2f, 1.2f), site.Length - 2.7f, site.Floor + 1.03f);
                 AttachWildlife(sector, 5, root, owner, pocket, Species.FrostMoth, player, RandomRange(random, 0f, 360f));
             }
+            SpawnWildernessEncounters(sector, root, owner, origin, player);
+        }
+
+        private void SpawnWildernessEncounters(Vector2Int sector, Transform root, BoreatekLandscapeGeometry owner,
+            Vector3 origin, PlayerController player)
+        {
+            // Keep the original species on their existing deterministic coordinates and save slots.
+            var random = new System.Random(CellSeed(_seed ^ 0x5B761, sector.x, sector.y));
+            for (int i = 0; i < WildernessEncounters.Length; i++)
+            {
+                var (point, species) = WildernessEncounters[i];
+                var candidate = new Vector3(point.x, 0f, point.y);
+                if (SectorAt(candidate) != sector) continue;
+                for (int attempt = 0; attempt < 8; attempt++)
+                {
+                    float angle = attempt * 2.39996f;
+                    Vector3 trial = candidate + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * attempt;
+                    if (TrySpawnSurfaceWildlife(sector, root, owner, 6 + i, trial, species, player, random)) break;
+                }
+            }
+            if (random.NextDouble() < 0.29)
+            {
+                for (int i = 0; i < 6; i++)
+                {
+                    Vector3 candidate = origin + new Vector3(RandomRange(random, 9f, 55f), 0f, RandomRange(random, 9f, 55f));
+                    if (!IsFrontier(candidate.x, candidate.z) || NearOtherWildlife(sector, candidate)) continue;
+                    BiomeType biome = DressingBiome(candidate.x, candidate.z, (float)random.NextDouble());
+                    Species species = biome is BiomeType.GlacialMoraine or BiomeType.GlacialFlats or BiomeType.GiantCandyForest
+                        ? Species.CrystalBeetle : Species.BlizzardWraith;
+                    if (TrySpawnSurfaceWildlife(sector, root, owner, 8, candidate, species, player, random)) break;
+                }
+            }
+            if (_caveLayouts.TryGetValue(sector, out CaveLayout cave) && random.NextDouble() < 0.65)
+            {
+                CaveSection a = cave.Sections[^2], b = cave.Sections[^1];
+                float t = 0.72f;
+                Vector3 pocket = cave.Site.At(Mathf.Lerp(a.Center, b.Center, t) + 0.64f,
+                    Mathf.Lerp(a.Along, b.Along, t), Mathf.Lerp(a.Floor, b.Floor, t) + 0.06f);
+                if (!NearOtherWildlife(sector, pocket))
+                    AttachWildlife(sector, 9, root, owner, pocket, Species.CrystalBeetle, player, RandomRange(random, 0f, 360f));
+            }
+        }
+
+        private bool NearOtherWildlife(Vector2Int sector, Vector3 position)
+        {
+            if (!_wildlife.TryGetValue(sector, out HostileWildlife[] creatures)) return false;
+            foreach (HostileWildlife creature in creatures)
+                if (creature != null && Vector3.ProjectOnPlane(creature.Home - position, Vector3.up).sqrMagnitude < 8f * 8f)
+                    return true;
+            return false;
         }
 
         private bool TrySpawnSurfaceWildlife(Vector2Int sector, Transform root, BoreatekLandscapeGeometry owner, int slot,
@@ -76,7 +131,8 @@ namespace Boreatek.World
                     if (node != null && new Vector2(point.x - node.transform.position.x, point.z - node.transform.position.z).sqrMagnitude < 5.3f)
                         return false;
             }
-            point.y = GroundHeight(point.x, point.z) + (species == Species.FrostMoth ? 1.03f : 0.06f);
+            point.y = GroundHeight(point.x, point.z) + (species == Species.BlizzardWraith ? 1.25f :
+                species == Species.FrostMoth ? 1.03f : 0.06f);
             AttachWildlife(sector, slot, root, owner, point, species, player, RandomRange(random, 0f, 360f));
             return true;
         }

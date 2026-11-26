@@ -7,35 +7,74 @@ namespace Boreatek.AI
 {
     internal sealed class HostileWildlife : MonoBehaviour, IEnemyDamageable
     {
-        internal enum Species { SnowWolf, FrostMoth }
+        internal enum Species { SnowWolf, FrostMoth, CrystalBeetle, BlizzardWraith }
         private enum Activity { Roam, Hunt, Windup, Strike, Recover, Stagger, Defeated }
+
+        private readonly struct Combat
+        {
+            internal readonly string Name;
+            internal readonly float Health, Notice, Range, Prep, Duration, Recovery, Pursuit, Charge, Damage;
+            internal readonly SoundCue Warning, Attack, Death;
+
+            internal Combat(string name, float health, float notice, float range, float prep, float duration,
+                float recovery, float pursuit, float charge, float damage, (SoundCue warning, SoundCue attack, SoundCue death) sounds)
+            {
+                Name = name;
+                Health = health;
+                Notice = notice;
+                Range = range;
+                Prep = prep;
+                Duration = duration;
+                Recovery = recovery;
+                Pursuit = pursuit;
+                Charge = charge;
+                Damage = damage;
+                (Warning, Attack, Death) = sounds;
+            }
+        }
 
         private readonly RaycastHit[] _query = new RaycastHit[12];
         private CharacterController _body;
         private PlayerController _target;
         private TemperatureSystem _vitals;
         private Species _species;
+        private Combat _combat;
         private Activity _activity;
         private Transform _rig, _head, _tail;
         private Transform[] _joints, _feet;
-        private Vector3 _home, _patrolTarget, _strikeDirection, _recoil;
+        private Transform _frostOrb;
+        private Vector3 _home, _patrolTarget, _strikeDirection, _strikeTarget, _recoil;
         private float _phase, _stride, _fall, _timer, _time, _nextPatrol, _strikeHeight, _avoid, _health;
         private float _circle = 1f;
         private int _patrolIndex;
         private bool _struck;
         private Vector3 _rigRest;
 
-        private bool Flies => _species == Species.FrostMoth;
-        internal float MaxHealth => Flies ? 48f : 70f;
+        private bool Flies => _species is Species.FrostMoth or Species.BlizzardWraith;
+        private bool Ranged => _species == Species.BlizzardWraith;
+        private bool Armored => _species == Species.CrystalBeetle;
+        internal float MaxHealth => _combat.Health;
         internal float CurrentHealth => _health;
-        private float WarningTime => Flies ? 0.76f : 0.57f;
-        private float AttackTime => Flies ? 0.51f : 0.42f;
-        private string Label => Flies ? "Polilla de escarcha" : "Lobo nival";
+        internal Vector3 Home => _home;
+        private string Label => _combat.Name;
+
+        private static Combat CombatFor(Species species) => species switch
+        {
+            Species.FrostMoth => new Combat("Polilla de escarcha", 48f, 14f, 3.65f, 0.76f, 0.51f, 1.45f, 3.75f, 7.9f, 9f,
+                (SoundCue.MothWarning, SoundCue.MothDive, SoundCue.MothFade)),
+            Species.CrystalBeetle => new Combat("Escarabajo de cristal", 105f, 17f, 4.35f, 0.92f, 0.77f, 1.85f, 2.20f, 9.5f, 21f,
+                (SoundCue.BeetleWarning, SoundCue.BeetleCharge, SoundCue.BeetleFall)),
+            Species.BlizzardWraith => new Combat("Espectro de ventisca", 68f, 23f, 10f, 1.12f, 0.38f, 1.72f, 3.10f, 0f, 14f,
+                (SoundCue.WraithWarning, SoundCue.WraithCast, SoundCue.WraithFade)),
+            _ => new Combat("Lobo nival", 70f, 20f, 2.18f, 0.57f, 0.42f, 1.10f, 4.35f, 8.7f, 17f,
+                (SoundCue.WolfWarning, SoundCue.WolfLunge, SoundCue.WolfFall))
+        };
 
         internal void Initialize(Species species, PlayerController target, CharacterController body,
-            Transform rig, Transform head, Transform tail, Transform[] joints, Transform[] feet)
+            Transform rig, Transform head, Transform tail, Transform[] joints, Transform[] feet, Transform frostOrb = null)
         {
             _species = species;
+            _combat = CombatFor(species);
             _target = target;
             _vitals = target != null ? target.GetComponent<TemperatureSystem>() : null;
             _body = body;
@@ -45,6 +84,7 @@ namespace Boreatek.AI
             _tail = tail;
             _joints = joints;
             _feet = feet;
+            _frostOrb = frostOrb;
             _home = transform.position;
             _health = MaxHealth;
             _time = Mathf.Repeat(_home.x * 0.19f + _home.z * 0.38f, 8f);
@@ -78,9 +118,10 @@ namespace Boreatek.AI
             Vector3 delta = Vector3.ProjectOnPlane(target - transform.position, Vector3.up);
             float distance = delta.magnitude;
             Vector3 toward = distance > 0.01f ? delta / distance : transform.forward;
+            float leash = Ranged || Armored ? 25f : 23f;
             bool chase = _vitals.CurrentHealth > 0f && !InSanctuary(target) &&
                 Mathf.Abs(target.y - transform.position.y) < (Flies ? 2.8f : 1.85f) &&
-                (target - _home).sqrMagnitude < 23f * 23f && distance <= (Flies ? 14f : 20f);
+                (target - _home).sqrMagnitude < leash * leash && distance <= _combat.Notice;
             Vector3 velocity = Vector3.zero;
             float hover = _home.y + Mathf.Sin(_time * 3.9f) * 0.13f;
             switch (_activity)
@@ -92,38 +133,51 @@ namespace Boreatek.AI
                     break;
                 case Activity.Windup:
                     Face(toward, dt);
-                    if (Flies) hover += Mathf.SmoothStep(0f, 0.84f, _timer / WarningTime);
+                    if (Flies) hover += Mathf.SmoothStep(0f, Ranged ? 0.27f : 0.84f, _timer / _combat.Prep);
                     if (!chase || !ClearToTarget(target)) Enter(Activity.Roam);
-                    else if (_timer >= WarningTime)
+                    else if (_timer >= _combat.Prep)
                     {
                         _strikeDirection = transform.forward;
                         _strikeHeight = target.y + 0.42f;
+                        _strikeTarget = target + Vector3.up * 0.62f;
                         _struck = false;
                         Enter(Activity.Strike);
-                        BoreatekSoundscape.Play(Flies ? SoundCue.MothDive : SoundCue.WolfLunge, transform.position, 0.76f);
+                        if (!Ranged) BoreatekSoundscape.Play(_combat.Attack, transform.position, 0.76f);
                     }
                     break;
                 case Activity.Strike:
-                    velocity = _strikeDirection * ((Flies ? 7.9f : 8.7f) * Mathf.Lerp(1f, 0.30f, _timer / AttackTime));
-                    if (Flies) hover = _strikeHeight;
-                    if (chase && !_struck && _timer > 0.055f && distance < (Flies ? 1.22f : 1.36f) &&
-                        Mathf.Abs(target.y + 0.42f - transform.position.y) < (Flies ? 0.90f : 1.07f) &&
-                        Vector3.Dot(_strikeDirection, toward) > 0.02f && ClearToTarget(target))
+                    if (Ranged)
                     {
-                        _struck = true;
-                        float damage = Flies ? 9f : 17f;
-                        _vitals.ApplyCombatDamage(damage, transform.position);
-                        _target.PublishStatus($"{Label} te golpeó. −{damage:0} HP.");
+                        velocity = -toward * 1.10f;
+                        if (!_struck && chase && _timer >= 0.10f)
+                        {
+                            _struck = true;
+                            FrostWispBolt.Launch(this, _frostOrb, _target, _strikeTarget, _combat.Damage);
+                            BoreatekSoundscape.Play(_combat.Attack, transform.position, 0.76f);
+                        }
                     }
-                    if (_timer >= AttackTime || !chase) Enter(Activity.Recover);
+                    else
+                    {
+                        velocity = _strikeDirection * (_combat.Charge * Mathf.Lerp(1f, Armored ? 0.58f : 0.30f, _timer / _combat.Duration));
+                        if (Flies) hover = _strikeHeight;
+                        if (chase && !_struck && _timer > 0.055f && distance < (Flies ? 1.22f : Armored ? 1.49f : 1.36f) &&
+                            Mathf.Abs(target.y + 0.42f - transform.position.y) < (Flies ? 0.90f : 1.07f) &&
+                            Vector3.Dot(_strikeDirection, toward) > 0.02f && ClearToTarget(target))
+                        {
+                            _struck = true;
+                            _vitals.ApplyCombatDamage(_combat.Damage, transform.position);
+                            _target.PublishStatus($"{Label} te golpeó. −{_combat.Damage:0} HP.");
+                        }
+                    }
+                    if (_timer >= _combat.Duration || !chase) Enter(Activity.Recover);
                     break;
                 case Activity.Recover:
                     if (Flies && chase)
                     {
-                        velocity = (Vector3.Cross(Vector3.up, toward) * _circle - toward * 0.4f) * 2.0f;
+                        velocity = (Vector3.Cross(Vector3.up, toward) * _circle - toward * (Ranged ? 0.68f : 0.4f)) * 2.0f;
                         Face(velocity.normalized, dt);
                     }
-                    if (_timer >= (Flies ? 1.45f : 1.10f)) Enter(chase ? Activity.Hunt : Activity.Roam);
+                    if (_timer >= _combat.Recovery) Enter(chase ? Activity.Hunt : Activity.Roam);
                     break;
                 default:
                     if (!chase || (_activity == Activity.Roam && !ClearToTarget(target)))
@@ -134,17 +188,18 @@ namespace Boreatek.AI
                     else
                     {
                         if (_activity != Activity.Hunt) Enter(Activity.Hunt);
-                        if (distance <= (Flies ? 3.65f : 2.18f) && ClearToTarget(target))
+                        if (distance <= _combat.Range && (!Ranged || distance >= 2.75f) && ClearToTarget(target))
                         {
                             Face(toward, dt);
                             Enter(Activity.Windup);
-                            BoreatekSoundscape.Play(Flies ? SoundCue.MothWarning : SoundCue.WolfWarning, transform.position, 0.70f);
+                            BoreatekSoundscape.Play(_combat.Warning, transform.position, 0.70f);
                         }
                         else
                         {
-                            Vector3 move = Flies ? (toward + Vector3.Cross(Vector3.up, toward) * (_circle * 0.49f)).normalized : toward;
-                            velocity = Steer(move, Flies ? 3.75f : 4.35f, dt);
-                            if (Flies) hover = Mathf.Clamp(target.y + 1.02f, _home.y - 0.70f, _home.y + 1.35f);
+                            Vector3 forward = Ranged && distance < 2.75f ? -toward : toward;
+                            Vector3 move = Flies ? (forward + Vector3.Cross(Vector3.up, toward) * (_circle * 0.49f)).normalized : toward;
+                            velocity = Steer(move, _combat.Pursuit, dt);
+                            if (Flies) hover = Mathf.Clamp(target.y + (Ranged ? 1.52f : 1.02f), _home.y - 0.70f, _home.y + 1.35f);
                         }
                     }
                     break;
@@ -198,7 +253,12 @@ namespace Boreatek.AI
             }
             CollisionFlags collision = _body.Move(shift);
             float travel = Vector3.ProjectOnPlane(transform.position - position, Vector3.up).magnitude;
-            if ((collision & CollisionFlags.Sides) != 0 && travel < shift.magnitude * 0.52f) _avoid = 0.58f;
+            float horizontalRequested = Vector3.ProjectOnPlane(shift, Vector3.up).magnitude;
+            if ((collision & CollisionFlags.Sides) != 0 && travel < horizontalRequested * 0.52f)
+            {
+                _avoid = 0.58f;
+                if (Armored && _activity == Activity.Strike) Enter(Activity.Recover);
+            }
             _stride = Mathf.MoveTowards(_stride, Mathf.Clamp01(travel / Mathf.Max(0.01f, dt) * 0.30f), dt * 6f);
             _phase += dt * (Flies ? 22f + _stride * 13f : 2f + _stride * 12f);
         }
@@ -245,18 +305,52 @@ namespace Boreatek.AI
 
         private void Animate()
         {
-            float warned = _activity == Activity.Windup ? Mathf.SmoothStep(0f, 1f, _timer / WarningTime) : 0f;
-            float lunged = _activity == Activity.Strike ? Mathf.Sin(Mathf.PI * Mathf.Clamp01(_timer / AttackTime)) : 0f;
+            float warned = _activity == Activity.Windup ? Mathf.SmoothStep(0f, 1f, _timer / _combat.Prep) : 0f;
+            float lunged = _activity == Activity.Strike ? Mathf.Sin(Mathf.PI * Mathf.Clamp01(_timer / _combat.Duration)) : 0f;
             float flinched = _activity == Activity.Stagger ? Mathf.Sin(Mathf.PI * Mathf.Clamp01(_timer / 0.33f)) : 0f;
             float collapsed = _activity == Activity.Defeated ? Mathf.SmoothStep(0f, 1f, _timer / 0.69f) : 0f;
+            if (Ranged)
+            {
+                _rig.localPosition = _rigRest + Vector3.up * (Mathf.Sin(_time * 3f) * 0.09f - collapsed * 0.60f);
+                _rig.localRotation = Quaternion.Euler(16f * lunged - 8f * warned, 0f, collapsed * 76f + flinched * 23f);
+                _head.localRotation = Quaternion.Euler(-11f * warned, Mathf.Sin(_time * 2.1f) * 5f, 0f);
+                _tail.localRotation = Quaternion.Euler(10f * Mathf.Sin(_time * 4.4f), 0f, 11f * Mathf.Sin(_time * 2.7f));
+                for (int i = 0; i < _joints.Length; i++)
+                    _joints[i].localRotation = Quaternion.Euler((Mathf.Sin(_time * 4.8f + i * 0.78f) * 16f), 0f,
+                        (i % 2 == 0 ? -1f : 1f) * (Mathf.Sin(_time * 3.3f + i * 0.61f) * 22f + 18f * warned));
+                bool charging = _activity == Activity.Windup && warned >= 0.07f;
+                if (_frostOrb.gameObject.activeSelf != charging) _frostOrb.gameObject.SetActive(charging);
+                if (charging)
+                {
+                    _frostOrb.localScale = Vector3.one * Mathf.Lerp(0.18f, 1f, warned);
+                    _frostOrb.Rotate(0f, 4f, 0f, Space.Self);
+                }
+                return;
+            }
             if (Flies)
             {
-                float flap = Mathf.Sin(_phase) * Mathf.Lerp(42f, 63f, warned) * (1f - collapsed) + collapsed * 55f;
+                float flap = Mathf.Sin(_phase) * Mathf.Lerp(42f, 55f, warned) * (1f - collapsed) + collapsed * 55f;
                 _joints[0].localRotation = Quaternion.Euler(0f, 0f, flap);
                 _joints[1].localRotation = Quaternion.Euler(0f, 0f, -flap);
                 _rig.localPosition = _rigRest + Vector3.down * (collapsed * 0.50f);
                 _rig.localRotation = Quaternion.Euler(18f * lunged - 12f * warned, 0f, collapsed * 104f + 21f * flinched);
                 _head.localRotation = Quaternion.Euler(7f * Mathf.Sin(_time * 4f), 0f, 0f);
+                return;
+            }
+            if (Armored)
+            {
+                float rest = _activity == Activity.Recover ? Mathf.Sin(Mathf.PI * Mathf.Clamp01(_timer / _combat.Recovery)) : 0f;
+                _rig.localPosition = _rigRest + Vector3.up * (Mathf.Sin(_phase * 2f) * _stride * 0.041f - warned * 0.10f - collapsed * 0.14f);
+                _rig.localRotation = Quaternion.Euler(19f * warned + 14f * rest - 12f * lunged, 0f, collapsed * 90f + flinched * 15f);
+                _head.localRotation = Quaternion.Euler(warned * -21f + lunged * 12f, 0f, 0f);
+                _tail.localRotation = Quaternion.Euler(rest * -26f, 0f, 0f);
+                for (int i = 0; i < _joints.Length; i++)
+                {
+                    float beat = _phase + i / 2 * 1.21f + (i % 2) * Mathf.PI;
+                    float side = i % 2 == 0 ? -1f : 1f;
+                    _joints[i].localRotation = Quaternion.Euler(0f, Mathf.Sin(beat) * _stride * 32f, side * (Mathf.Cos(beat) * _stride * 14f));
+                    _feet[i].localRotation = Quaternion.Euler(0f, 0f, -side * Mathf.Max(0f, Mathf.Cos(beat)) * _stride * 25f);
+                }
                 return;
             }
             float bob = Mathf.Abs(Mathf.Sin(_phase)) * _stride * 0.060f;
@@ -279,24 +373,33 @@ namespace Boreatek.AI
         public void TakeSwordDamage(PlayerController attacker) =>
             Hit(45f, attacker != null ? attacker.transform.position : transform.position + transform.forward, attacker);
 
-        public void TakeBlastDamage(float damage, Vector3 center, PlayerController attacker) => Hit(damage, center, attacker);
+        public void TakeBlastDamage(float damage, Vector3 center, PlayerController attacker) => Hit(damage, center, attacker, piercesShell: true);
 
-        private void Hit(float amount, Vector3 center, PlayerController attacker)
+        private void Hit(float amount, Vector3 center, PlayerController attacker, bool piercesShell = false)
         {
             if (_health <= 0f || amount <= 0f) return;
+            Vector3 away = Vector3.ProjectOnPlane(transform.position - center, Vector3.up);
+            bool blocked = Armored && !piercesShell && _activity != Activity.Recover &&
+                Vector3.Dot(transform.forward, -away.normalized) > 0.23f;
+            if (blocked) amount *= 0.32f;
             _health = Mathf.Max(0f, _health - amount);
             if (_health > 0f)
             {
-                Vector3 away = Vector3.ProjectOnPlane(transform.position - center, Vector3.up);
+                if (blocked)
+                {
+                    BoreatekSoundscape.Play(SoundCue.Blocked, transform.position, 0.72f);
+                    attacker?.PublishStatus("El caparazón amortiguó el golpe. Busca un costado o espera a que termine la embestida.");
+                    return;
+                }
                 _recoil = (away.sqrMagnitude > 0.01f ? away.normalized : -transform.forward) * 3.7f;
                 Enter(Activity.Stagger);
-                BoreatekSoundscape.Play(Flies ? SoundCue.MothWarning : SoundCue.WolfLunge, transform.position, 0.53f);
+                BoreatekSoundscape.Play(_combat.Warning, transform.position, 0.53f);
                 attacker?.PublishStatus($"{Label} ({Mathf.CeilToInt(_health)}/{MaxHealth:0} HP).");
                 return;
             }
             Enter(Activity.Defeated);
             _body.enabled = false;
-            BoreatekSoundscape.Play(Flies ? SoundCue.MothFade : SoundCue.WolfFall, transform.position, 0.72f);
+            BoreatekSoundscape.Play(_combat.Death, transform.position, 0.72f);
             attacker?.PublishStatus($"{Label} fuera de combate.");
         }
 

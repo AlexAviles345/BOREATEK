@@ -11,24 +11,39 @@ namespace Boreatek.World
         internal HostileWildlife SpawnWildlife(Transform parent, BoreatekLandscapeGeometry owner, Vector3 site,
             Species species, PlayerController player, float yaw)
         {
-            bool moth = species == Species.FrostMoth;
-            Transform creature = CharacterPart(parent, moth ? "Polilla_De_Escarcha" : "Lobo_Nival", Vector3.zero);
+            bool flies = species is Species.FrostMoth or Species.BlizzardWraith;
+            string label = species switch
+            {
+                Species.FrostMoth => "Polilla_De_Escarcha",
+                Species.CrystalBeetle => "Escarabajo_De_Cristal",
+                Species.BlizzardWraith => "Espectro_De_Ventisca",
+                _ => "Lobo_Nival"
+            };
+            Transform creature = CharacterPart(parent, label, Vector3.zero);
             creature.SetPositionAndRotation(site, Quaternion.Euler(0f, yaw, 0f));
             Transform rig = CharacterPart(creature, "Rig", Vector3.zero);
-            Transform head, tail;
+            Transform head, tail, frostOrb = null;
             Transform[] joints, feet;
-            if (moth) BuildFrostMoth(owner, rig, out head, out tail, out joints, out feet);
-            else BuildSnowWolf(owner, rig, out head, out tail, out joints, out feet);
+            switch (species)
+            {
+                case Species.FrostMoth: BuildFrostMoth(owner, rig, out head, out tail, out joints, out feet); break;
+                case Species.CrystalBeetle: BuildCrystalBeetle(owner, rig, out head, out tail, out joints, out feet); break;
+                case Species.BlizzardWraith:
+                    BuildBlizzardWraith(owner, rig, out head, out tail, out joints, out frostOrb);
+                    feet = null;
+                    break;
+                default: BuildSnowWolf(owner, rig, out head, out tail, out joints, out feet); break;
+            }
 
             var body = creature.gameObject.AddComponent<CharacterController>();
-            body.radius = moth ? 0.45f : 0.38f;
-            body.height = moth ? 0.94f : 1.13f;
-            body.center = moth ? Vector3.zero : Vector3.up * (body.height * 0.5f);
+            body.radius = species == Species.CrystalBeetle ? 0.49f : flies ? 0.45f : 0.38f;
+            body.height = species == Species.FrostMoth ? 0.94f : 1.13f;
+            body.center = flies ? Vector3.zero : Vector3.up * (body.height * 0.5f);
             body.skinWidth = 0.028f;
-            body.stepOffset = moth ? 0f : 0.28f;
+            body.stepOffset = flies ? 0f : 0.28f;
             body.slopeLimit = 48f;
             var wildlife = creature.gameObject.AddComponent<HostileWildlife>();
-            wildlife.Initialize(species, player, body, rig, head, tail, joints, feet);
+            wildlife.Initialize(species, player, body, rig, head, tail, joints, feet, frostOrb);
             return wildlife;
         }
 

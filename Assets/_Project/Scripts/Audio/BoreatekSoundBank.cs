@@ -7,7 +7,8 @@ namespace Boreatek.Audio
         Click, Confirm, StepSnow, StepPlanks, StepIce, Jump, Land, Swing, Wood, Metal, Stone, Ice, Crystal,
         Break, Blocked, Deploy, Blast, Eat, Drink, Hurt, Death, Servo, GolemStep, RobotReady, GolemReady,
         RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone, SwordSwing, SledBell, PlaneTouchdown, PlaneRefuel,
-        WolfWarning, WolfLunge, WolfFall, MothWarning, MothDive, MothFade, PlaneScrape, PlaneImpact, PlaneExplosion
+        WolfWarning, WolfLunge, WolfFall, MothWarning, MothDive, MothFade, PlaneScrape, PlaneImpact, PlaneExplosion,
+        BeetleWarning, BeetleCharge, BeetleFall, WraithWarning, WraithCast, WraithFade
     }
 
     internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm, FrozenPlain, Forest, Ridge }
@@ -111,6 +112,12 @@ namespace Boreatek.Audio
                 SoundCue.MothWarning => new Voice(0.73f, 940f, 1755f, 0.20f, 0.46f, 43f, 0.66f),
                 SoundCue.MothDive    => new Voice(0.54f, 1621f, 560f, 0.11f, 0.80f, 36f, 0.53f),
                 SoundCue.MothFade    => new Voice(0.57f, 976f, 390f, 0.08f, 0.41f, 17f, 0.45f),
+                SoundCue.BeetleWarning => new Voice(0.88f, 276f, 134f, 0.23f, 0.84f, 31f, 0.33f),
+                SoundCue.BeetleCharge => new Voice(0.55f, 116f, 711f, 0.19f, 0.94f, 44f, 0.31f),
+                SoundCue.BeetleFall => new Voice(0.78f, 665f, 85f, 0.34f, 0.78f, 46f, 0.24f),
+                SoundCue.WraithWarning => new Voice(1.19f, 228f, 596f, 0.39f, 0.72f, 12f, 0.26f),
+                SoundCue.WraithCast => new Voice(0.63f, 824f, 177f, 0.44f, 0.67f, 21f, 0.43f),
+                SoundCue.WraithFade => new Voice(0.94f, 463f, 113f, 0.30f, 0.75f, 9f, 0.40f),
                 SoundCue.Wood        => new Voice(0.25f, 253f, 112f, 0.40f, 0.60f, 25f, 0.18f),
                 SoundCue.Metal       => new Voice(0.38f, 769f, 532f, 0.44f, 0.44f, 16f, 0.58f),
                 SoundCue.Stone       => new Voice(0.27f, 150f, 71f, 0.24f, 0.78f, 28f, 0.24f),
