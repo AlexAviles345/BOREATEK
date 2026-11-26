@@ -57,6 +57,9 @@ namespace Boreatek.UI
         private GameObject _interactionCardRoot;
         private BoreatekUiGlyph _crosshair;
         private Text _interactionPromptText;
+        private RectTransform _destructionCard;
+        private Image _destructionFill;
+        private Text _destructionValue;
         private Text _statusToastText;
         private RawImage _frostVignetteOverlay;
         private Texture2D _frostVignetteTexture;
@@ -351,6 +354,14 @@ namespace Boreatek.UI
             StretchFull(_interactionPromptText.rectTransform, 6f);
             _interactionPromptText.verticalOverflow = VerticalWrapMode.Truncate;
             _interactionCardRoot.SetActive(false);
+
+            _destructionCard = CreatePanelCard("DestructionProgress", parent, center, center, center,
+                new Vector2(0f, -98f), new Vector2(262f, 42f), ColDeepSteel);
+            ApplyMetalPanel(_destructionCard, ColDeepSteel, ColSteelRim);
+            _destructionCard.GetComponent<Image>().raycastTarget = false;
+            _destructionFill = CreateHudGauge(_destructionCard, "Damage", "Destrucción", 4f, 236f,
+                ColWarmAmber, out _destructionValue);
+            _destructionCard.gameObject.SetActive(false);
         }
 
         private void BuildBottomHotbarAndToastBanner(RectTransform parent)
@@ -596,6 +607,7 @@ namespace Boreatek.UI
         private void UpdateCrosshairInteractionPrompt()
         {
             if (_crosshair != null) _crosshair.enabled = !_player.IsShopMenuOpen && _player.HasAimReticle;
+            UpdateDestructionProgress(_player.IsShopMenuOpen ? null : _player.CurrentFocusedInteractable as HarvestableNode);
             if (_interactionCardRoot == null)
             {
                 return;
@@ -620,6 +632,16 @@ namespace Boreatek.UI
             }
 
             _interactionCardRoot.SetActive(false);
+        }
+
+        private void UpdateDestructionProgress(HarvestableNode node)
+        {
+            if (_destructionCard == null) return;
+            float progress = node != null && !node.IsDepleted && !node.IsFrozenLocked ? node.DestructionProgress : 0f;
+            _destructionCard.gameObject.SetActive(progress > 0f);
+            if (progress <= 0f) return;
+            _destructionFill.fillAmount = progress;
+            _destructionValue.text = $"{Mathf.RoundToInt(progress * 100f)}%";
         }
 
         private void UpdateFrostWarningVignette()

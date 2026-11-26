@@ -32,6 +32,8 @@ namespace Boreatek.World
 
         public HarvestableNodeConfigSO NodeConfig => _nodeConfig;
         public int CurrentHitPoints => _currentHitPoints;
+        public float DestructionProgress => _nodeConfig == null ? 0f :
+            1f - Mathf.Clamp01((float)_currentHitPoints / Mathf.Max(1, _nodeConfig.MaxHitPoints));
         public bool IsDepleted => _isDepleted;
         public bool IsFrozenLocked => _nodeConfig != null && _nodeConfig.RequiresHeatToMelt && _currentMeltTimer < _nodeConfig.MeltDurationSeconds;
         public float NormalizedMeltProgress => (_nodeConfig == null || !_nodeConfig.RequiresHeatToMelt)
