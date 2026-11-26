@@ -16,7 +16,7 @@ namespace Boreatek.Player
             ? (_useThirdPersonView ? Perspective.Behind : Perspective.FirstPerson)
             : _perspective;
         private bool InFirstPerson => CurrentPerspective == Perspective.FirstPerson;
-        internal bool HasAimReticle => CurrentPerspective != Perspective.Front;
+        internal bool HasAimReticle => _pilotingPlane == null && CurrentPerspective != Perspective.Front;
 
         private void CyclePerspective()
         {
@@ -46,8 +46,9 @@ namespace Boreatek.Player
                 _playerCamera.fieldOfView = CurrentPerspective == Perspective.Shoulder
                     ? _standardFieldOfView * 0.88f : _standardFieldOfView;
             }
-            if (_mountedSled == null) SetCameraBodyVisible(!InFirstPerson);
+            if (_mountedSled == null && _pilotingPlane == null) SetCameraBodyVisible(!InFirstPerson);
             _sledCameraBoom = Vector3.zero;
+            _flightCameraBoom = Vector3.zero;
             UpdateCameraObstruction();
             RefreshHeldEquipment();
         }
@@ -58,7 +59,12 @@ namespace Boreatek.Player
             if (_playerCamera != null && _cameraPivot != null)
             {
                 Transform camera = _playerCamera.transform;
-                if (_mountedSled != null)
+                if (_pilotingPlane != null)
+                {
+                    showHead = UpdateFlightCamera(camera, dt);
+                    SetCameraBodyVisible(showHead);
+                }
+                else if (_mountedSled != null)
                 {
                     showHead = UpdateMountedCamera(camera, dt);
                     SetCameraBodyVisible(showHead);
@@ -154,7 +160,8 @@ namespace Boreatek.Player
             {
                 RaycastHit hit = _viewObstructions[i];
                 Transform obstacle = hit.collider.transform;
-                if (obstacle.IsChildOf(transform) || (_mountedSled != null && obstacle.IsChildOf(_mountedSled.transform))) continue;
+                if (obstacle.IsChildOf(transform) || (_mountedSled != null && obstacle.IsChildOf(_mountedSled.transform)) ||
+                    (_pilotingPlane != null && obstacle.IsChildOf(_pilotingPlane.transform))) continue;
                 nearest = Mathf.Min(nearest, Mathf.Max(0.04f, hit.distance - 0.065f));
             }
             return nearest;

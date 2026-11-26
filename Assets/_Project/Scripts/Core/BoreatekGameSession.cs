@@ -29,6 +29,7 @@ namespace Boreatek.Core
         private readonly Dictionary<string, HarvestableNode> _sceneryNodes = new();
         private DefectiveToyAI[] _enemies;
         private BoreatekVillageSled[] _sleds;
+        private BoreatekBushPlane _plane;
         private BoreatekSurfaceChunks _surface;
         private BoreatekExplorationMap _map;
         private BoreatekSoundscape _soundscape;
@@ -71,6 +72,7 @@ namespace Boreatek.Core
             _nodes = campaignNodes.ToArray();
             _enemies = worldRoot.GetComponentsInChildren<DefectiveToyAI>(true);
             _sleds = worldRoot.GetComponentsInChildren<BoreatekVillageSled>(true);
+            _plane = worldRoot.GetComponentInChildren<BoreatekBushPlane>(true);
             _temperature.OnDied += ShowDeath;
             _initialized = true;
             _ui.BuildSessionMenu(this, _map);
@@ -266,6 +268,11 @@ namespace Boreatek.Core
                         sled.RestoreSave(state);
             }
             _player.RestoreSave(save.player);
+            if (_plane != null && save.plane.valid)
+            {
+                _plane.RestoreSave(save.plane);
+                if (save.plane.piloting && !_temperature.IsDead) _player.TryMountPlane(_plane, resuming: true);
+            }
             _map.Restore(save.map);
             _map.Reveal(_player.transform.position);
             if (_temperature.IsDead)

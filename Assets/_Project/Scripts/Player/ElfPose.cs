@@ -81,7 +81,7 @@ namespace Boreatek.Player
             _hit = HitDuration;
         }
 
-        internal void SitOnSled()
+        internal void SitInVehicle()
         {
             _waist.localPosition = _waistRest - Vector3.up * 0.11f;
             _waist.localRotation = Quaternion.Euler(8f, 0f, 0f);

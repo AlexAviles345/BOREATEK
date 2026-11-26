@@ -71,6 +71,7 @@ namespace Boreatek.World
             if (Application.isPlaying)
             {
                 BuildVillageSleds();
+                BuildVillageAirfield();
                 player.BindFootprints(SnowFootprints.Install(_worldRoot));
                 var surfaceRoot = new GameObject("Streamed_ArcticSurface");
                 surfaceRoot.transform.SetParent(_worldRoot, false);

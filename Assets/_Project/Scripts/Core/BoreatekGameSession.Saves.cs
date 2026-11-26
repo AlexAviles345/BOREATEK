@@ -218,6 +218,7 @@ namespace Boreatek.Core
                 sceneryNodes = CaptureSceneryNodes(),
                 enemies = Array.ConvertAll(_enemies, enemy => enemy.CaptureSave()),
                 sleds = Array.ConvertAll(_sleds, sled => sled.CaptureSave()),
+                plane = _plane != null ? _plane.CaptureSave() : default,
                 frontierNodes = _surface.CaptureFrontierNodes(),
                 frontierExtractors = frontierExtractors,
                 map = _map.Capture(),
@@ -274,6 +275,7 @@ namespace Boreatek.Core
             public ScenerySave[] sceneryNodes;
             public DefectiveToyAI.SaveState[] enemies;
             public BoreatekVillageSled.SaveState[] sleds;
+            public BoreatekBushPlane.SaveState plane;
             public BoreatekSurfaceChunks.FrontierNodeSave[] frontierNodes;
             public BoreatekSurfaceChunks.FrontierExtractorSave[] frontierExtractors;
             public BoreatekExplorationMap.SaveState map;

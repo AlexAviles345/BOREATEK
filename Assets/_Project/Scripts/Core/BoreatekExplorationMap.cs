@@ -25,6 +25,7 @@ namespace Boreatek.Core
             ("Barrio de los Abedules", new Vector2(-41f, 3f), 0),
             ("Barrio de los Talleres", new Vector2(43f, 3f), 0),
             ("Barrio del Puente", new Vector2(0f, -41f), 0),
+            ("Estación aérea", BoreatekWorldBuilder.AirfieldLocation, 0),
             ("Acceso minero", new Vector2(0f, 15f), 0),
             ("Bosque de Caramelos", new Vector2(52f, 2f), 0),
             ("Cementerio de Trineos", new Vector2(2f, -55f), 0),

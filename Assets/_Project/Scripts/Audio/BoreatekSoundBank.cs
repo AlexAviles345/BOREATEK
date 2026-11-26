@@ -6,7 +6,7 @@ namespace Boreatek.Audio
     {
         Click, Confirm, StepSnow, StepPlanks, StepIce, Jump, Land, Swing, Wood, Metal, Stone, Ice, Crystal,
         Break, Blocked, Deploy, Blast, Eat, Drink, Hurt, Death, Servo, GolemStep, RobotReady, GolemReady,
-        RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone, SwordSwing, SledBell
+        RobotStrike, GolemStrike, RobotOff, GolemOff, Reboot, StepStone, SwordSwing, SledBell, PlaneTouchdown, PlaneRefuel
     }
 
     internal enum SoundBed { Foundry, Tundra, Candy, Wrecks, Tunnel, Cavern, Geode, Abyss, Title, Storm, FrozenPlain, Forest, Ridge }
@@ -99,6 +99,8 @@ namespace Boreatek.Audio
                 SoundCue.Swing       => new Voice(0.23f, 251f, 126f, 0.05f, 0.52f, 9f, 0.15f),
                 SoundCue.SwordSwing  => new Voice(0.20f, 650f, 244f, 0.10f, 0.44f, 6f, 0.25f),
                 SoundCue.SledBell    => new Voice(0.38f, 1030f, 1010f, 0.32f, 0.14f, 14f, 0.38f),
+                SoundCue.PlaneTouchdown => new Voice(0.79f, 89f, 49f, 0.16f, 0.71f, 16f, 0.23f),
+                SoundCue.PlaneRefuel => new Voice(0.96f, 193f, 130f, 0.06f, 0.72f, 18f, 0.12f),
                 SoundCue.Wood        => new Voice(0.25f, 253f, 112f, 0.40f, 0.60f, 25f, 0.18f),
                 SoundCue.Metal       => new Voice(0.38f, 769f, 532f, 0.44f, 0.44f, 16f, 0.58f),
                 SoundCue.Stone       => new Voice(0.27f, 150f, 71f, 0.24f, 0.78f, 28f, 0.24f),
@@ -138,6 +140,33 @@ namespace Boreatek.Audio
                     * decay * fadeIn * 0.75f;
             }
             return Clip(cue.ToString(), samples);
+        }
+
+        internal static AudioClip MakePlaneLoop(bool wind)
+        {
+            var samples = new float[SampleRate * 2];
+            uint seed = wind ? 0x8AD16u : 0x9BA25u;
+            float rumble = 0f, wash = 0f;
+            for (int i = 0; i < samples.Length; i++)
+            {
+                float t = i / (float)SampleRate;
+                float noise = Noise(ref seed);
+                rumble += (noise - rumble) * 0.034f;
+                wash += (noise - wash) * 0.19f;
+                float seam = Mathf.Clamp01(Mathf.Min(i, samples.Length - i - 1) / 380f);
+                if (wind)
+                {
+                    samples[i] = (rumble * 0.77f + wash * 0.22f) * (0.88f + 0.12f * Mathf.Sin(t * Tau * 1.5f)) * seam;
+                    continue;
+                }
+                float stroke = Tau * t * 42f;
+                float pulse = Mathf.Pow(0.5f + 0.5f * Mathf.Cos(stroke), 4f);
+                float exhaust = 0.28f * Mathf.Sin(stroke) + 0.19f * Mathf.Sin(stroke * 2f) + 0.08f * Mathf.Sin(stroke * 3f);
+                float firing = Mathf.Sin(t * Tau * 21f) * 0.16f + pulse * wash * 0.42f;
+                float flutter = 0.86f + 0.10f * Mathf.Cos(t * Tau * 3.5f) + 0.04f * Mathf.Sin(t * Tau * 0.5f);
+                samples[i] = (exhaust + firing + rumble * seam * 0.22f) * flutter;
+            }
+            return Clip(wind ? "Plane - wind over wings" : "Plane - piston and propeller", samples);
         }
 
         internal static AudioClip MakeBed(SoundBed bed)

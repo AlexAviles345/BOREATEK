@@ -88,7 +88,9 @@ namespace Boreatek.World
                 else if (nearest == south) point.y = plot.yMin - clearance - 0.25f;
                 else point.y = plot.yMax + clearance + 0.25f;
             }
-            return point.x == position.x && point.y == position.z ? position : SurfacePoint(point.x, point.y);
+            if (IsAirfieldClearance(point.x, point.y))
+                point.y = point.y < AirfieldLocation.y ? -36.5f : -10.5f;
+            return point.x == position.x && point.y == position.z ? position : StarterMeshFoot(point.x, point.y);
         }
 
         private void BuildVillageDistricts(Transform campus, FoundryMaterials m)

@@ -11,14 +11,10 @@ namespace Boreatek.Player
 
         internal void TryMountSled(BoreatekVillageSled sled)
         {
-            if (!_gameplayEnabled || _mountedSled != null || _isShopMenuOpen || !sled.AttachRider(this)) return;
+            if (!_gameplayEnabled || _mountedSled != null || _pilotingPlane != null || _isShopMenuOpen || !sled.AttachRider(this)) return;
             _mountedSled = sled;
             _sledLookYaw = _sledLookPitch = 0f;
-            _characterController.enabled = false;
-            _verticalVelocity = _knockbackVelocity = Vector3.zero;
-            CancelPickaxeSwing();
-            CancelHeatPlacement();
-            _snowFootprints?.ResetBoots();
+            PrepareVehicleSeat();
             UpdateSeatPose();
             UpdateCameraPositionImmediate();
             PublishStatus("WASD para conducir. Puedes girar en reposo. Espacio para frenar y E para bajar.");
@@ -62,7 +58,7 @@ namespace Boreatek.Player
             float heading = seat.eulerAngles.y;
             transform.SetPositionAndRotation(seat.position, Quaternion.Euler(0f, heading, 0f));
             _playerYaw = heading;
-            _elfPose?.SitOnSled();
+            _elfPose?.SitInVehicle();
         }
 
         private bool LeaveSled(bool force = false)
@@ -84,6 +80,15 @@ namespace Boreatek.Player
         {
             if (_mountedSled == null) return transform.position;
             return _mountedSled.FindLanding(out Vector3 landing) ? landing : new Vector3(0f, 1.2f, -5.5f);
+        }
+
+        private void PrepareVehicleSeat()
+        {
+            _characterController.enabled = false;
+            _verticalVelocity = _knockbackVelocity = Vector3.zero;
+            CancelPickaxeSwing();
+            CancelHeatPlacement();
+            _snowFootprints?.ResetBoots();
         }
     }
 }

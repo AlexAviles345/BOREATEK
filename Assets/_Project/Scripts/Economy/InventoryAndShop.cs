@@ -35,6 +35,7 @@ namespace Boreatek.Economy
         [SerializeField] private int _thermalBeaconsStock = 1;
         [SerializeField] private int _festiveFirecrackersStock = 2;
         [SerializeField] private int _mechanicalElfExtractorsStock;
+        private int _aviationCanisters;
         [SerializeField] private bool _hasGiftRadarUnlocked;
 
         private readonly Dictionary<ResourceType, int> _backpackContents = new Dictionary<ResourceType, int>();
@@ -472,6 +473,35 @@ namespace Boreatek.Economy
             _playerController?.PublishStatus("Autómata extractor guardado en la mochila.");
         }
 
+        internal int AviationCanisters => _aviationCanisters;
+
+        internal void BuyAviationCanister()
+        {
+            if (_aviationCanisters >= 3)
+            {
+                _playerController?.PublishStatus("Puedes llevar hasta tres bidones de gasolina.");
+                return;
+            }
+            if (_gingerbreadCoins < BoreatekBushPlane.CanPrice)
+            {
+                _playerController?.PublishStatus($"El bidón cuesta {BoreatekBushPlane.CanPrice} monedas. Vende recursos en la Tolva Central.");
+                return;
+            }
+            _gingerbreadCoins -= BoreatekBushPlane.CanPrice;
+            _aviationCanisters++;
+            BoreatekSoundscape.Play(SoundCue.Confirm);
+            _playerController?.PublishStatus($"Bidón de {BoreatekBushPlane.CanLiters} L comprado. Pulsa R en la avioneta estacionada para repostar.");
+            OnInventoryOrCoinsChanged?.Invoke();
+        }
+
+        internal bool TryUseAviationCanister()
+        {
+            if (_aviationCanisters <= 0) return false;
+            _aviationCanisters--;
+            OnInventoryOrCoinsChanged?.Invoke();
+            return true;
+        }
+
         [Serializable]
         internal struct ResourceStack
         {
@@ -483,7 +513,7 @@ namespace Boreatek.Economy
         internal struct SaveState
         {
             public int backpackTier, backpackSlots, coins, cores;
-            public int chocolate, cookies, peppermint, lights, beacons, firecrackers, extractors;
+            public int chocolate, cookies, peppermint, lights, beacons, firecrackers, extractors, aviationCanisters;
             public float resourceLoss;
             public bool radar;
             public ResourceStack[] resources;
@@ -505,7 +535,7 @@ namespace Boreatek.Economy
                 chocolate = _hotChocolateThermosCount, cookies = _gingerbreadCookieCount,
                 peppermint = _peppermintCaneCount, lights = _stringLightsStock,
                 beacons = _thermalBeaconsStock, firecrackers = _festiveFirecrackersStock,
-                extractors = _mechanicalElfExtractorsStock, resourceLoss = _hypothermiaLossPercentage,
+                extractors = _mechanicalElfExtractorsStock, aviationCanisters = _aviationCanisters, resourceLoss = _hypothermiaLossPercentage,
                 radar = _hasGiftRadarUnlocked, resources = resources.ToArray(),
                 heatSources = _heatPlacements.ToArray()
             };
@@ -524,6 +554,7 @@ namespace Boreatek.Economy
             _thermalBeaconsStock = state.beacons;
             _festiveFirecrackersStock = state.firecrackers;
             _mechanicalElfExtractorsStock = state.extractors;
+            _aviationCanisters = Mathf.Clamp(state.aviationCanisters, 0, 3);
             _hypothermiaLossPercentage = state.resourceLoss;
             _hasGiftRadarUnlocked = state.radar;
             _backpackContents.Clear();

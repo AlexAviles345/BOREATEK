@@ -116,7 +116,7 @@ namespace Boreatek.UI
                 };
                 _backpackStock[i].color = stock > 0 ? ColTextLight : ColTextMuted;
             }
-            _capacityLabel.text = $"{_inventoryShop.CurrentBackpackCount} / {_inventoryShop.MaxBackpackSlots} espacios";
+            _capacityLabel.text = $"{_inventoryShop.CurrentBackpackCount} / {_inventoryShop.MaxBackpackSlots} espacios · Bidones {_inventoryShop.AviationCanisters}/3";
             for (int i = 0; i < PackResources.Length; i++)
             {
                 ResourceType type = PackResources[i];

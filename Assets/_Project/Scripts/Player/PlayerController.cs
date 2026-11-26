@@ -123,6 +123,11 @@ namespace Boreatek.Player
                 Keyboard.current?.rightAltKey.isPressed == true;
             if (!_isShopMenuOpen && _isCursorLocked == hudPointer) SetCursorLock(!hudPointer);
 
+            if (_pilotingPlane != null)
+            {
+                UpdateFlight(dt, !_isShopMenuOpen && !hudPointer);
+                return;
+            }
             if (_mountedSled != null)
             {
                 UpdateSled(dt, !_isShopMenuOpen && !hudPointer);
@@ -518,6 +523,7 @@ namespace Boreatek.Player
 
         internal void SetCharacterPresent(bool present)
         {
+            if (!present && _pilotingPlane != null) LeavePlane(force: true);
             if (!present && _mountedSled != null) LeaveSled(force: true);
             _verticalVelocity = Vector3.zero;
             _knockbackVelocity = Vector3.zero;

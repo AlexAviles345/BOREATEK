@@ -99,7 +99,7 @@ namespace Boreatek.World
                 Vector4 weights = StarterSnowWeights(x, z);
                 BiomeType biome = SampleSnowBiome(weights, (float)random.NextDouble());
                 float size = 0.64f + (float)random.NextDouble() * 0.58f;
-                AddBiomeTerrainDetail(scenery, foot, biome, size, _landscape);
+                if (!IsAirfieldClearance(x, z)) AddBiomeTerrainDetail(scenery, foot, biome, size, _landscape);
                 if (weights.z > 0.10f && weights.z < 0.84f && biome == BiomeType.OuterTundra && i % 4 == 0)
                     SpawnSceneryPine(root, StarterMeshFoot(x, z - 1.1f), 2.5f + size, $"edge:{i}");
             }
@@ -165,7 +165,7 @@ namespace Boreatek.World
             float drift = (Mathf.PerlinNoise(x * 0.064f + 38f, z * 0.1f + 81f) - 0.55f) * 0.28f;
             float edge = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(90f, 124f, Mathf.Max(Mathf.Abs(x), Mathf.Abs(z))));
             float relief = edge * Mathf.PerlinNoise(x * 0.024f + 112f, z * 0.048f + 54f) * 8f;
-            return new Vector3(x, clearPlaza * drift + relief, z);
+            return new Vector3(x, (clearPlaza * drift + relief) * (1f - RunwayGrade(x, z)), z);
         }
 
         private void BuildArcticHorizon(Transform parent)
