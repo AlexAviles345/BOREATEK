@@ -12,6 +12,8 @@ namespace Boreatek.World
         private float _phase, _pace, _time, _offset;
         private bool _reindeer;
 
+        internal Vector3 CollisionCenter => transform.position + Vector3.up * (_reindeer ? 0.64f : 0.44f);
+
         internal void Initialize(Transform torso, Transform head, Transform tail, Transform saddle,
             Transform[] hips, Transform[] ankles, Transform hitch, LineRenderer trace, bool reindeer, float offset)
         {
@@ -33,8 +35,9 @@ namespace Boreatek.World
         internal void Animate(float speed, float dt)
         {
             _time += dt;
-            _pace = Mathf.MoveTowards(_pace, Mathf.Clamp01(speed * 0.22f), dt * 3.5f);
-            float strideRate = Mathf.Min(speed / (_reindeer ? 2.46f : 2.15f), _reindeer ? 3.1f : 3.8f);
+            _pace = Mathf.MoveTowards(_pace, Mathf.Clamp01(Mathf.Abs(speed) * 0.22f), dt * 3.5f);
+            float maxRate = _reindeer ? 3.1f : 3.8f;
+            float strideRate = Mathf.Clamp(speed / (_reindeer ? 2.46f : 2.15f), -maxRate, maxRate);
             _phase = Mathf.Repeat(_phase + strideRate * dt, 1f);
             Vector3 place = transform.parent.TransformPoint(_rest);
             if (Physics.Raycast(place + Vector3.up * 0.78f, Vector3.down, out RaycastHit ground, 1.84f,

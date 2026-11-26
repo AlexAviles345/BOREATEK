@@ -6,10 +6,11 @@ namespace Boreatek.Player
     {
         private enum Perspective { Legacy, FirstPerson, Behind, Front, Shoulder }
         private static readonly Vector3 ShoulderOffset = new Vector3(0.70f, 0.11f, -1.94f);
-        private readonly RaycastHit[] _viewObstructions = new RaycastHit[12];
+        private readonly RaycastHit[] _viewObstructions = new RaycastHit[24];
         private Perspective _perspective;
         private float _standardFieldOfView = 60f;
         private Renderer[] _bodyRenderers = System.Array.Empty<Renderer>();
+        private Vector3 _sledCameraBoom;
 
         private Perspective CurrentPerspective => _perspective == Perspective.Legacy
             ? (_useThirdPersonView ? Perspective.Behind : Perspective.FirstPerson)
@@ -45,19 +46,24 @@ namespace Boreatek.Player
                 _playerCamera.fieldOfView = CurrentPerspective == Perspective.Shoulder
                     ? _standardFieldOfView * 0.88f : _standardFieldOfView;
             }
-            foreach (Renderer renderer in _bodyRenderers)
-                if (renderer != null) renderer.forceRenderingOff = InFirstPerson;
+            if (_mountedSled == null) SetCameraBodyVisible(!InFirstPerson);
+            _sledCameraBoom = Vector3.zero;
             UpdateCameraObstruction();
             RefreshHeldEquipment();
         }
 
-        private void UpdateCameraObstruction()
+        private void UpdateCameraObstruction(float dt = 0f)
         {
             bool showHead = !InFirstPerson;
             if (_playerCamera != null && _cameraPivot != null)
             {
                 Transform camera = _playerCamera.transform;
-                switch (CurrentPerspective)
+                if (_mountedSled != null)
+                {
+                    showHead = UpdateMountedCamera(camera, dt);
+                    SetCameraBodyVisible(showHead);
+                }
+                else switch (CurrentPerspective)
                 {
                     case Perspective.FirstPerson:
                         camera.SetLocalPositionAndRotation(_firstPersonCameraOffset, Quaternion.identity);
@@ -84,6 +90,59 @@ namespace Boreatek.Player
             RefreshHeadlampLens();
         }
 
+        private bool UpdateMountedCamera(Transform camera, float dt)
+        {
+            const float cameraRadius = 0.20f;
+            Vector3 anchor = transform.position + Vector3.up * 0.93f;
+            Quaternion heading = Quaternion.Euler(0f, _playerYaw + _sledLookYaw, 0f);
+            if (!InFirstPerson)
+            {
+                bool front = CurrentPerspective == Perspective.Front;
+                bool shoulder = CurrentPerspective == Perspective.Shoulder;
+                if (front) heading = Quaternion.Euler(0f, _playerYaw + Mathf.Clamp(_sledLookYaw, -50f, 50f), 0f);
+                Vector3 rest = front ? new Vector3(0f, 0.4f, 4.05f) :
+                    shoulder ? new Vector3(0.81f, 0.42f, -2.35f) : new Vector3(0f, 0.64f, -3.75f);
+                float lift = Mathf.Sin(Mathf.Clamp(_sledLookPitch, -14f, 22f) * Mathf.Deg2Rad) * Mathf.Abs(rest.z);
+                rest.y = Mathf.Max(0.18f, rest.y + lift);
+                Vector3 desired = heading * rest;
+                Vector3 candidate = ClampViewOffset(anchor, desired, cameraRadius);
+                if (candidate.sqrMagnitude < 1.85f * 1.85f)
+                {
+                    // Try keeping the rider in frame when the usual boom is against a corner.
+                    Vector3 right = heading * Vector3.right * (shoulder ? 0.75f : 0.95f);
+                    Vector3 raised = Vector3.up * 0.52f;
+                    Vector3 alternate = ClampViewOffset(anchor, desired + right + raised, cameraRadius);
+                    if (alternate.sqrMagnitude > candidate.sqrMagnitude + 0.08f) candidate = alternate;
+                    alternate = ClampViewOffset(anchor, desired - right + raised, cameraRadius);
+                    if (alternate.sqrMagnitude > candidate.sqrMagnitude + 0.08f) candidate = alternate;
+                }
+                Vector3 boom = dt <= 0f || _sledCameraBoom == Vector3.zero ? candidate :
+                    Vector3.Lerp(_sledCameraBoom, candidate, 1f - Mathf.Exp(-13f * dt));
+                _sledCameraBoom = ClampViewOffset(anchor, boom, cameraRadius);
+                if (_sledCameraBoom.sqrMagnitude > 0.82f * 0.82f)
+                {
+                    Vector3 target = anchor + heading * (front ? new Vector3(0f, -0.13f, -0.12f) :
+                        new Vector3(shoulder ? 0.78f : 0f, 0.06f, shoulder ? 2.45f : 1.55f));
+                    camera.SetPositionAndRotation(anchor + _sledCameraBoom,
+                        Quaternion.LookRotation(target - anchor - _sledCameraBoom));
+                    return true;
+                }
+            }
+
+            Vector3 eye = ClampViewOffset(anchor, heading * Vector3.forward * 0.17f, 0.11f);
+            camera.SetPositionAndRotation(anchor + eye, heading * Quaternion.Euler(_sledLookPitch, 0f, 0f));
+            return false;
+        }
+
+        private void SetCameraBodyVisible(bool visible)
+        {
+            foreach (Renderer renderer in _bodyRenderers)
+                if (renderer != null) renderer.forceRenderingOff = !visible;
+        }
+
+        private Vector3 ClampViewOffset(Vector3 origin, Vector3 displacement, float radius) =>
+            displacement.normalized * ViewClearance(origin, displacement, radius);
+
         private float ViewClearance(Vector3 origin, Vector3 displacement, float radius)
         {
             float distance = displacement.magnitude;
@@ -94,7 +153,8 @@ namespace Boreatek.Player
             for (int i = 0; i < count; i++)
             {
                 RaycastHit hit = _viewObstructions[i];
-                if (hit.collider.transform.IsChildOf(transform)) continue;
+                Transform obstacle = hit.collider.transform;
+                if (obstacle.IsChildOf(transform) || (_mountedSled != null && obstacle.IsChildOf(_mountedSled.transform))) continue;
                 nearest = Mathf.Min(nearest, Mathf.Max(0.04f, hit.distance - 0.065f));
             }
             return nearest;

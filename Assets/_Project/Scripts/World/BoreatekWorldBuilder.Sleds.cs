@@ -45,11 +45,11 @@ namespace Boreatek.World
 
             var collider = root.gameObject.AddComponent<CharacterController>();
             collider.center = Vector3.up * 0.77f;
-            collider.radius = 0.61f;
+            collider.radius = 0.53f;
             collider.height = 1.54f;
-            collider.stepOffset = 0.28f;
+            collider.stepOffset = 0.39f;
             collider.skinWidth = 0.045f;
-            collider.slopeLimit = 43f;
+            collider.slopeLimit = 50f;
             var seat = CharacterPart(root, "Asiento_Del_Conductor", new Vector3(0f, 0.47f, -0.36f));
             var team = new SledAnimal[2];
             Material straps = _landscape.Own(new Material(Shader.Find("Sprites/Default")) { name = "Cuero del tiro" });

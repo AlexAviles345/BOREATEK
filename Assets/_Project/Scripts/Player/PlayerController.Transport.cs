@@ -7,21 +7,21 @@ namespace Boreatek.Player
     public partial class PlayerController
     {
         private BoreatekVillageSled _mountedSled;
-        private float _sledLookYaw;
+        private float _sledLookYaw, _sledLookPitch;
 
         internal void TryMountSled(BoreatekVillageSled sled)
         {
             if (!_gameplayEnabled || _mountedSled != null || _isShopMenuOpen || !sled.AttachRider(this)) return;
             _mountedSled = sled;
-            _sledLookYaw = 0f;
+            _sledLookYaw = _sledLookPitch = 0f;
             _characterController.enabled = false;
             _verticalVelocity = _knockbackVelocity = Vector3.zero;
             CancelPickaxeSwing();
             CancelHeatPlacement();
             _snowFootprints?.ResetBoots();
             UpdateSeatPose();
-            RefreshHeldEquipment();
-            PublishStatus("Conduce con WASD, frena con Espacio y pulsa E para bajar.");
+            UpdateCameraPositionImmediate();
+            PublishStatus("WASD para conducir. Puedes girar en reposo. Espacio para frenar y E para bajar.");
         }
 
         private void UpdateSled(float dt, bool acceptInput)
@@ -33,8 +33,7 @@ namespace Boreatek.Player
                 Vector2 look = Mouse.current != null ? Mouse.current.delta.ReadValue() * _mouseSensitivity : Vector2.zero;
                 if (pad != null) look += pad.rightStick.ReadValue() * (118f * dt);
                 _sledLookYaw = Mathf.Clamp(_sledLookYaw + look.x, -95f, 95f);
-                _cameraPitch = Mathf.Clamp(_cameraPitch - look.y, -65f, 74f);
-                _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, _sledLookYaw, 0f);
+                _sledLookPitch = Mathf.Clamp(_sledLookPitch - look.y, -52f, 55f);
             }
             if (acceptInput && (keys?.eKey.wasPressedThisFrame == true || pad?.buttonWest.wasPressedThisFrame == true))
             {
@@ -54,7 +53,7 @@ namespace Boreatek.Player
             UpdateSeatPose();
             _currentFocusedInteractable = _mountedSled;
             _aimHit = default;
-            UpdateCameraObstruction();
+            UpdateCameraObstruction(dt);
         }
 
         private void UpdateSeatPose()
@@ -77,7 +76,7 @@ namespace Boreatek.Player
             sled.ReleaseRider();
             if (_cameraPivot != null) _cameraPivot.localRotation = Quaternion.Euler(_cameraPitch, 0f, 0f);
             _elfPose?.Reset();
-            RefreshHeldEquipment();
+            UpdateCameraPositionImmediate();
             return true;
         }
 
