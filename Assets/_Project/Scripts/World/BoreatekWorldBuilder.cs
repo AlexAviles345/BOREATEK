@@ -454,8 +454,8 @@ namespace Boreatek.World
 
             if (surfaceEntrance)
             {
-                DressTunnel(tunnel, start, rot, length, wallColor, heightScale: 0.7f, solidVault: true);
-                BuildCoveredMineEntrance(tunnel);
+                DressTunnel(tunnel, start, rot, length, wallColor, heightScale: MineVaultHeightScale, solidVault: true);
+                BuildCoveredMineEntrance(tunnel, start, rot);
             }
             else
             {

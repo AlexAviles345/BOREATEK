@@ -6,11 +6,12 @@ namespace Boreatek.World
     public partial class BoreatekWorldBuilder
     {
         private const float MineCoverEnd = 26f;
+        private const float MineVaultHeightScale = 0.7f;
 
         internal static bool IsMineEntranceCutout(float x, float z) =>
             x >= -4f && x < 4f && z >= 14f && z < MineCoverEnd;
 
-        private void BuildCoveredMineEntrance(Transform tunnel)
+        private void BuildCoveredMineEntrance(Transform tunnel, Vector3 rampStart, Quaternion rampRotation)
         {
             var m = new FoundryMaterials(_landscape);
             var cover = new Batch();
@@ -50,8 +51,13 @@ namespace Boreatek.World
                 Vector3 b = new Vector3(span[i], opening[i], rows[0]);
                 portal.Quad(a, surface[0, i - 1], surface[0, i], b, exposedRock);
                 if (i >= 3 && i <= 8)
+                {
                     Beam(fittings, a + new Vector3(0f, 0.15f, -0.095f), b + new Vector3(0f, 0.15f, -0.095f),
                         0.23f, i % 2 == 0 ? m.Iron : m.Timber);
+                    Vector3 innerA = RampVaultEdge(a.x, rampStart, rampRotation);
+                    Vector3 innerB = RampVaultEdge(b.x, rampStart, rampRotation);
+                    portal.Quad(a, b, innerB, innerA, exposedRock);
+                }
             }
             portal.Quad(new Vector3(-4.05f, 0.075f, 13.74f), new Vector3(-4.05f, 0.264f, 15.14f),
                 new Vector3(4.05f, 0.264f, 15.14f), new Vector3(4.05f, 0.075f, 13.74f), m.Stone);
@@ -66,6 +72,18 @@ namespace Boreatek.World
             _landscape.Place(tunnel, "Snow_Over_Ventilation_Tunnel", cover, collision: true);
             _landscape.Place(tunnel, "Mine_Entrance_Arch_And_Approach", portal, collision: true);
             _landscape.Place(tunnel, "Mine_Entrance_Beams_And_Lanterns", fittings);
+        }
+
+        private static Vector3 RampVaultEdge(float x, Vector3 start, Quaternion rotation)
+        {
+            for (int i = 2; i < TunnelProfile.Length - 1; i++)
+            {
+                Vector2 a = TunnelProfile[i - 1], b = TunnelProfile[i];
+                if (x > b.x) continue;
+                float height = Mathf.Lerp(a.y, b.y, Mathf.InverseLerp(a.x, b.x, x)) * MineVaultHeightScale;
+                return start + rotation * new Vector3(x, height, 0f);
+            }
+            return start + rotation * new Vector3(x, TunnelProfile[^2].y * MineVaultHeightScale, 0f);
         }
     }
 }
