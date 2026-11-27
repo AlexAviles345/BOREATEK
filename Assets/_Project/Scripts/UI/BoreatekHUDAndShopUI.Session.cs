@@ -151,6 +151,7 @@ namespace Boreatek.UI
 
         private void OnDestroy()
         {
+            if (_player != null) _player.OnStatusMessagePublished -= ShowStatusToast;
             if (_sessionCanvas != null)
             {
                 Destroy(_sessionCanvas);

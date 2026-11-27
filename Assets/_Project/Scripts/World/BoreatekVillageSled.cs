@@ -44,8 +44,7 @@ namespace Boreatek.World
             _steering = steering;
         }
 
-        public string GetInteractionPrompt() => _rider == null ? $"[E] Montar {_label}" :
-            "[W/S] Avanzar o retroceder · [A/D] Girar incluso en reposo · [Espacio] Frenar · [E] Bajar";
+        public string GetInteractionPrompt() => _rider == null ? $"[E] Montar · {_label}" : _label;
 
         public bool CanInteract(GameObject interactor) => _rider == null &&
             interactor != null && (interactor.transform.position - transform.position).sqrMagnitude < 3.6f * 3.6f;

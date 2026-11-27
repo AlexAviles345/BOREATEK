@@ -67,11 +67,11 @@ namespace Boreatek.World
         public string GetInteractionPrompt()
         {
             if (_wrecked) return "Avioneta siniestrada · Solicita un reemplazo en el surtidor";
-            if (Burning) return _airborne ? $"¡Fuego! · {_burnSeconds:0.0} s · Busca dónde aterrizar"
-                : $"¡Fuego! · {_burnSeconds:0.0} s · Pulsa E al detenerte";
-            if (_pilot == null) return "[E] Pilotar la avioneta";
-            return $"Avioneta {_hull:0}%  ·  Gasolina {_fuel:0.0} L  ·  {_speed * 3.6f:0} km/h  ·  {_altitude:0} m\n" +
-                "W/S Motor · ↑/↓ Morro · A/D Girar · Espacio Freno · R Repostar";
+            string fire = Burning ? (_airborne ? $"¡Fuego! Aterriza · {_burnSeconds:0.0} s"
+                : $"¡Fuego! Evacúa al detenerte · {_burnSeconds:0.0} s") : null;
+            if (_pilot == null) return fire ?? "[E] Pilotar la avioneta";
+            return (fire == null ? "" : fire + "\n") +
+                $"Casco {_hull:0}%  ·  Gasolina {_fuel:0.0} L\n{_speed * 3.6f:0} km/h  ·  Altitud {_altitude:0} m";
         }
 
         public bool CanInteract(GameObject interactor) => _pilot == null && !_wrecked && !Burning && !_airborne && interactor != null &&

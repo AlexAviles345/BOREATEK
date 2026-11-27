@@ -15,7 +15,7 @@ namespace Boreatek.UI
     /// - Tarjeta superior izquierda: Barras animadas de Temperatura Corporal (°T), Salud (HP) y Presión del Tanque-Mochila.
     /// - Tarjeta superior derecha: Reloj de Campaña de 20 Horas (Ciclo de 20m), Clima en español, Nivel de Equipo y Radar.
     /// - Barra de herramientas, mochila y avisos de juego.
-    /// - Retícula central minimalista + Tarjeta flotante contextual al apuntar a un nodo, cofre congelado o tolva.
+    /// - Retícula central y avisos contextuales en los laterales del HUD.
     /// - Viñeta perimetral de escarcha cuando la temperatura cae de 35 °T.
     /// - Tienda del comerciante con tarjetas y filtros para la compra de equipo.
     /// </summary>
@@ -53,19 +53,9 @@ namespace Boreatek.UI
         private Text _equipmentSummaryText;
         private Text _radarStatusText;
 
-        // Referencias de Retícula, Interacción, Banner de Estado y Escarcha
-        private GameObject _interactionCardRoot;
-        private BoreatekUiGlyph _crosshair;
-        private Text _interactionPromptText;
-        private RectTransform _destructionCard;
-        private Image _destructionFill;
-        private Text _destructionValue;
-        private Text _statusToastText;
         private RawImage _frostVignetteOverlay;
         private RawImage _damageVignetteOverlay;
         private Texture2D _frostVignetteTexture;
-        private string _lastToastMessage;
-        private float _hideToastAt;
         private float _nextRadarRefresh;
         private float _nextTelemetryRefresh;
 
@@ -93,8 +83,8 @@ namespace Boreatek.UI
 
         public void BindPlayer(PlayerController player)
         {
+            if (_player != null) _player.OnStatusMessagePublished -= ShowStatusToast;
             _player = player;
-            _lastToastMessage = null;
             _nextTelemetryRefresh = 0f;
             _nextRadarRefresh = 0f;
             if (_player != null)
@@ -104,6 +94,11 @@ namespace Boreatek.UI
             }
 
             EnsureCanvasReady();
+            if (_player != null)
+            {
+                _player.OnStatusMessagePublished += ShowStatusToast;
+                ShowStatusToast(_player.LastStatusMessage);
+            }
         }
 
         private void EnsureCanvasReady()
@@ -146,14 +141,16 @@ namespace Boreatek.UI
                 return;
             }
 
-            if (Time.unscaledTime >= _nextTelemetryRefresh)
+            bool refreshTelemetry = Time.unscaledTime >= _nextTelemetryRefresh;
+            if (refreshTelemetry)
             {
                 _nextTelemetryRefresh = Time.unscaledTime + 0.10f;
                 UpdateVitalAndThermalTelemetry();
                 UpdateClockWeatherAndEquipment();
             }
-            UpdateHotbarAndToast();
-            UpdateCrosshairInteractionPrompt();
+            UpdateHotbar();
+            UpdateStatusToast();
+            UpdateContextHud(refreshTelemetry);
             UpdateFrostWarningVignette();
             UpdateDamageFeedback();
             UpdateShopModalVisibility();
@@ -253,10 +250,10 @@ namespace Boreatek.UI
             RectTransform rootRect = canvasObj.GetComponent<RectTransform>();
 
             BuildFrostVignetteOverlay(rootRect);
-            BuildTopLeftVitalPanel(rootRect);
-            BuildTopRightCampaignAndEquipmentPanel(rootRect);
-            BuildCenterCrosshairAndInteractionCard(rootRect);
-            BuildBottomHotbarAndToastBanner(rootRect);
+            var vitals = BuildTopLeftVitalPanel(rootRect);
+            var campaign = BuildTopRightCampaignAndEquipmentPanel(rootRect);
+            BuildContextHud(rootRect, vitals, campaign);
+            BuildBottomHotbar(rootRect);
             BuildWorkshopShopModal(rootRect);
         }
 
@@ -292,7 +289,7 @@ namespace Boreatek.UI
             _healthBarFill.color = Color.Lerp(ColCandyRed, new Color(1f, 0.70f, 0.56f), flash);
         }
 
-        private void BuildTopLeftVitalPanel(RectTransform parent)
+        private RectTransform BuildTopLeftVitalPanel(RectTransform parent)
         {
             var topLeft = new Vector2(0f, 1f);
             RectTransform panel = CreatePanelCard("Panel_TopLeft_Telemetry", parent, topLeft, topLeft, topLeft,
@@ -324,9 +321,10 @@ namespace Boreatek.UI
             _biomeNameText.resizeTextMinSize = 12;
             _biomeNameText.resizeTextMaxSize = 15;
             _biomeNameText.verticalOverflow = VerticalWrapMode.Truncate;
+            return panel;
         }
 
-        private void BuildTopRightCampaignAndEquipmentPanel(RectTransform parent)
+        private RectTransform BuildTopRightCampaignAndEquipmentPanel(RectTransform parent)
         {
             var topRight = Vector2.one;
             var topLeft = new Vector2(0f, 1f);
@@ -349,6 +347,7 @@ namespace Boreatek.UI
                 new Vector2(312f, 62f), 15, FontStyle.Normal, ColTextLight, TextAnchor.UpperLeft);
             _radarStatusText = CreateLabel(panel, "RadarTxt", "[F] Faro  ·  [M] Mapa", new Vector2(18f, -202f),
                 new Vector2(312f, 18f), 14, FontStyle.Bold, ColIceCyan, TextAnchor.MiddleLeft);
+            return panel;
         }
 
         private void AddHudHeading(RectTransform panel, string title, float ruleWidth)
@@ -360,44 +359,9 @@ namespace Boreatek.UI
                 new Vector2(Mathf.Max(0f, ruleWidth - 41f), 1f), ColSteelRim);
         }
 
-        private void BuildCenterCrosshairAndInteractionCard(RectTransform parent)
-        {
-            var center = new Vector2(0.5f, 0.5f);
-            _crosshair = AddHudGlyph(parent, "CenterCrosshair", BoreatekGlyph.Aim, center, Vector2.zero, 22f, ColTextLight);
-
-            RectTransform prompt = CreatePanelCard("InteractionPromptCard", parent, center, center, center,
-                new Vector2(0f, -50f), new Vector2(590f, 50f), ColDeepSteel);
-            ApplyMetalPanel(prompt, ColDeepSteel, ColSteelRim);
-            prompt.GetComponent<Image>().raycastTarget = false;
-            _interactionCardRoot = prompt.gameObject;
-            _interactionPromptText = CreateLabel(prompt, "PromptTxt", "", Vector2.zero, new Vector2(566f, 44f),
-                16, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
-            StretchFull(_interactionPromptText.rectTransform, 6f);
-            _interactionPromptText.verticalOverflow = VerticalWrapMode.Truncate;
-            _interactionCardRoot.SetActive(false);
-
-            _destructionCard = CreatePanelCard("DestructionProgress", parent, center, center, center,
-                new Vector2(0f, -98f), new Vector2(262f, 42f), ColDeepSteel);
-            ApplyMetalPanel(_destructionCard, ColDeepSteel, ColSteelRim);
-            _destructionCard.GetComponent<Image>().raycastTarget = false;
-            _destructionFill = CreateHudGauge(_destructionCard, "Damage", "Destrucción", 4f, 236f,
-                ColWarmAmber, out _destructionValue);
-            _destructionCard.gameObject.SetActive(false);
-        }
-
-        private void BuildBottomHotbarAndToastBanner(RectTransform parent)
+        private void BuildBottomHotbar(RectTransform parent)
         {
             var bottom = new Vector2(0.5f, 0f);
-            RectTransform toast = CreatePanelCard("StatusToastBanner", parent, bottom, bottom, bottom,
-                new Vector2(0f, 143f), new Vector2(820f, 48f), ColDeepSteel);
-            ApplyMetalPanel(toast, ColDeepSteel, ColSteelRim);
-            toast.GetComponent<Image>().raycastTarget = false;
-            _statusToastText = CreateLabel(toast, "ToastTxt", "", Vector2.zero, new Vector2(790f, 44f),
-                16, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
-            StretchFull(_statusToastText.rectTransform, 6f);
-            _statusToastText.verticalOverflow = VerticalWrapMode.Truncate;
-            toast.gameObject.SetActive(false);
-
             var topLeft = new Vector2(0f, 1f);
             RectTransform bar = CreatePanelCard("BottomHotbarContainer", parent, bottom, bottom, bottom,
                 new Vector2(0f, 38f), new Vector2(920f, 94f), ColDeepSteel);
@@ -436,10 +400,13 @@ namespace Boreatek.UI
                 SetHotbarStock(i, _inventoryShop?.GetEquipmentStock(equipment) ?? 0);
             }
 
-            Text controls = CreateLabel(parent, "ControlsTxt",
-                "Rueda  Elegir  ·  Clic  Usar  ·  [B] Mochila  ·  [E] Interactuar  ·  [F5] Cámara  ·  [Esc] Pausa",
+            _vehicleControlsPlate = CreatePanelCard("VehicleControlsBackdrop", parent, bottom, bottom, bottom,
+                new Vector2(0f, 6f), new Vector2(0f, 28f), new Color32(16, 30, 41, 222));
+            _vehicleControlsPlate.GetComponent<Image>().raycastTarget = false;
+            _vehicleControlsPlate.gameObject.SetActive(false);
+            _controls = CreateLabel(parent, "ControlsTxt", OnFootControls,
                 Vector2.zero, new Vector2(960f, 23f), 14, FontStyle.Bold, ColTextLight, TextAnchor.MiddleCenter);
-            RectTransform footer = controls.rectTransform;
+            RectTransform footer = _controls.rectTransform;
             footer.anchorMin = footer.anchorMax = footer.pivot = bottom;
             footer.anchoredPosition = new Vector2(0f, 9f);
         }
@@ -564,23 +531,8 @@ namespace Boreatek.UI
             }
         }
 
-        private void UpdateHotbarAndToast()
+        private void UpdateHotbar()
         {
-            string message = _player.LastStatusMessage;
-            if (message != _lastToastMessage)
-            {
-                _lastToastMessage = message;
-                _statusToastText.text = RemoveMessageGlyphPrefix(message);
-                _hideToastAt = Time.time + 5f;
-            }
-
-            bool showToast = Time.time < _hideToastAt && !string.IsNullOrEmpty(_statusToastText.text);
-            GameObject toast = _statusToastText.transform.parent.gameObject;
-            if (toast.activeSelf != showToast)
-            {
-                toast.SetActive(showToast);
-            }
-
             if (_inventoryShop == null)
             {
                 return;
@@ -629,46 +581,6 @@ namespace Boreatek.UI
                 index++;
             }
             return index == 0 ? text : text.Substring(index);
-        }
-
-        private void UpdateCrosshairInteractionPrompt()
-        {
-            if (_crosshair != null) _crosshair.enabled = !_player.IsShopMenuOpen && _player.HasAimReticle;
-            UpdateDestructionProgress(_player.IsShopMenuOpen ? null : _player.CurrentFocusedInteractable as HarvestableNode);
-            if (_interactionCardRoot == null)
-            {
-                return;
-            }
-
-            if (_player.IsShopMenuOpen)
-            {
-                _interactionCardRoot.SetActive(false);
-                return;
-            }
-
-            IInteractable focused = _player.CurrentFocusedInteractable;
-            if (focused != null)
-            {
-                string prompt = focused.GetInteractionPrompt();
-                if (!string.IsNullOrEmpty(prompt))
-                {
-                    _interactionCardRoot.SetActive(true);
-                    _interactionPromptText.text = RemoveMessageGlyphPrefix(prompt);
-                    return;
-                }
-            }
-
-            _interactionCardRoot.SetActive(false);
-        }
-
-        private void UpdateDestructionProgress(HarvestableNode node)
-        {
-            if (_destructionCard == null) return;
-            float progress = node != null && !node.IsDepleted && !node.IsFrozenLocked ? node.DestructionProgress : 0f;
-            _destructionCard.gameObject.SetActive(progress > 0f);
-            if (progress <= 0f) return;
-            _destructionFill.fillAmount = progress;
-            _destructionValue.text = $"{Mathf.RoundToInt(progress * 100f)}%";
         }
 
         private void UpdateFrostWarningVignette()

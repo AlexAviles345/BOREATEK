@@ -21,7 +21,6 @@ namespace Boreatek.Player
             UpdateFlightSeat();
             _currentFocusedInteractable = plane;
             UpdateCameraPositionImmediate();
-            PublishStatus("W acelera. Pulsa ↓ para levantar el morro cuando la avioneta tome velocidad.");
         }
 
         private void UpdateFlight(float dt, bool acceptInput)

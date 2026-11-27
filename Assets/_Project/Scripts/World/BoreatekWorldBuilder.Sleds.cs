@@ -60,7 +60,7 @@ namespace Boreatek.World
                 team[i] = BuildSledAnimal(root, hitch, straps, new Vector3(side * 0.63f, 0f, i == 0 ? 2.51f : 2.69f), reindeer, i);
             }
             root.gameObject.AddComponent<BoreatekVillageSled>().Initialize(reindeer ? "renos" : "perros",
-                reindeer ? "trineo de renos" : "trineo de perros", collider, seat, team, reindeer ? 14.2f : 11.8f, reindeer ? 71f : 93f);
+                reindeer ? "Trineo de renos" : "Trineo de perros", collider, seat, team, reindeer ? 14.2f : 11.8f, reindeer ? 71f : 93f);
         }
 
         private SledAnimal BuildSledAnimal(Transform sled, Transform hitch, Material straps, Vector3 position, bool reindeer, int index)

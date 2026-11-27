@@ -17,7 +17,6 @@ namespace Boreatek.Player
             PrepareVehicleSeat();
             UpdateSeatPose();
             UpdateCameraPositionImmediate();
-            PublishStatus("WASD para conducir. Puedes girar en reposo. Espacio para frenar y E para bajar.");
         }
 
         private void UpdateSled(float dt, bool acceptInput)
@@ -67,6 +66,7 @@ namespace Boreatek.Player
             if (!_mountedSled.FindLanding(out Vector3 landing) && !force) return false;
             BoreatekVillageSled sled = _mountedSled;
             _mountedSled = null;
+            _currentFocusedInteractable = null;
             transform.position = landing;
             _characterController.enabled = true;
             sled.ReleaseRider();

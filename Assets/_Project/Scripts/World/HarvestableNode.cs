@@ -293,7 +293,10 @@ namespace Boreatek.World
                 return $"❄️ {_nodeConfig.NodeDisplayName} · {pct}% deshielo · Coloca calor cerca";
             }
 
-            return $"⛏️ {_nodeConfig.NodeDisplayName} -> {_nodeConfig.OutputResource.DisplayName} (Pico Nv.{_nodeConfig.RequiredPickaxeTier} | Clic Izq o [E])";
+            string name = _nodeConfig.NodeDisplayName;
+            string resource = _nodeConfig.OutputResource.DisplayName;
+            string target = name.IndexOf(resource, StringComparison.OrdinalIgnoreCase) >= 0 ? name : $"{name} · {resource}";
+            return $"{target}\nPico Nv.{_nodeConfig.RequiredPickaxeTier} · Clic izq. o [E]";
         }
 
         public bool CanInteract(GameObject interactor)
