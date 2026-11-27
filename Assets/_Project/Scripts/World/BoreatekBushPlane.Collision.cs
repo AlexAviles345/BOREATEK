@@ -18,7 +18,7 @@ namespace Boreatek.World
         private bool _wrecked;
 
         internal bool IsWrecked => _wrecked;
-        private bool Burning => _burnSeconds > 0f;
+        internal bool Burning => _burnSeconds > 0f;
 
         private readonly struct HullContact
         {

@@ -80,6 +80,7 @@ namespace Boreatek.Player
         public bool IsShopMenuOpen => _merchant != null;
         internal bool CanTradeWithMerchant => _gameplayEnabled && IsShopMenuOpen && _merchant.CanInteract(gameObject);
         public IInteractable CurrentFocusedInteractable => _currentFocusedInteractable;
+        internal IInteractable CurrentVehicle => _pilotingPlane != null ? (IInteractable)_pilotingPlane : _mountedSled;
         public string LastStatusMessage { get; private set; } = "Duende Ingeniero listo en la Aldea Industrial.";
 
         public event Action<string> OnStatusMessagePublished;
